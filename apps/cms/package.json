@@ -1,0 +1,25 @@
+{
+  "name": "@tee-backoffice/cms",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@payloadcms/db-sqlite": "^3.79.0",
+    "@payloadcms/next": "^3.79.0",
+    "@payloadcms/richtext-lexical": "^3.79.0",
+    "@payloadcms/translations": "^3.79.0",
+    "next": "15.4.11",
+    "payload": "^3.79.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "sharp": "0.34.2"
+  },
+  "scripts": {
+    "generate:importmap": "payload generate:importmap",
+    "generate:types": "payload generate:types"
+  },
+  "devDependencies": {
+    "@types/node": "25.4.0",
+    "eslint-config-next": "15.4.11"
+  }
+}
