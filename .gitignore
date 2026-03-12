@@ -50,6 +50,7 @@ out
 # PayloadCMS generated
 apps/cms/src/app/(payload)/admin/importMap.js
 apps/cms/payload-types.ts
+apps/cms/media/
 
 # SQLite
 *.db
@@ -65,4 +66,4 @@ apps/cms/payload-types.ts
 test-output
 
 # Local memory files
-memory/memory.local.md
+memory/MEMORY.local.md

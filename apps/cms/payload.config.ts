@@ -6,6 +6,8 @@ import { fileURLToPath } from 'url'
 import { fr } from '@payloadcms/translations/languages/fr'
 import { Users } from '@/collections/Users'
 import { Media } from '@/collections/Media'
+import { Operators } from '@/collections/Operators'
+import { Programs } from '@/collections/Programs'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -17,7 +19,7 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Users, Media],
+  collections: [Users, Media, Operators, Programs],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {

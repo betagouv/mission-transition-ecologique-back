@@ -11,7 +11,8 @@
     "typecheck": "nx run @tee-backoffice/cms:typecheck",
     "e2e": "nx run @tee-backoffice/cms-e2e:e2e",
     "generate:importmap": "pnpm --filter @tee-backoffice/cms generate:importmap",
-    "generate:types": "pnpm --filter @tee-backoffice/cms generate:types"
+    "generate:types": "pnpm --filter @tee-backoffice/cms generate:types",
+    "seed": "pnpm nx run @tee-backoffice/cms:seed"
   },
   "private": true,
   "devDependencies": {

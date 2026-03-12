@@ -8,5 +8,12 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
     include: ['tests/int/**/*.int.spec.ts'],
+    testTimeout: 180_000,
+    hookTimeout: 180_000,
+    teardownTimeout: 30_000,
+    env: {
+      DATABASE_URI: 'file:./test.db',
+      PAYLOAD_SECRET: 'test-secret-for-vitest',
+    },
   },
 })
