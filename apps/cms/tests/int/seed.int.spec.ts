@@ -3,29 +3,38 @@ import type { Payload } from 'payload'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { describe, it, beforeAll, expect } from 'vitest'
-import { seedPrograms } from '@/seed/programs'
+import { resolve } from 'path'
+import { fileURLToPath } from 'url'
+import { ProgramsSeed } from '@/seed/programs'
+
+const fixturesDir = fileURLToPath(new URL('../fixtures', import.meta.url))
+const programsFixture = resolve(fixturesDir, 'programs.json')
+
+const FIXTURE_PROGRAMS = 22
+const FIXTURE_OPERATORS = 8
 
 let payload: Payload
 
-describe('seedPrograms', () => {
+describe('ProgramsSeed', () => {
   beforeAll(async () => {
     const payloadConfig = await config
     payload = await getPayload({ config: payloadConfig })
-    await seedPrograms(payload)
-  }, 120_000)
 
-  it('creates operators', async () => {
+    await new ProgramsSeed(payload, programsFixture).run()
+  }, 60_000)
+
+  it(`creates ${FIXTURE_OPERATORS} unique operators`, async () => {
     const result = await payload.find({ collection: 'operators', limit: 0 })
-    expect(result.totalDocs).toBeGreaterThan(0)
+    expect(result.totalDocs).toBe(FIXTURE_OPERATORS)
   })
 
-  it('creates programs', async () => {
+  it(`creates ${FIXTURE_PROGRAMS} programs`, async () => {
     const result = await payload.find({ collection: 'programs', limit: 0 })
-    expect(result.totalDocs).toBeGreaterThan(0)
+    expect(result.totalDocs).toBe(FIXTURE_PROGRAMS)
   })
 
   it('each program has an operator', async () => {
-    const result = await payload.find({ collection: 'programs', limit: 10, depth: 0 })
+    const result = await payload.find({ collection: 'programs', limit: FIXTURE_PROGRAMS, depth: 0 })
     for (const program of result.docs) {
       expect(program.operator).toBeDefined()
     }
@@ -43,8 +52,7 @@ describe('seedPrograms', () => {
   })
 
   it('description contains lexical nodes from markdown (not flat text)', async () => {
-    const result = await payload.find({ collection: 'programs', limit: 5 })
-    // At least one program should have a list or heading from markdown conversion
+    const result = await payload.find({ collection: 'programs', limit: FIXTURE_PROGRAMS })
     const hasStructuredNodes = result.docs.some((program) => {
       const root = (program.description as { root?: { children?: Array<{ type: string }> } })?.root
       return root?.children?.some((node) => ['list', 'heading'].includes(node.type))
@@ -52,16 +60,26 @@ describe('seedPrograms', () => {
     expect(hasStructuredNodes).toBe(true)
   })
 
+  it('covers all 5 aid types', async () => {
+    const result = await payload.find({ collection: 'programs', limit: FIXTURE_PROGRAMS })
+    const aidTypes = new Set(result.docs.map((p) => p.aidType))
+    expect(aidTypes).toContain('etude')
+    expect(aidTypes).toContain('financement')
+    expect(aidTypes).toContain('formation')
+    expect(aidTypes).toContain('pret')
+    expect(aidTypes).toContain('avantage-fiscal')
+  })
+
   it('is idempotent — second run does not create duplicates', async () => {
     const before = await payload.find({ collection: 'programs', limit: 0 })
     const beforeOperators = await payload.find({ collection: 'operators', limit: 0 })
 
-    await seedPrograms(payload)
+    await new ProgramsSeed(payload, programsFixture).run()
 
     const after = await payload.find({ collection: 'programs', limit: 0 })
     const afterOperators = await payload.find({ collection: 'operators', limit: 0 })
 
     expect(after.totalDocs).toBe(before.totalDocs)
     expect(afterOperators.totalDocs).toBe(beforeOperators.totalDocs)
-  }, 120_000)
+  }, 60_000)
 })

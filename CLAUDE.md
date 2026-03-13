@@ -82,6 +82,18 @@ Types : `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`
 
 Exemples : `feat(cms): add User collection` — `fix(cms): resolve SQLite index conflict`
 
+## Architecture du code
+
+### Principes SOLID
+
+- **S — Single Responsibility** : une classe = une seule responsabilité. Une classe = un fichier, nommé identiquement (`ProgressBar.ts` pour `class ProgressBar`). Pas de classes secondaires dans le même fichier.
+- **O — Open/Closed** : les classes sont ouvertes à l'extension (héritage, composition) mais fermées à la modification directe. Préférer étendre plutôt que modifier une classe existante.
+- **L — Liskov Substitution** : une sous-classe doit pouvoir remplacer sa classe parente sans altérer le comportement attendu.
+- **I — Interface Segregation** : préférer plusieurs interfaces spécifiques à une seule interface générale. Ne pas forcer une classe à implémenter des méthodes qu'elle n'utilise pas.
+- **D — Dependency Inversion** : dépendre des abstractions (interfaces/types), pas des implémentations concrètes. Injecter les dépendances plutôt que les instancier en dur.
+
+Les classes utilitaires partagées vont dans `src/utils/`.
+
 ## Règles importantes
 
 - Ne jamais modifier les fichiers dans `docs/sources/`

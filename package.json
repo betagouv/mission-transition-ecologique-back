@@ -7,14 +7,27 @@
     "build": "nx run @tee-backoffice/cms:build",
     "start": "nx run @tee-backoffice/cms:start",
     "lint": "nx run-many -t lint",
-    "lint:affected": "nx affected -t lint",
+    "lint:fix": "nx run-many -t lint --fix",
+    "lint:fix:affected": "nx affected -t lint --fix",
     "typecheck": "nx run @tee-backoffice/cms:typecheck",
     "e2e": "nx run @tee-backoffice/cms-e2e:e2e",
-    "generate:importmap": "pnpm --filter @tee-backoffice/cms generate:importmap",
-    "generate:types": "pnpm --filter @tee-backoffice/cms generate:types",
-    "seed": "pnpm nx run @tee-backoffice/cms:seed"
+    "generate:importmap": "nx run @tee-backoffice/cms:generate:importmap",
+    "generate:types": "nx run @tee-backoffice/cms:generate:types",
+    "seed": "nx run @tee-backoffice/cms:seed",
+    "test": "nx run @tee-backoffice/cms:test"
   },
   "private": true,
+  "dependencies": {
+    "@payloadcms/db-sqlite": "^3.79.0",
+    "@payloadcms/next": "^3.79.0",
+    "@payloadcms/richtext-lexical": "^3.79.0",
+    "@payloadcms/translations": "^3.79.0",
+    "next": "15.4.11",
+    "payload": "^3.79.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "sharp": "0.34.2"
+  },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@nx/devkit": "22.5.4",
@@ -28,21 +41,27 @@
     "@swc/cli": "~0.8.0",
     "@swc/core": "1.15.8",
     "@swc/helpers": "0.5.18",
+    "@types/node": "25.4.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@typescript-eslint/eslint-plugin": "^8",
     "@typescript-eslint/parser": "^8",
     "@typescript-eslint/utils": "^8",
+    "@vitejs/plugin-react": "^4.0.0",
+    "dotenv": "^16.0.0",
     "eslint": "~9.39.4",
+    "eslint-config-next": "15.4.11",
     "eslint-plugin-import": "^2",
     "eslint-plugin-react": "^7",
     "eslint-plugin-react-hooks": "^5",
+    "jsdom": "^26.0.0",
     "nx": "22.5.4",
     "prettier": "^2.6.2",
     "tslib": "^2.3.0",
     "typescript": "~5.9.2",
     "typescript-eslint": "^8",
-    "next": "15.4.11"
+    "vite-tsconfig-paths": "^5.0.0",
+    "vitest": "^3.0.0"
   },
   "packageManager": "pnpm@10.6.3",
   "pnpm": {
@@ -52,10 +71,8 @@
       "esbuild",
       "less",
       "nx",
-      "sharp"
-    ],
-    "overrides": {
-      "next": "15.4.11"
-    }
+      "sharp",
+      "unrs-resolver"
+    ]
   }
 }

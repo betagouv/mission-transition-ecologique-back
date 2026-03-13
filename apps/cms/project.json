@@ -1,0 +1,34 @@
+{
+  "name": "@tee-backoffice/cms",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "targets": {
+    "generate:importmap": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "payload generate:importmap",
+        "cwd": "{projectRoot}"
+      }
+    },
+    "generate:types": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "payload generate:types",
+        "cwd": "{projectRoot}"
+      }
+    },
+    "seed": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsx src/seed/run.ts",
+        "cwd": "{projectRoot}"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vitest run --config vitest.config.mts",
+        "cwd": "{projectRoot}"
+      }
+    }
+  }
+}
