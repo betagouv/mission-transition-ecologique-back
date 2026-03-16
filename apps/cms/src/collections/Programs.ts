@@ -1,4 +1,5 @@
-import type { CollectionConfig } from 'payload'
+import type { CollectionConfig, FieldAccess } from 'payload'
+import { ProgramAccessPolicy } from '@/services/access/ProgramAccessPolicy'
 
 export const Programs: CollectionConfig = {
   slug: 'programs',
@@ -8,6 +9,16 @@ export const Programs: CollectionConfig = {
   },
   admin: {
     useAsTitle: 'title',
+  },
+  access: {
+    read: ProgramAccessPolicy.read,
+    create: ProgramAccessPolicy.create,
+    update: ProgramAccessPolicy.update,
+    delete: ProgramAccessPolicy.delete,
+  },
+  versions: {
+    drafts: true,
+    maxPerDoc: 100,
   },
   fields: [
     // --- Identity ---
@@ -278,6 +289,9 @@ export const Programs: CollectionConfig = {
               name: 'allowedNafSections',
               type: 'array',
               label: 'Sections NAF autorisées',
+              // dbName shortens the join table name to stay under PG's 63-char limit
+              // (versioned table would be: _programs_v_version_eligibility_data_company_allowed_naf_sections = 65 chars)
+              dbName: 'elig_data_co_naf_sections',
               fields: [{ name: 'value', type: 'text', label: 'Valeur', required: true }],
             },
             {
@@ -321,6 +335,42 @@ export const Programs: CollectionConfig = {
           fields: [{ name: 'value', type: 'text', label: 'Valeur', required: true }],
         },
       ],
+    },
+
+    // --- Workflow ---
+    {
+      name: '_status',
+      type: 'select',
+      label: 'Statut',
+      options: [
+        { label: 'Brouillon', value: 'draft' },
+        { label: 'Publié', value: 'published' },
+      ],
+      admin: {
+        position: 'sidebar',
+      },
+      access: {
+        update: (({ req: { user } }) => {
+          if (!user) return false
+          return user.role === 'super-admin' || user.role === 'administrateur-aide'
+        }) satisfies FieldAccess,
+      },
+    },
+    {
+      name: 'assignedContributors',
+      type: 'relationship',
+      label: 'Contributeurs assignés',
+      relationTo: 'users',
+      hasMany: true,
+      admin: {
+        position: 'sidebar',
+        description: 'Contributeurs autorisés à éditer ce programme.',
+      },
+      access: {
+        update: (({ req: { user } }) =>
+          user?.role === 'super-admin' ||
+          user?.role === 'administrateur-aide') satisfies FieldAccess,
+      },
     },
 
     // --- SEO ---

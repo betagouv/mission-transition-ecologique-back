@@ -38,9 +38,29 @@ pnpm nx run @tee-backoffice/cms:dev        # dev
 pnpm nx run @tee-backoffice/cms:build      # build
 pnpm nx run @tee-backoffice/cms:lint       # lint
 pnpm nx run @tee-backoffice/cms:typecheck  # typecheck
-pnpm nx run-many -t lint                # lint tout le workspace
-pnpm nx affected -t lint                # lint fichiers modifiés
+pnpm nx run-many -t lint                   # lint tout le workspace
+pnpm nx affected -t lint                   # lint fichiers modifiés
+pnpm seed                                  # seed complet : operators + programs + utilisateurs de dev
 ```
+
+## Seed
+
+**`pnpm seed`** — seed complet idempotent (upsert) : operators + programs + projects + utilisateurs de dev.
+
+### Utilisateurs de dev (`pnpm seed`)
+
+| Email | Mot de passe | Rôle |
+|---|---|---|
+| `super.admin@tee.test` | `super.admin@tee.test` | `super-admin` |
+| `admin.aide@tee.test` | `admin.aide@tee.test` | `administrateur-aide` |
+| `contributeur@tee.test` | `contributeur@tee.test` | `contributeur` |
+| `observateur@tee.test` | `observateur@tee.test` | `observateur` |
+
+Les fichiers seed vivent dans `apps/cms/src/scripts/seed/` :
+- `run.ts` — entrypoint `pnpm seed` (initialisation Payload + orchestration)
+- `programs/` — `ProgramsSeed`, `OperatorImporter`, `ProgramMapper`, `ProgramImporter`
+- `projects/` — `ProjectsSeed`, `ProjectMapper`, `ProjectImporter`, `LinkedProjectsUpdater`
+- `users/` — `UsersSeed`
 
 ## Langue
 
@@ -100,3 +120,4 @@ Les classes utilitaires partagées vont dans `src/utils/`.
 - Ne pas committer sans avoir fait tourner `pnpm nx affected -t lint`
 - `payload-types.ts` est généré — ne pas l'éditer manuellement
 - `importMap.js` est généré — ne pas l'éditer manuellement, regénérer avec `pnpm generate:importmap` après tout ajout de composant custom Payload
+- **Toujours vérifier que la documentation est à jour avec le code** : après tout changement structurel (renommage/déplacement de fichiers ou dossiers, ajout/suppression de collections, modification d'architecture), mettre à jour les sections concernées dans `CLAUDE.md` (ex: Seed, Structure des apps), les ADR dans `docs/adr/`, les fichiers de contexte dans `docs/context/`, et les fiches de feature dans `docs/features/` (tableaux de fichiers, étapes d'implémentation)

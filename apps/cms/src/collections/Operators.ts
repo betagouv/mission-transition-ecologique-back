@@ -1,4 +1,6 @@
 import type { CollectionConfig } from 'payload'
+import { AuthAccessPolicy } from '@/services/access/AuthAccessPolicy'
+import { OperatorAccessPolicy } from '@/services/access/OperatorAccessPolicy'
 
 export const Operators: CollectionConfig = {
   slug: 'operators',
@@ -8,6 +10,12 @@ export const Operators: CollectionConfig = {
   },
   admin: {
     useAsTitle: 'name',
+  },
+  access: {
+    read: OperatorAccessPolicy.read,
+    create: AuthAccessPolicy.isSuperAdmin,
+    update: OperatorAccessPolicy.update,
+    delete: AuthAccessPolicy.isSuperAdmin,
   },
   fields: [
     {

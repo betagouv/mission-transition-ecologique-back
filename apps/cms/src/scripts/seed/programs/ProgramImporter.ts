@@ -58,6 +58,7 @@ export class ProgramImporter {
       where: { slug: { in: slugs } },
       limit: slugs.length,
       depth: 0,
+      draft: true,
     })
     return new Map(result.docs.map((doc) => [doc.slug, doc.id]))
   }

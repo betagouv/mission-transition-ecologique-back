@@ -5,7 +5,7 @@ import config from '@payload-config'
 import { describe, it, beforeAll, expect } from 'vitest'
 import { resolve } from 'path'
 import { fileURLToPath } from 'url'
-import { ProgramsSeed } from '@/seed/programs'
+import { ProgramsSeed } from '@/scripts/seed/programs'
 
 const fixturesDir = fileURLToPath(new URL('../fixtures', import.meta.url))
 const programsFixture = resolve(fixturesDir, 'programs.json')

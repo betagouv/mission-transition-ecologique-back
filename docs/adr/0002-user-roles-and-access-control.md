@@ -1,0 +1,85 @@
+# ADR 0002 — Rôles utilisateurs et contrôle d'accès
+
+**Date :** 2026-03-16
+**Statut :** Accepté
+
+---
+
+## Contexte
+
+La documentation produit (`docs/sources/Gestion des droits...`) définit quatre personas avec des droits distincts sur les modules Catalogue, Écosystème, Pilotage et Diffusion. La collection `Users` existante ne portait aucune notion de rôle. Ce document décrit les choix d'implémentation retenus pour le POC.
+
+---
+
+## Décision
+
+### 1. Rôles stockés en champ `select` sur `Users`
+
+Quatre rôles sont définis directement sur la collection `users` via un champ `select` :
+
+| Rôle | Description |
+|---|---|
+| `super-admin` | Accès complet (CRUD + import + delete) sur toutes les collections |
+| `administrateur-aide` | CRUD sur les aides de son opérateur, édition de son organisation |
+| `contributeur` | Édition des aides assignées uniquement |
+| `observateur` | Lecture seule |
+
+**Pourquoi un champ `select` et non un système RBAC externe ?**
+Dans le cadre d'un POC, stocker le rôle directement sur l'utilisateur est suffisant. Cela évite d'introduire une dépendance externe (ex. Casbin, CASL) et s'intègre nativement à l'admin Payload. Une migration vers un système RBAC dédié est possible ultérieurement si les besoins évoluent.
+
+Champs additionnels sur `Users` :
+- `operator` — relation vers `operators`, visible si rôle ≠ super-admin, définit le périmètre de l'admin aide
+- `region` — texte libre, optionnel (ex : "Grand Est")
+- `team` — texte requis (ex : "CCI Grand Est")
+
+### 2. Access control en fonctions pures dans `src/access/`
+
+Les règles d'accès sont implémentées sous forme de fonctions pures dans `apps/cms/src/access/` :
+
+```
+isAuthenticated.ts     — Boolean(user)
+isSuperAdmin.ts        — user.role === 'super-admin'
+isAdminOrAbove.ts      — super-admin | administrateur-aide
+programAccess.ts       — read/create/update/delete scoped par rôle
+operatorAccess.ts      — read/update scoped par rôle
+```
+
+**Pourquoi des fonctions pures plutôt que des classes ?**
+Payload attend des fonctions pour les blocs `access`. Les fonctions pures sont plus simples à tester unitairement et évitent l'overhead de classes pour des opérations sans état.
+
+### 3. `assignedContributors` en relation directe sur Programs
+
+Pour permettre au rôle `contributeur` d'accéder aux programmes qui lui sont assignés, un champ `assignedContributors` (relation `hasMany` vers `users`) est ajouté directement sur `Programs`. La clause `access.update` retourne `{ assignedContributors: { contains: user.id } }` pour ce rôle.
+
+**Pourquoi pas une table de jointure séparée ?**
+Une relation directe suffit pour le POC. Une table de jointure apporterait plus de flexibilité (métadonnées d'assignation, historique) mais complexifie la stack sans bénéfice immédiat.
+
+### 4. Système `versions/drafts` Payload sur Programs
+
+Le cycle de vie éditorial des programmes est géré via le système natif `versions: { drafts: true }` de Payload. Le champ `_status` injecté par Payload est surchargé en sidebar avec un `access.update` restreint :
+
+| Valeur `_status` | Description |
+|---|---|
+| `draft` | Brouillon (valeur par défaut à la création) |
+| `published` | Publié (visible via l'API avec `draft: false`) |
+
+Les droits de publication sont contraints par rôle via `access.update` sur le champ `_status` :
+- `super-admin` et `administrateur-aide` : peuvent modifier `_status` (publier ou dépublier)
+- `contributeur` : peut sauvegarder en brouillon, mais `_status` est en lecture seule — ne peut pas publier
+- `observateur` : aucune modification
+
+L'admin UI affiche les boutons natifs "Save Draft" et "Publish" ainsi que l'historique des versions (table `_programs_v` en base).
+
+### 5. `_status: 'published'` pour les données seedées
+
+Les programmes importés depuis `docs/sources/programs.json` reçoivent `_status: 'published'` car ils proviennent de données de production. Les nouveaux programmes créés dans l'admin reçoivent `_status: 'draft'` par défaut (comportement natif Payload).
+
+---
+
+## Conséquences
+
+- La collection `users` expose `role`, `operator`, `region`, `team` dans l'admin Payload.
+- La collection `programs` expose `_status` et `assignedContributors` en sidebar.
+- Les `payload-types.ts` doivent être régénérés après toute modification de schéma : `node_modules/.bin/payload generate:types` depuis `apps/cms/`.
+- Un utilisateur sans rôle (valeur par défaut : `observateur`) ne peut lire que les données, sans pouvoir les modifier.
+- L'access control ne protège pas les routes API REST directement exposées hors Payload — à sécuriser si le POC évolue.

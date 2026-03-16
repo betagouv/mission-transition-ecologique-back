@@ -38,7 +38,7 @@ export class OperatorImporter {
 
     const idByName = new Map<string, number>()
     for (const doc of result.docs) {
-      const name = slugToName.get(doc.slug)
+      const name = doc.slug ? slugToName.get(doc.slug) : undefined
       if (name !== undefined) idByName.set(name, doc.id)
     }
     return idByName

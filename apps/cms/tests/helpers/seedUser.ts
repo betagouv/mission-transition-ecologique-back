@@ -4,6 +4,8 @@ import config from '@payload-config'
 export const testUser = {
   email: 'dev@payloadcms.com',
   password: 'test',
+  role: 'super-admin' as const,
+  team: 'Test Team',
 }
 
 /**

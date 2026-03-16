@@ -79,6 +79,7 @@ export class ProgramMapper {
         validityEnd: FrenchDateParser.parse(eligibilityData?.validity?.end),
         priorityObjectives: ValueArrayConverter.from(eligibilityData?.priorityObjectives),
       },
+      _status: 'published' as const,
       metaTitle: program.metaTitre,
       metaDescription: program.metaDescription,
     }

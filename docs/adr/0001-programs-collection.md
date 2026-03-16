@@ -66,12 +66,48 @@ Le JSON source contient ~40 opérateurs distincts référencés par plusieurs pr
 
 ### 5. Stratégie de migration : script de seed
 
-**Décision :** Fournir un script `apps/cms/src/seed/programs.ts` utilisant la Local API Payload pour l'import initial.
+**Décision :** Fournir un script `apps/cms/src/scripts/seed/run.ts` utilisant la Local API Payload pour l'import initial.
 
 **Justification :**
 - La Local API Payload bypasse HTTP, est typée, et respecte les hooks/validations Payload.
 - Le script est idempotent (upsert par slug) pour permettre des ré-exécutions sans duplication.
 - Ordre d'import : Operators d'abord (déduplication), puis Programs (résolution des relations).
+
+---
+
+### 7. Cycle de vie éditorial via le système natif `versions/drafts` de Payload
+
+**Décision :** Remplacer le champ `status` custom (6 valeurs) par le système natif `versions: { drafts: true }` de Payload, avec surcharge du champ `_status` pour y ajouter un `access.update` restreint.
+
+**Configuration :**
+```typescript
+versions: {
+  drafts: true,
+  maxPerDoc: 100,
+}
+```
+
+**Mapping des anciens états :**
+
+| Ancien `status` | Nouveau `_status` Payload |
+|---|---|
+| `brouillon` | `draft` |
+| `en_attente_de_validation` | `draft` (soumis par contributeur) |
+| `a_relire` | `draft` (retourné par admin) |
+| `en_ligne` | `published` |
+| `derniers_jours` | `published` + `validityEnd` proche (dérivé) |
+| `expiree` | `draft` + `validityEnd` passé |
+
+**Justification :**
+- Le système natif offre l'historique des versions dans l'admin UI et les boutons "Save Draft" / "Publish" natifs.
+- Les états intermédiaires (`en_attente_de_validation`, `a_relire`) deviennent implicites via l'historique des versions et les droits d'accès, sans nécessiter de valeurs explicites.
+- La surcharge du champ `_status` injecté par Payload permet d'y ajouter `access.update` pour restreindre la publication aux `administrateur-aide` et `super-admin`.
+- L'historique des versions est conservé en base dans la table `_programs_v`.
+
+**Conséquence :**
+- Un `contributeur` peut sauvegarder en brouillon mais ne peut pas publier (le champ `_status` est en lecture seule pour ce rôle).
+- Les programmes seedés depuis `docs/sources/programs.json` reçoivent `_status: 'published'`.
+- La requête `fetchExisting` du seeder utilise `draft: true` pour trouver les programmes quel que soit leur statut (idempotence).
 
 ---
 
