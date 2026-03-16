@@ -32,24 +32,22 @@ Champs additionnels sur `Users` :
 - `region` — texte libre, optionnel (ex : "Grand Est")
 - `team` — texte requis (ex : "CCI Grand Est")
 
-### 2. Access control en fonctions pures dans `src/access/`
+### 2. Access control en classes statiques dans `src/services/access/`
 
-Les règles d'accès sont implémentées sous forme de fonctions pures dans `apps/cms/src/access/` :
+Les règles d'accès sont implémentées sous forme de classes statiques dans `apps/cms/src/services/access/` :
 
 ```
-isAuthenticated.ts     — Boolean(user)
-isSuperAdmin.ts        — user.role === 'super-admin'
-isAdminOrAbove.ts      — super-admin | administrateur-aide
-programAccess.ts       — read/create/update/delete scoped par rôle
-operatorAccess.ts      — read/update scoped par rôle
+AuthAccessPolicy.ts    — isAuthenticated, isSuperAdmin, isAdminOrAbove
+ProgramAccessPolicy.ts — read/create/update/delete scoped par rôle
+OperatorAccessPolicy.ts — read/update scoped par rôle
 ```
 
-**Pourquoi des fonctions pures plutôt que des classes ?**
-Payload attend des fonctions pour les blocs `access`. Les fonctions pures sont plus simples à tester unitairement et évitent l'overhead de classes pour des opérations sans état.
+**Pourquoi des classes statiques ?**
+Les méthodes statiques sont équivalentes à des fonctions pures (sans état) tout en permettant un regroupement sémantique par domaine et en facilitant l'import groupé.
 
 ### 3. `assignedContributors` en relation directe sur Programs
 
-Pour permettre au rôle `contributeur` d'accéder aux programmes qui lui sont assignés, un champ `assignedContributors` (relation `hasMany` vers `users`) est ajouté directement sur `Programs`. La clause `access.update` retourne `{ assignedContributors: { contains: user.id } }` pour ce rôle.
+Pour permettre au rôle `contributeur` d'accéder uniquement aux programmes qui lui sont assignés, un champ `assignedContributors` (relation `hasMany` vers `users`) est ajouté directement sur `Programs`. Les clauses `access.read` et `access.update` retournent `{ assignedContributors: { contains: user.id } }` pour ce rôle — le contributeur ne peut ni lister, ni consulter, ni modifier un programme auquel il n'est pas assigné.
 
 **Pourquoi pas une table de jointure séparée ?**
 Une relation directe suffit pour le POC. Une table de jointure apporterait plus de flexibilité (métadonnées d'assignation, historique) mais complexifie la stack sans bénéfice immédiat.
@@ -70,7 +68,24 @@ Les droits de publication sont contraints par rôle via `access.update` sur le c
 
 L'admin UI affiche les boutons natifs "Save Draft" et "Publish" ainsi que l'historique des versions (table `_programs_v` en base).
 
-### 5. `_status: 'published'` pour les données seedées
+### 5. Visibilité des collections dans la sidebar admin
+
+La propriété `admin.hidden` de Payload contrôle l'affichage d'une collection dans le menu de navigation, indépendamment des règles d'accès API.
+
+Pour le rôle `contributeur`, seule la collection `Programs` est visible dans la sidebar. Les collections `Users`, `Media`, `Operators` et `Projects` sont masquées via `admin.hidden: ({ user }) => user?.role === 'contributeur'`.
+
+| Collection | contributeur | observateur | administrateur-aide | super-admin |
+|---|---|---|---|---|
+| Programs | ✅ visible | ✅ visible | ✅ visible | ✅ visible |
+| Users | ❌ masqué | ✅ visible | ✅ visible | ✅ visible |
+| Media | ❌ masqué | ✅ visible | ✅ visible | ✅ visible |
+| Operators | ❌ masqué | ✅ visible | ✅ visible | ✅ visible |
+| Projects | ❌ masqué | ✅ visible | ✅ visible | ✅ visible |
+
+**Pourquoi `admin.hidden` et non une restriction sur `access.read` ?**
+`admin.hidden` est l'outil Payload dédié à la visibilité UI, orthogonal à la sécurité API. Modifier `access.read` pour cacher des collections aurait des effets de bord sur les requêtes API internes (ex. chargement des relations dans les formulaires). Pour le POC, la restriction est UI-only — les endpoints API restent accessibles aux utilisateurs authentifiés.
+
+### 6. `_status: 'published'` pour les données seedées
 
 Les programmes importés depuis `docs/sources/programs.json` reçoivent `_status: 'published'` car ils proviennent de données de production. Les nouveaux programmes créés dans l'admin reçoivent `_status: 'draft'` par défaut (comportement natif Payload).
 

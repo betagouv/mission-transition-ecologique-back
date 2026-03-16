@@ -37,7 +37,7 @@ export class ProgramImporter {
           await this.payload.update({ collection: 'programs', id: existingId, data })
           updated++
         } else {
-          await this.payload.create({ collection: 'programs', data })
+          await this.payload.create({ collection: 'programs', data, draft: true })
           created++
         }
       } catch (err) {

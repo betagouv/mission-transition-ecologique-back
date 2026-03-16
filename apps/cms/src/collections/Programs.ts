@@ -1,5 +1,6 @@
 import type { CollectionConfig, FieldAccess } from 'payload'
 import { ProgramAccessPolicy } from '@/services/access/ProgramAccessPolicy'
+import { beforeChangeWorkflow } from '@/hooks/programs/beforeChangeWorkflow'
 
 export const Programs: CollectionConfig = {
   slug: 'programs',
@@ -9,6 +10,15 @@ export const Programs: CollectionConfig = {
   },
   admin: {
     useAsTitle: 'title',
+    components: {
+      edit: {
+        PublishButton: '@/components/programs/WorkflowActionBar#WorkflowActionBar',
+        Status: '@/components/programs/WorkflowStatusBadge#WorkflowStatusBadge',
+      },
+    },
+  },
+  hooks: {
+    beforeChange: [beforeChangeWorkflow],
   },
   access: {
     read: ProgramAccessPolicy.read,
@@ -338,6 +348,62 @@ export const Programs: CollectionConfig = {
     },
 
     // --- Workflow ---
+    {
+      name: 'workflowStatus',
+      type: 'select',
+      label: 'Statut de workflow',
+      defaultValue: 'brouillon',
+      required: true,
+      options: [
+        { label: 'Brouillon', value: 'brouillon' },
+        { label: 'En révision', value: 'en-revision' },
+        { label: 'Validé', value: 'valide' },
+        { label: 'Publié', value: 'publie' },
+      ],
+      admin: {
+        position: 'sidebar',
+      },
+    },
+    {
+      name: 'workflowHistory',
+      type: 'array',
+      label: 'Historique des transitions',
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description: 'Historique automatique des changements de statut.',
+      },
+      fields: [
+        {
+          name: 'from',
+          type: 'text',
+          label: 'Depuis',
+          admin: { readOnly: true },
+        },
+        {
+          name: 'to',
+          type: 'text',
+          label: 'Vers',
+          admin: { readOnly: true },
+        },
+        {
+          name: 'changedBy',
+          type: 'relationship',
+          label: 'Par',
+          relationTo: 'users',
+          admin: { readOnly: true },
+        },
+        {
+          name: 'changedAt',
+          type: 'date',
+          label: 'Le',
+          admin: {
+            readOnly: true,
+            date: { pickerAppearance: 'dayAndTime' },
+          },
+        },
+      ],
+    },
     {
       name: '_status',
       type: 'select',

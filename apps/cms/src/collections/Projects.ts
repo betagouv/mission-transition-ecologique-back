@@ -51,6 +51,7 @@ export const Projects: CollectionConfig = {
   },
   admin: {
     useAsTitle: 'title',
+    hidden: ({ user }) => user?.role === 'contributeur',
   },
   fields: [
     // --- Identity ---

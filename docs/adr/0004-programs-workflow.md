@@ -2,7 +2,7 @@
 
 **Date :** 2026-03-16
 **Feature :** [002-programs-workflow](../features/002-programs-workflow.md)
-**Statut :** Accepté
+**Statut :** Implémenté (2026-03-16)
 **Décideurs :** PO, Tech Lead
 
 ---

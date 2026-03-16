@@ -1,7 +1,15 @@
 import type { Access, AccessResult } from 'payload'
 
 export class ProgramAccessPolicy {
-  static read: Access = ({ req: { user } }) => Boolean(user)
+  static read: Access = ({ req: { user } }): AccessResult => {
+    if (!user) return false
+
+    if (user.role === 'contributeur') {
+      return { assignedContributors: { contains: user.id } }
+    }
+
+    return true
+  }
 
   static create: Access = ({ req: { user } }) => {
     if (!user) return false

@@ -85,6 +85,9 @@ Les fichiers seed vivent dans `apps/cms/src/scripts/seed/` :
 - `src/app/(payload)/admin/` — routes UI admin PayloadCMS
 - `src/app/(payload)/api/[...slug]/` — routes REST API PayloadCMS
 - `payload-types.ts` — généré automatiquement par Payload, **ne pas modifier à la main**
+- `src/services/workflow/` — `WorkflowTransitionPolicy` (logique de transitions, partagée client/serveur)
+- `src/hooks/programs/` — `beforeChangeWorkflow` (validation et sync `workflowStatus` ↔ `_status`)
+- `src/components/programs/` — `WorkflowActionBar` (bouton contextuel), `WorkflowStatusCell` (badge liste)
 
 ## Documentation de référence
 

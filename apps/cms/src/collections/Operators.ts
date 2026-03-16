@@ -10,6 +10,7 @@ export const Operators: CollectionConfig = {
   },
   admin: {
     useAsTitle: 'name',
+    hidden: ({ user }) => user?.role === 'contributeur',
   },
   access: {
     read: OperatorAccessPolicy.read,
