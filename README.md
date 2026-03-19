@@ -77,6 +77,15 @@ Elle insère :
 | `contributeur@tee.test` | `contributeur@tee.test` | `contributeur` |
 | `observateur@tee.test` | `observateur@tee.test` | `observateur` |
 
+Les rôles suivent une hiérarchie : `super-admin` > `administrateur-aide` > `contributeur` > `observateur`. Un rôle supérieur hérite des droits de tous les rôles inférieurs.
+
+| méthode `UserRole` | observateur | contributeur | administrateur-aide | super-admin |
+|---|---|---|---|---|
+| `isSuperAdmin` | ❌ | ❌ | ❌ | ✅ |
+| `isAdminAide` | ❌ | ❌ | ✅ | ✅ |
+| `isContributeur` | ❌ | ✅ | ✅ | ✅ |
+| `isObservateur` | ✅ | ✅ | ✅ | ✅ |
+
 L'interface d'administration est accessible sur `http://localhost:3000/admin` après `pnpm nx run @tee-backoffice/cms:dev`.
 
 ## Commandes

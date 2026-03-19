@@ -1,5 +1,8 @@
+import type { UserRoleValue } from '@/utils/user/UserRole'
+import { UserRole } from '@/utils/user/UserRole'
+
 export type WorkflowStatus = 'brouillon' | 'en-revision' | 'valide' | 'publie'
-export type UserRole = 'super-admin' | 'administrateur-aide' | 'contributeur' | 'observateur'
+export type { UserRoleValue as UserRole }
 
 // Libellés affichés dans l'UI
 export const WORKFLOW_STATUS_LABELS: Record<WorkflowStatus, string> = {
@@ -25,21 +28,21 @@ export const TRANSITION_LABELS: Partial<Record<WorkflowStatus, string>> = {
 }
 
 // Transitions autorisées par rôle (hors super-admin qui a tous les droits)
-const ALLOWED_TRANSITIONS: Record<WorkflowStatus, Partial<Record<UserRole, WorkflowStatus[]>>> = {
+const ALLOWED_TRANSITIONS: Record<WorkflowStatus, Partial<Record<UserRoleValue, WorkflowStatus[]>>> = {
   brouillon: {
-    contributeur: ['en-revision'],
-    'administrateur-aide': ['en-revision'],
+    [UserRole.CONTRIBUTEUR]: ['en-revision'],
+    [UserRole.ADMIN_AIDE]: ['en-revision'],
   },
   'en-revision': {
-    'administrateur-aide': ['valide'],
+    [UserRole.ADMIN_AIDE]: ['valide'],
   },
   valide: {},
   publie: {},
 }
 
 export class WorkflowTransitionPolicy {
-  static canTransition(from: WorkflowStatus, to: WorkflowStatus, role: UserRole): boolean {
-    if (role === 'super-admin') return true
+  static canTransition(from: WorkflowStatus, to: WorkflowStatus, role: UserRoleValue): boolean {
+    if (UserRole.isSuperAdmin({ role: role })) return true;
     return ALLOWED_TRANSITIONS[from]?.[role]?.includes(to) ?? false
   }
 
@@ -47,9 +50,10 @@ export class WorkflowTransitionPolicy {
    * Returns the list of statuses reachable from `from` for the given role.
    * Super-admin can reach all statuses except the current one.
    */
-  static getAllowedTransitions(from: WorkflowStatus, role: UserRole): WorkflowStatus[] {
+  static getAllowedTransitions(from: WorkflowStatus, role: UserRoleValue): WorkflowStatus[] {
     const all: WorkflowStatus[] = ['brouillon', 'en-revision', 'valide', 'publie']
-    if (role === 'super-admin') return all.filter((s) => s !== from)
+    if (UserRole.isSuperAdmin({ role: role }))
+      return all.filter((s) => s !== from);
     return ALLOWED_TRANSITIONS[from]?.[role] ?? []
   }
 }

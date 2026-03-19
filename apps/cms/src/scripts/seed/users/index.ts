@@ -1,29 +1,30 @@
 import type { Payload } from 'payload'
+import { UserRole } from '@/utils/user/UserRole'
 
 import type { UserFixture } from './types'
 
 const FIXTURES: UserFixture[] = [
   {
     email: 'super.admin@tee.test',
-    role: 'super-admin',
+    role: UserRole.SUPER_ADMIN,
   },
   {
     email: 'admin.aide@tee.test',
-    role: 'administrateur-aide',
+    role: UserRole.ADMIN_AIDE,
     team: 'ADEME Grand Est',
     region: 'Grand Est',
     operatorSlug: 'ademe',
   },
   {
     email: 'contributeur@tee.test',
-    role: 'contributeur',
+    role: UserRole.CONTRIBUTEUR,
     team: 'CCI Grand Est',
     region: 'Grand Est',
     operatorSlug: 'ademe',
   },
   {
     email: 'observateur@tee.test',
-    role: 'observateur',
+    role: UserRole.OBSERVATEUR,
     team: 'BPI France',
     region: 'Île-de-France',
   },

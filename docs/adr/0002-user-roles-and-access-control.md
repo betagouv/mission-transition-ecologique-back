@@ -24,6 +24,15 @@ Quatre rôles sont définis directement sur la collection `users` via un champ `
 | `contributeur` | Édition des aides assignées uniquement |
 | `observateur` | Lecture seule |
 
+Les rôles suivent une hiérarchie stricte : `super-admin` > `administrateur-aide` > `contributeur` > `observateur`. Un rôle supérieur hérite des droits de tous les rôles inférieurs. Cette hiérarchie est encodée dans `UserRole.HIERARCHY` et exposée via les méthodes `isAtLeast`, `isSuperAdmin`, `isAdminAide`, `isContributeur`, `isObservateur` de la classe `UserRole` :
+
+| méthode | observateur | contributeur | administrateur-aide | super-admin |
+|---|---|---|---|---|
+| `isSuperAdmin` | ❌ | ❌ | ❌ | ✅ |
+| `isAdminAide` | ❌ | ❌ | ✅ | ✅ |
+| `isContributeur` | ❌ | ✅ | ✅ | ✅ |
+| `isObservateur` | ✅ | ✅ | ✅ | ✅ |
+
 **Pourquoi un champ `select` et non un système RBAC externe ?**
 Dans le cadre d'un POC, stocker le rôle directement sur l'utilisateur est suffisant. Cela évite d'introduire une dépendance externe (ex. Casbin, CASL) et s'intègre nativement à l'admin Payload. Une migration vers un système RBAC dédié est possible ultérieurement si les besoins évoluent.
 

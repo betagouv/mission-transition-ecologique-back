@@ -4,7 +4,7 @@ import { withPayload } from '@payloadcms/next/withPayload'
 
 const nextConfig: NextConfig = {
   nx: {},
-  // Your Next.js config here
+  redirects: async () => [{ source: '/', destination: '/admin', permanent: false }],
   webpack: (webpackConfig) => {
     webpackConfig.resolve.extensionAlias = {
       '.cjs': ['.cts', '.cjs'],

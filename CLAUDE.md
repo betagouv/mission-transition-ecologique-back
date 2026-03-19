@@ -85,6 +85,8 @@ Les fichiers seed vivent dans `apps/cms/src/scripts/seed/` :
 - `src/app/(payload)/admin/` — routes UI admin PayloadCMS
 - `src/app/(payload)/api/[...slug]/` — routes REST API PayloadCMS
 - `payload-types.ts` — généré automatiquement par Payload, **ne pas modifier à la main**
+- `src/utils/user/UserRole.ts` — classe `UserRole` (constantes, hiérarchie, méthodes `isSuperAdmin` / `isAdminAide` / …) + type `UserRoleValue`
+- `src/constants/` — options de select réutilisables (`themesOptions.ts`, `nafSectionsOptions.ts`)
 - `src/services/workflow/` — `WorkflowTransitionPolicy` (logique de transitions, partagée client/serveur)
 - `src/hooks/programs/` — `beforeChangeWorkflow` (validation et sync `workflowStatus` ↔ `_status`)
 - `src/components/programs/` — `WorkflowActionBar` (bouton contextuel), `WorkflowStatusCell` (badge liste)
@@ -92,8 +94,19 @@ Les fichiers seed vivent dans `apps/cms/src/scripts/seed/` :
 ## Documentation de référence
 
 - `docs/sources/` — **NE PAS MODIFIER** — documentation brute (brainstorming produit)
-- `docs/adr/` — décisions techniques (ADR)
+- `docs/adr/` — décisions techniques (ADR) — voir index ci-dessous
 - `docs/context/` — contexte métier consolidé (alimenté manuellement)
+
+### Index des ADR
+
+Ne lire un ADR que s'il est pertinent pour la tâche en cours.
+
+| Fichier | Thématique |
+|---|---|
+| `docs/adr/0001-programs-collection.md` | Schéma de la collection `Programs` — champs, types, relations, workflowStatus |
+| `docs/adr/0002-user-roles-and-access-control.md` | Rôles utilisateurs, hiérarchie des rôles, `UserRole`, access control (`AuthAccessPolicy`, `ProgramAccessPolicy`, `OperatorAccessPolicy`) |
+| `docs/adr/0003-projects-collection.md` | Schéma de la collection `Projects` — thèmes, secteurs NAF, liaisons entre projets |
+| `docs/adr/0004-programs-workflow.md` | Workflow éditorial des programmes — transitions, `WorkflowTransitionPolicy`, `WorkflowActionBar`, hook `beforeChangeWorkflow` |
 
 ## Commits
 
@@ -106,6 +119,14 @@ Types : `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`
 Exemples : `feat(cms): add User collection` — `fix(cms): resolve SQLite index conflict`
 
 ## Architecture du code
+
+### Style de code : OOP / Classes
+
+**Toujours préférer le style orienté objet avec des classes** pour la logique métier, les services, les utilitaires et les scripts.
+
+- Encapsuler la logique dans des classes, pas dans des fonctions standalone ou des modules fonctionnels
+- Utiliser des interfaces/types TypeScript pour définir les contrats entre classes
+- Les fonctions pures et les helpers simples restent acceptables pour les transformations de données triviales (ex: mappers inline dans un constructeur)
 
 ### Principes SOLID
 

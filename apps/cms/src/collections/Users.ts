@@ -1,10 +1,11 @@
 import type { CollectionConfig } from 'payload'
+import { UserRole } from '@/utils/user/UserRole'
 
 export const Users: CollectionConfig = {
   slug: 'users',
   admin: {
     useAsTitle: 'email',
-    hidden: ({ user }) => user?.role === 'contributeur',
+    hidden: ({ user }) => user?.role === UserRole.CONTRIBUTEUR,
   },
   auth: true,
   fields: [
@@ -14,13 +15,8 @@ export const Users: CollectionConfig = {
       type: 'select',
       label: 'Rôle',
       required: true,
-      defaultValue: 'observateur',
-      options: [
-        { label: 'Super Admin', value: 'super-admin' },
-        { label: 'Administrateur aide', value: 'administrateur-aide' },
-        { label: 'Contributeur', value: 'contributeur' },
-        { label: 'Observateur', value: 'observateur' },
-      ],
+      defaultValue: UserRole.OBSERVATEUR,
+      options: [...UserRole.options],
     },
     {
       name: 'operator',
@@ -28,7 +24,7 @@ export const Users: CollectionConfig = {
       label: 'Opérateur',
       relationTo: 'operators',
       admin: {
-        condition: (data) => data?.role !== 'super-admin',
+        condition: (data) => UserRole.isAdminAide(data?.role),
         description: 'Opérateur auquel cet utilisateur est rattaché.',
       },
     },
@@ -37,7 +33,7 @@ export const Users: CollectionConfig = {
       type: 'text',
       label: 'Région',
       admin: {
-        condition: (data) => data?.role !== 'super-admin',
+        condition: (data) => UserRole.isAdminAide(data?.role),
         description: 'Ex : "Grand Est"',
       },
     },
@@ -46,7 +42,7 @@ export const Users: CollectionConfig = {
       type: 'text',
       label: 'Équipe',
       admin: {
-        condition: (data) => data?.role !== 'super-admin',
+        condition: (data) => UserRole.isAdminAide(data?.role),
         description: 'Ex : "CCI Grand Est"',
       },
     },

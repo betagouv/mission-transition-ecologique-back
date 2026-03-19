@@ -1,6 +1,8 @@
+import type { UserRoleValue } from '@/utils/user/UserRole'
+
 export interface UserFixture {
   email: string
-  role: 'super-admin' | 'administrateur-aide' | 'contributeur' | 'observateur'
+  role: UserRoleValue
   team?: string
   region?: string
   operatorSlug?: string

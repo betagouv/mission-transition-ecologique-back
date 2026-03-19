@@ -1,47 +1,8 @@
 import type { CollectionConfig } from 'payload'
 
-const THEMES_OPTIONS = [
-  { label: 'Énergie', value: 'energy' },
-  { label: 'Déchets', value: 'waste' },
-  { label: 'Mobilité', value: 'mobility' },
-  { label: 'Environnement', value: 'environmental' },
-  { label: 'Bâtiment', value: 'building' },
-  { label: 'Eau', value: 'water' },
-  { label: 'Éco-conception', value: 'eco-design' },
-  { label: 'Ressources humaines', value: 'rh' },
-  { label: 'Biodiversité', value: 'biodiversite' },
-]
-
-const NAF_SECTIONS_OPTIONS = [
-  { label: 'A — Agriculture, sylviculture et pêche', value: 'A' },
-  { label: 'B — Industries extractives', value: 'B' },
-  { label: 'C — Industrie manufacturière', value: 'C' },
-  {
-    label: "D — Production et distribution d'électricité, de gaz, de vapeur et d'air conditionné",
-    value: 'D',
-  },
-  {
-    label:
-      "E — Production et distribution d'eau ; assainissement, gestion des déchets et dépollution",
-    value: 'E',
-  },
-  { label: 'F — Construction', value: 'F' },
-  { label: "G — Commerce ; réparation d'automobiles et de motocycles", value: 'G' },
-  { label: 'H — Transports et entreposage', value: 'H' },
-  { label: 'I — Hébergement et restauration', value: 'I' },
-  { label: 'J — Information et communication', value: 'J' },
-  { label: "K — Activités financières et d'assurance", value: 'K' },
-  { label: 'L — Activités immobilières', value: 'L' },
-  { label: 'M — Activités spécialisées, scientifiques et techniques', value: 'M' },
-  { label: 'N — Activités de services administratifs et de soutien', value: 'N' },
-  { label: 'O — Administration publique', value: 'O' },
-  { label: 'P — Enseignement', value: 'P' },
-  { label: 'Q — Santé humaine et action sociale', value: 'Q' },
-  { label: 'R — Arts, spectacles et activités récréatives', value: 'R' },
-  { label: 'S — Autres activités de services', value: 'S' },
-  { label: "T — Activités des ménages en tant qu'employeurs", value: 'T' },
-  { label: 'U — Activités extra-territoriales', value: 'U' },
-]
+import { NAF_SECTIONS_OPTIONS } from '@/constants/nafSectionsOptions'
+import { THEMES_OPTIONS } from '@/constants/themesOptions'
+import { UserRole } from '@/utils/user/UserRole'
 
 export const Projects: CollectionConfig = {
   slug: 'projects',
@@ -51,7 +12,7 @@ export const Projects: CollectionConfig = {
   },
   admin: {
     useAsTitle: 'title',
-    hidden: ({ user }) => user?.role === 'contributeur',
+    hidden: ({ user }) => user?.role === UserRole.CONTRIBUTEUR,
   },
   fields: [
     // --- Identity ---

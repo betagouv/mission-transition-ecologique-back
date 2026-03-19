@@ -1,13 +1,14 @@
 import type { Access } from 'payload'
+import { UserRole } from '@/utils/user/UserRole'
 
 export class OperatorAccessPolicy {
   static read: Access = ({ req: { user } }) => Boolean(user)
 
   static update: Access = ({ req: { user } }) => {
     if (!user) return false
-    if (user.role === 'super-admin') return true
+    if (UserRole.isSuperAdmin(user)) return true;
 
-    if (user.role === 'administrateur-aide') {
+    if (UserRole.isAdminAide(user)) {
       const operatorId =
         typeof user.operator === 'object' && user.operator !== null
           ? user.operator.id

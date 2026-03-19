@@ -1,6 +1,7 @@
 import type { CollectionConfig, FieldAccess } from 'payload'
 import { ProgramAccessPolicy } from '@/services/access/ProgramAccessPolicy'
 import { beforeChangeWorkflow } from '@/hooks/programs/beforeChangeWorkflow'
+import { UserRole } from '@/utils/user/UserRole'
 
 export const Programs: CollectionConfig = {
   slug: 'programs',
@@ -12,7 +13,8 @@ export const Programs: CollectionConfig = {
     useAsTitle: 'title',
     components: {
       edit: {
-        PublishButton: '@/components/programs/WorkflowActionBar#WorkflowActionBar',
+        PublishButton:
+          '@/components/programs/WorkflowActionBar#WorkflowActionBar',
         Status: '@/components/programs/WorkflowStatusBadge#WorkflowStatusBadge',
       },
     },
@@ -102,7 +104,8 @@ export const Programs: CollectionConfig = {
       type: 'text',
       label: 'Illustration',
       admin: {
-        description: 'Relative path to illustration image (e.g. "images/TEE_energie_verte.webp").',
+        description:
+          'Relative path to illustration image (e.g. "images/TEE_energie_verte.webp").',
       },
     },
 
@@ -255,31 +258,41 @@ export const Programs: CollectionConfig = {
           name: 'companySize',
           type: 'array',
           label: "Taille de l'entreprise",
-          fields: [{ name: 'value', type: 'text', label: 'Valeur', required: true }],
+          fields: [
+            { name: 'value', type: 'text', label: 'Valeur', required: true },
+          ],
         },
         {
           name: 'geographicArea',
           type: 'array',
           label: 'Zone géographique',
-          fields: [{ name: 'value', type: 'text', label: 'Valeur', required: true }],
+          fields: [
+            { name: 'value', type: 'text', label: 'Valeur', required: true },
+          ],
         },
         {
           name: 'activitySector',
           type: 'array',
           label: "Secteur d'activité",
-          fields: [{ name: 'value', type: 'text', label: 'Valeur', required: true }],
+          fields: [
+            { name: 'value', type: 'text', label: 'Valeur', required: true },
+          ],
         },
         {
           name: 'activityYears',
           type: 'array',
           label: "Années d'activité",
-          fields: [{ name: 'value', type: 'text', label: 'Valeur', required: true }],
+          fields: [
+            { name: 'value', type: 'text', label: 'Valeur', required: true },
+          ],
         },
         {
           name: 'otherCriteria',
           type: 'array',
           label: 'Autres critères',
-          fields: [{ name: 'value', type: 'text', label: 'Valeur', required: true }],
+          fields: [
+            { name: 'value', type: 'text', label: 'Valeur', required: true },
+          ],
         },
       ],
     },
@@ -302,7 +315,14 @@ export const Programs: CollectionConfig = {
               // dbName shortens the join table name to stay under PG's 63-char limit
               // (versioned table would be: _programs_v_version_eligibility_data_company_allowed_naf_sections = 65 chars)
               dbName: 'elig_data_co_naf_sections',
-              fields: [{ name: 'value', type: 'text', label: 'Valeur', required: true }],
+              fields: [
+                {
+                  name: 'value',
+                  type: 'text',
+                  label: 'Valeur',
+                  required: true,
+                },
+              ],
             },
             {
               name: 'minEmployees',
@@ -342,7 +362,9 @@ export const Programs: CollectionConfig = {
           name: 'priorityObjectives',
           type: 'array',
           label: 'Objectifs prioritaires',
-          fields: [{ name: 'value', type: 'text', label: 'Valeur', required: true }],
+          fields: [
+            { name: 'value', type: 'text', label: 'Valeur', required: true },
+          ],
         },
       ],
     },
@@ -417,8 +439,8 @@ export const Programs: CollectionConfig = {
       },
       access: {
         update: (({ req: { user } }) => {
-          if (!user) return false
-          return user.role === 'super-admin' || user.role === 'administrateur-aide'
+          if (!user) return false;
+          return UserRole.isAdminAide(user);
         }) satisfies FieldAccess,
       },
     },
@@ -434,8 +456,7 @@ export const Programs: CollectionConfig = {
       },
       access: {
         update: (({ req: { user } }) =>
-          user?.role === 'super-admin' ||
-          user?.role === 'administrateur-aide') satisfies FieldAccess,
+          UserRole.isAdminAide(user)) satisfies FieldAccess,
       },
     },
 
@@ -457,4 +478,4 @@ export const Programs: CollectionConfig = {
       },
     },
   ],
-}
+};

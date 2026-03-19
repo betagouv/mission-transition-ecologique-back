@@ -8,8 +8,9 @@ import {
   WORKFLOW_STATUS_LABELS,
   TRANSITION_LABELS,
   type WorkflowStatus,
-  type UserRole,
 } from '@/services/workflow/WorkflowTransitionPolicy'
+import { UserRole } from '@/utils/user/UserRole'
+import type { UserRoleValue } from '@/utils/user/UserRole'
 
 export const WorkflowActionBar: React.FC = () => {
   const { data } = useDocumentInfo()
@@ -18,10 +19,10 @@ export const WorkflowActionBar: React.FC = () => {
   const isModified = useFormModified()
 
   const currentStatus = (data?.workflowStatus ?? 'brouillon') as WorkflowStatus
-  const role = user?.role as UserRole | undefined
+  const role = user?.role as UserRoleValue | undefined
 
   const availableTransitions =
-    role && role !== 'observateur'
+    role && role !== UserRole.OBSERVATEUR
       ? WorkflowTransitionPolicy.getAllowedTransitions(currentStatus, role)
       : []
 

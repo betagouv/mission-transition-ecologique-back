@@ -1,10 +1,10 @@
 import type { Access } from 'payload'
+import { UserRole } from '@/utils/user/UserRole'
 
 export class AuthAccessPolicy {
   static isAuthenticated: Access = ({ req: { user } }) => Boolean(user)
 
-  static isSuperAdmin: Access = ({ req: { user } }) => user?.role === 'super-admin'
+  static isSuperAdmin: Access = ({ req: { user } }) => UserRole.isSuperAdmin(user)
 
-  static isAdminOrAbove: Access = ({ req: { user } }) =>
-    user?.role === 'super-admin' || user?.role === 'administrateur-aide'
+  static isAdminOrAbove: Access = ({ req: { user } }) => UserRole.isAdminAide(user)
 }
