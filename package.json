@@ -3,8 +3,9 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "dev": "nx run @tee-backoffice/cms:dev",
-    "build": "nx run @tee-backoffice/cms:build",
+    "generate": "nx run @tee-backoffice/cms:generate:types && nx run @tee-backoffice/cms:generate:importmap",
+    "dev": "pnpm generate && nx run @tee-backoffice/cms:dev",
+    "build": "pnpm generate && nx run @tee-backoffice/cms:build",
     "start": "nx run @tee-backoffice/cms:start",
     "lint": "nx run-many -t lint",
     "lint:fix": "nx run-many -t lint --fix",
