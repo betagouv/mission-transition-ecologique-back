@@ -1,10 +1,8 @@
-import { composePlugins, withNx } from '@nx/next'
 import { withPayload } from '@payloadcms/next/withPayload'
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  nx: {},
-  redirects: async () => [{ source: '/', destination: '/admin', permanent: false }],
+redirects: async () => [{ source: '/', destination: '/admin', permanent: false }],
   webpack: (webpackConfig) => {
     webpackConfig.resolve.extensionAlias = {
       '.cjs': ['.cts', '.cjs'],
@@ -16,6 +14,4 @@ const nextConfig = {
   },
 }
 
-const plugins = [withNx, withPayload]
-
-export default composePlugins(...plugins)(nextConfig)
+export default withPayload(nextConfig)
