@@ -5,6 +5,8 @@ export class ProgramAccessPolicy {
   static read: Access = ({ req: { user } }): AccessResult => {
     if (!user) return false
 
+    if (UserRole.isAdminAide(user)) return true
+
     if (UserRole.isContributeur(user)) {
       return { assignedContributors: { contains: user.id } };
     }
