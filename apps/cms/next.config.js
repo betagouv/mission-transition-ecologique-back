@@ -1,8 +1,8 @@
-import type { NextConfig } from 'next'
 import { composePlugins, withNx } from '@nx/next'
 import { withPayload } from '@payloadcms/next/withPayload'
 
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   nx: {},
   redirects: async () => [{ source: '/', destination: '/admin', permanent: false }],
   webpack: (webpackConfig) => {
