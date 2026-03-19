@@ -14,7 +14,7 @@
     "e2e": "nx run @tee-backoffice/cms-e2e:e2e",
     "generate:importmap": "nx run @tee-backoffice/cms:generate:importmap",
     "generate:types": "nx run @tee-backoffice/cms:generate:types",
-    "seed": "cd apps/cms && node ../node_modules/.bin/tsx src/scripts/seed/run.ts",
+    "seed": "cd apps/cms && tsx src/scripts/seed/run.ts",
     "test": "nx run @tee-backoffice/cms:test"
   },
   "private": true,
