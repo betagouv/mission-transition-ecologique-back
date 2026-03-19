@@ -20,6 +20,7 @@
   "private": true,
   "dependencies": {
     "@payloadcms/db-sqlite": "^3.79.1",
+    "libsql": "0.4.7",
     "@payloadcms/next": "^3.79.1",
     "@payloadcms/richtext-lexical": "^3.79.1",
     "@payloadcms/translations": "^3.79.1",
