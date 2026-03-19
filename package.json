@@ -6,7 +6,7 @@
     "generate": "nx run @tee-backoffice/cms:generate:types && nx run @tee-backoffice/cms:generate:importmap",
     "dev": "pnpm generate && nx run @tee-backoffice/cms:dev",
     "build": "pnpm generate && nx run @tee-backoffice/cms:build",
-    "start": "nx run @tee-backoffice/cms:start",
+    "start": "node_modules/.bin/next start apps/cms",
     "lint": "nx run-many -t lint",
     "lint:fix": "nx run-many -t lint --fix",
     "lint:fix:affected": "nx affected -t lint --fix",
@@ -14,7 +14,7 @@
     "e2e": "nx run @tee-backoffice/cms-e2e:e2e",
     "generate:importmap": "nx run @tee-backoffice/cms:generate:importmap",
     "generate:types": "nx run @tee-backoffice/cms:generate:types",
-    "seed": "nx run @tee-backoffice/cms:seed",
+    "seed": "cd apps/cms && node ../node_modules/.bin/tsx src/scripts/seed/run.ts",
     "test": "nx run @tee-backoffice/cms:test"
   },
   "private": true,
