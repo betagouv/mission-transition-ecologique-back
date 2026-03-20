@@ -2,7 +2,7 @@ import type { CollectionConfig } from 'payload'
 
 import { NAF_SECTIONS_OPTIONS } from '@/constants/nafSectionsOptions'
 import { THEMES_OPTIONS } from '@/constants/themesOptions'
-import { UserRole, UserRoleValue } from '@/utils/user/UserRole';
+import { UserRole, type UserRoleValue } from '@/utils/user/UserRole';
 
 export const Projects: CollectionConfig = {
   slug: 'projects',
