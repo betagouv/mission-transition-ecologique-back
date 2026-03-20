@@ -1,7 +1,7 @@
 import type { CollectionConfig } from 'payload'
 import { AuthAccessPolicy } from '@/services/access/AuthAccessPolicy'
 import { OperatorAccessPolicy } from '@/services/access/OperatorAccessPolicy'
-import { UserRole } from '@/utils/user/UserRole'
+import { UserRole, type UserRoleValue } from '@/utils/user/UserRole'
 
 export const Operators: CollectionConfig = {
   slug: 'operators',
@@ -11,7 +11,7 @@ export const Operators: CollectionConfig = {
   },
   admin: {
     useAsTitle: 'name',
-    hidden: ({ user }) => user?.role === UserRole.CONTRIBUTEUR,
+    hidden: ({ user }) => !UserRole.isSuperAdmin(user as unknown as { role: UserRoleValue } | null),
   },
   access: {
     read: OperatorAccessPolicy.read,

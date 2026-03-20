@@ -2,7 +2,7 @@ import type { CollectionConfig } from 'payload'
 
 import { NAF_SECTIONS_OPTIONS } from '@/constants/nafSectionsOptions'
 import { THEMES_OPTIONS } from '@/constants/themesOptions'
-import { UserRole } from '@/utils/user/UserRole'
+import { UserRole, UserRoleValue } from '@/utils/user/UserRole';
 
 export const Projects: CollectionConfig = {
   slug: 'projects',
@@ -12,7 +12,7 @@ export const Projects: CollectionConfig = {
   },
   admin: {
     useAsTitle: 'title',
-    hidden: ({ user }) => user?.role === UserRole.CONTRIBUTEUR,
+    hidden: ({ user }) => !UserRole.isSuperAdmin(user as unknown as { role: UserRoleValue }),
   },
   fields: [
     // --- Identity ---

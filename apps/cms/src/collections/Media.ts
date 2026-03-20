@@ -1,10 +1,10 @@
 import type { CollectionConfig } from 'payload'
-import { UserRole } from '@/utils/user/UserRole'
+import { UserRole, type UserRoleValue } from '@/utils/user/UserRole'
 
 export const Media: CollectionConfig = {
   slug: 'media',
   admin: {
-    hidden: ({ user }) => user?.role === UserRole.CONTRIBUTEUR,
+    hidden: ({ user }) => !UserRole.isSuperAdmin(user as unknown as { role: UserRoleValue } | null),
   },
   access: {
     read: () => true,

@@ -1,11 +1,12 @@
 import type { CollectionConfig } from 'payload'
-import { UserRole } from '@/utils/user/UserRole'
+import { UserRole, type UserRoleValue } from '@/utils/user/UserRole'
 
 export const Users: CollectionConfig = {
   slug: 'users',
   admin: {
     useAsTitle: 'email',
-    hidden: ({ user }) => user?.role === UserRole.CONTRIBUTEUR,
+    hidden: ({ user }) =>
+      !UserRole.isSuperAdmin(user as unknown as { role: UserRoleValue }),
   },
   auth: true,
   fields: [
@@ -24,7 +25,8 @@ export const Users: CollectionConfig = {
       label: 'Opérateur',
       relationTo: 'operators',
       admin: {
-        condition: (data) => UserRole.isAdminAide(data?.role),
+        condition: (data) =>
+          !UserRole.isSuperAdmin(data as unknown as { role: UserRoleValue }),
         description: 'Opérateur auquel cet utilisateur est rattaché.',
       },
     },
@@ -33,7 +35,8 @@ export const Users: CollectionConfig = {
       type: 'text',
       label: 'Région',
       admin: {
-        condition: (data) => UserRole.isAdminAide(data?.role),
+        condition: (data) =>
+          !UserRole.isSuperAdmin(data as unknown as { role: UserRoleValue }),
         description: 'Ex : "Grand Est"',
       },
     },
@@ -42,9 +45,10 @@ export const Users: CollectionConfig = {
       type: 'text',
       label: 'Équipe',
       admin: {
-        condition: (data) => UserRole.isAdminAide(data?.role),
+        condition: (data) =>
+          !UserRole.isSuperAdmin(data as unknown as { role: UserRoleValue }),
         description: 'Ex : "CCI Grand Est"',
       },
     },
   ],
-}
+};

@@ -4,7 +4,7 @@
   "license": "MIT",
   "scripts": {
     "generate": "nx run @tee-backoffice/cms:generate:types && nx run @tee-backoffice/cms:generate:importmap",
-    "dev": "pnpm generate && nx run @tee-backoffice/cms:dev",
+    "dev": "pnpm generate && nx run @tee-backoffice/cms:dev -- --turbopack",
     "build": "pnpm generate && nx run @tee-backoffice/cms:build",
     "start": "cd apps/cms && ../../node_modules/.bin/next start",
     "lint": "nx run-many -t lint",

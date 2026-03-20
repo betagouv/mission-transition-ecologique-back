@@ -81,15 +81,15 @@ L'admin UI affiche les boutons natifs "Save Draft" et "Publish" ainsi que l'hist
 
 La propriété `admin.hidden` de Payload contrôle l'affichage d'une collection dans le menu de navigation, indépendamment des règles d'accès API.
 
-Pour le rôle `contributeur`, seule la collection `Programs` est visible dans la sidebar. Les collections `Users`, `Media`, `Operators` et `Projects` sont masquées via `admin.hidden: ({ user }) => user?.role === 'contributeur'`.
+Seule la collection `Programs` est visible pour tous les rôles. Les collections `Users`, `Media`, `Operators` et `Projects` sont réservées au `super-admin` via `admin.hidden: ({ user }) => !UserRole.isSuperAdmin(user)`.
 
 | Collection | contributeur | observateur | administrateur-aide | super-admin |
 |---|---|---|---|---|
 | Programs | ✅ visible | ✅ visible | ✅ visible | ✅ visible |
-| Users | ❌ masqué | ✅ visible | ✅ visible | ✅ visible |
-| Media | ❌ masqué | ✅ visible | ✅ visible | ✅ visible |
-| Operators | ❌ masqué | ✅ visible | ✅ visible | ✅ visible |
-| Projects | ❌ masqué | ✅ visible | ✅ visible | ✅ visible |
+| Users | ❌ masqué | ❌ masqué | ❌ masqué | ✅ visible |
+| Media | ❌ masqué | ❌ masqué | ❌ masqué | ✅ visible |
+| Operators | ❌ masqué | ❌ masqué | ❌ masqué | ✅ visible |
+| Projects | ❌ masqué | ❌ masqué | ❌ masqué | ✅ visible |
 
 **Pourquoi `admin.hidden` et non une restriction sur `access.read` ?**
 `admin.hidden` est l'outil Payload dédié à la visibilité UI, orthogonal à la sécurité API. Modifier `access.read` pour cacher des collections aurait des effets de bord sur les requêtes API internes (ex. chargement des relations dans les formulaires). Pour le POC, la restriction est UI-only — les endpoints API restent accessibles aux utilisateurs authentifiés.
