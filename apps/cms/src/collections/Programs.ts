@@ -1,18 +1,53 @@
 import type { CollectionConfig, FieldAccess } from 'payload'
 import { ProgramAccessPolicy } from '@/services/access/ProgramAccessPolicy'
 import { beforeChangeWorkflow } from '@/hooks/programs/beforeChangeWorkflow'
-import { assignCreatorOnCreate } from '@/hooks/programs/assignCreatorOnCreate'
-import { UserRole, type UserRoleValue } from '@/utils/user/UserRole'
+import { THEMES_OPTIONS } from '@/constants/themesOptions'
+import { UserRole } from '@/utils/user/UserRole'
+
+const COMPANY_SIZE_OPTIONS = [
+  { label: '0 à 9 salariés', value: '0-9' },
+  { label: '10 à 19 salariés', value: '10-19' },
+  { label: '20 à 49 salariés', value: '20-49' },
+  { label: '50 à 249 salariés', value: '50-249' },
+  { label: '250 à 499 salariés', value: '250-499' },
+  { label: '500 à 4999 salariés', value: '500-4999' },
+  { label: '+ 5000 salariés', value: '5000+' },
+  { label: 'Autre taille spécifique', value: 'other' },
+] as const
+
+const ACTIVITY_SECTOR_OPTIONS = [
+  { label: "Tous secteurs d'activité", value: 'all' },
+  { label: 'Agriculture', value: 'agriculture' },
+  { label: 'Industrie', value: 'industrie' },
+  { label: 'Tertiaire', value: 'tertiaire' },
+  { label: 'Commerce', value: 'commerce' },
+  { label: 'Artisanat', value: 'artisanat' },
+  { label: 'Tourisme', value: 'tourisme' },
+  { label: 'Autre secteur spécifique', value: 'other' },
+] as const
+
+const CONTACT_METHOD_OPTIONS = [
+  { label: 'Avec Conseillers-Entreprises (rappel téléphonique)', value: 'advisor' },
+  { label: 'Par mail', value: 'email' },
+  { label: 'Par lien vers une page contact', value: 'url' },
+] as const
+
+const AID_TYPE_OPTIONS = [
+  { label: 'Financement', value: 'financement' },
+  { label: 'Prêt', value: 'pret' },
+  { label: 'Avantage fiscal', value: 'avantage-fiscal' },
+  { label: 'Formation', value: 'formation' },
+  { label: 'Diagnostic ou étude', value: 'diagnostic-etude' },
+] as const
 
 export const Programs: CollectionConfig = {
   slug: 'programs',
   labels: {
-    singular: 'Programme',
-    plural: 'Programmes',
+    singular: 'Dispositif',
+    plural: 'Dispositifs',
   },
   admin: {
     useAsTitle: 'title',
-    defaultColumns: ['title', 'operator', 'aidType', 'workflowStatus', 'updatedAt'],
     components: {
       edit: {
         PublishButton:
@@ -22,7 +57,7 @@ export const Programs: CollectionConfig = {
     },
   },
   hooks: {
-    beforeChange: [assignCreatorOnCreate, beforeChangeWorkflow],
+    beforeChange: [beforeChangeWorkflow],
   },
   access: {
     read: ProgramAccessPolicy.read,
@@ -35,7 +70,9 @@ export const Programs: CollectionConfig = {
     maxPerDoc: 100,
   },
   fields: [
-    // --- Identity ---
+    // ===================================================================
+    // SIDEBAR
+    // ===================================================================
     {
       name: 'slug',
       type: 'text',
@@ -43,62 +80,103 @@ export const Programs: CollectionConfig = {
       required: true,
       unique: true,
       admin: {
-        description: 'Unique identifier (from JSON "id" field).',
+        description: 'Identifiant unique du dispositif.',
         position: 'sidebar',
       },
     },
+    {
+      name: 'workflowStatus',
+      type: 'select',
+      label: 'Statut de workflow',
+      defaultValue: 'brouillon',
+      required: true,
+      options: [
+        { label: 'Brouillon', value: 'brouillon' },
+        { label: 'En révision', value: 'en-revision' },
+        { label: 'Validé', value: 'valide' },
+        { label: 'Publié', value: 'publie' },
+      ],
+      admin: {
+        position: 'sidebar',
+      },
+    },
+    {
+      name: 'workflowHistory',
+      type: 'array',
+      label: 'Historique des transitions',
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description: 'Historique automatique des changements de statut.',
+      },
+      fields: [
+        { name: 'from', type: 'text', label: 'Depuis', admin: { readOnly: true } },
+        { name: 'to', type: 'text', label: 'Vers', admin: { readOnly: true } },
+        {
+          name: 'changedBy',
+          type: 'relationship',
+          label: 'Par',
+          relationTo: 'users',
+          admin: { readOnly: true },
+        },
+        {
+          name: 'changedAt',
+          type: 'date',
+          label: 'Le',
+          admin: { readOnly: true, date: { pickerAppearance: 'dayAndTime' } },
+        },
+      ],
+    },
+    {
+      name: '_status',
+      type: 'select',
+      label: 'Statut',
+      options: [
+        { label: 'Brouillon', value: 'draft' },
+        { label: 'Publié', value: 'published' },
+      ],
+      admin: { position: 'sidebar' },
+      access: {
+        update: (({ req: { user } }) => {
+          if (!user) return false
+          return UserRole.isAdmin(user)
+        }) satisfies FieldAccess,
+      },
+    },
+    {
+      name: 'assignedContributors',
+      type: 'relationship',
+      label: 'Contributeurs assignés',
+      relationTo: 'users',
+      hasMany: true,
+      admin: {
+        position: 'sidebar',
+        description: 'Contributeurs autorisés à éditer ce dispositif.',
+      },
+      access: {
+        update: (({ req: { user } }) =>
+          UserRole.isAdmin(user)) satisfies FieldAccess,
+      },
+    },
+
+    // ===================================================================
+    // MAIN
+    // ===================================================================
     {
       name: 'title',
       type: 'text',
       label: 'Titre',
       required: true,
+      admin: {
+        description: 'Exemple : Visite Énergie (1 à 4 mots).',
+      },
     },
-    {
-      name: 'promise',
-      type: 'text',
-      label: 'Promesse',
-      required: true,
-    },
-    {
-      name: 'aidType',
-      type: 'select',
-      label: "Type d'aide",
-      required: true,
-      options: [
-        { label: 'Étude', value: 'etude' },
-        { label: 'Financement', value: 'financement' },
-        { label: 'Formation', value: 'formation' },
-        { label: 'Prêt', value: 'pret' },
-        { label: 'Avantage fiscal', value: 'avantage-fiscal' },
-      ],
-    },
-
-    // --- Content ---
-    {
-      name: 'description',
-      type: 'richText',
-      label: 'Description',
-      required: true,
-    },
-    {
-      name: 'longDescription',
-      type: 'richText',
-      label: 'Description longue',
-    },
-
-    // --- Relations ---
     {
       name: 'operator',
       type: 'relationship',
       label: 'Opérateur principal',
       relationTo: 'operators',
       required: true,
-      filterOptions: ({ user }) => {
-        if (!user) return true
-        if (UserRole.isAdmin(user as { role: UserRoleValue })) return true
-        const operatorId = UserRole.getOperatorId(user)
-        return operatorId ? { id: { equals: operatorId } } : true
-      },
     },
     {
       name: 'otherOperators',
@@ -108,81 +186,28 @@ export const Programs: CollectionConfig = {
       hasMany: true,
     },
     {
-      name: 'illustration',
-      type: 'text',
-      label: 'Illustration',
-      admin: {
-        description:
-          'Relative path to illustration image (e.g. "images/TEE_energie_verte.webp").',
-      },
-    },
-
-    // --- Contact & URL ---
-    {
-      name: 'contactUrl',
-      type: 'text',
-      label: 'URL de contact',
-      required: true,
-      admin: {
-        description: 'Contact URL or mailto: link.',
-      },
-    },
-    {
       name: 'url',
       type: 'text',
-      label: 'URL du programme',
-    },
-
-    // --- Validity ---
-    {
-      name: 'validityStart',
-      type: 'date',
-      label: 'Début de validité',
+      label: 'Lien du dispositif',
+      required: true,
       admin: {
-        date: { pickerAppearance: 'dayOnly' },
+        description: 'Exemple : https://...',
       },
     },
     {
-      name: 'validityEnd',
-      type: 'date',
-      label: 'Fin de validité',
-      admin: {
-        date: { pickerAppearance: 'dayOnly' },
-      },
+      name: 'aidType',
+      type: 'select',
+      label: 'Type de dispositif',
+      required: true,
+      options: [...AID_TYPE_OPTIONS],
     },
-    {
-      name: 'temporarilyUnavailable',
-      type: 'checkbox',
-      label: 'Temporairement indisponible',
-      defaultValue: false,
-    },
-
-    // --- Financial (conditional by aidType) ---
     {
       name: 'fundingAmount',
       type: 'text',
       label: 'Montant du financement',
       admin: {
         condition: (data) => data?.aidType === 'financement',
-        description: 'Montant du financement.',
-      },
-    },
-    {
-      name: 'accompanyingCost',
-      type: 'text',
-      label: "Coût de l'accompagnement",
-      admin: {
-        condition: (data) => data?.aidType === 'etude',
-        description: "Coût de l'accompagnement.",
-      },
-    },
-    {
-      name: 'accompanyingDuration',
-      type: 'text',
-      label: "Durée de l'accompagnement",
-      admin: {
-        condition: (data) => data?.aidType === 'etude',
-        description: "Durée de l'accompagnement.",
+        description: 'Exemple : Jusqu\'à 35% des dépenses, dans un maximum de 50 000 €.',
       },
     },
     {
@@ -191,16 +216,7 @@ export const Programs: CollectionConfig = {
       label: 'Montant du prêt',
       admin: {
         condition: (data) => data?.aidType === 'pret',
-        description: 'Montant du prêt.',
-      },
-    },
-    {
-      name: 'loanDuration',
-      type: 'text',
-      label: 'Durée du prêt',
-      admin: {
-        condition: (data) => data?.aidType === 'pret',
-        description: 'Durée du prêt.',
+        description: 'Exemple : De 10 000 € à 75 000 €.',
       },
     },
     {
@@ -209,11 +225,343 @@ export const Programs: CollectionConfig = {
       label: "Montant de l'avantage fiscal",
       admin: {
         condition: (data) => data?.aidType === 'avantage-fiscal',
-        description: "Montant de l'avantage fiscal.",
+        description: "Crédit d'impôt entre 20 à 60% selon localisation.",
+      },
+    },
+    {
+      name: 'formationRemainingCost',
+      type: 'text',
+      label: 'Coût restant à charge',
+      admin: {
+        condition: (data) => data?.aidType === 'formation',
+        description: 'Exemple : 0 €.',
+      },
+    },
+    {
+      name: 'formationDuration',
+      type: 'text',
+      label: 'Durée de la formation',
+      admin: {
+        condition: (data) => data?.aidType === 'formation',
+        description: 'Exemple : 3 heures.',
+      },
+    },
+    {
+      name: 'studyRemainingCost',
+      type: 'text',
+      label: 'Coût restant à charge',
+      admin: {
+        condition: (data) => data?.aidType === 'diagnostic-etude',
+        description: "Exemple : entre 5 000€ et 7 000€ HT selon la taille d'entreprise.",
+      },
+    },
+    {
+      name: 'studyDuration',
+      type: 'text',
+      label: "Durée du diagnostic ou de l'étude",
+      admin: {
+        condition: (data) => data?.aidType === 'diagnostic-etude',
+        description: 'Exemple : 18 jours de prestation répartis sur 6 à 8 mois.',
+      },
+    },
+    {
+      name: 'promise',
+      type: 'text',
+      label: 'Promesse',
+      required: true,
+      admin: {
+        description:
+          'Exemple : Réduisez et valorisez les déchets de votre entreprise (6 à 16 mots).',
+      },
+    },
+    {
+      name: 'description',
+      type: 'richText',
+      label: 'Description',
+      required: true,
+      admin: {
+        description:
+          "Exemple : Bénéficiez de l'accompagnement d'un expert CCI pour vous aider à évaluer la vulnérabilité climatique de votre entreprise (30 à 60 mots).",
       },
     },
 
-    // --- Autonomy ---
+    // ===================================================================
+    // ÉTAPES POUR EN BÉNÉFICIER
+    // ===================================================================
+    {
+      type: 'collapsible',
+      label: 'Étapes pour en bénéficier',
+      admin: { initCollapsed: false },
+      fields: [
+        {
+          name: 'steps',
+          type: 'array',
+          label: '',
+          labels: { singular: 'Étape', plural: 'Étapes' },
+          admin: {
+            components: {
+              RowLabel: '@/components/programs/StepRowLabel#StepRowLabel',
+            },
+          },
+          defaultValue: [
+            { description: '', links: [{ url: '', linkLabel: '' }] },
+            { description: '', links: [{ url: '', linkLabel: '' }] },
+            { description: '' },
+          ],
+          fields: [
+            {
+              name: 'description',
+              type: 'text',
+              label: "Description de l'étape",
+              required: true,
+              admin: {
+                description:
+                  "Exemple : 'Consultez le document pour vérifier l'éligibilité de votre projet', 'Déposez votre demande de financement via le formulaire', 'Recevez votre aide financière et réalisez vos travaux'.",
+              },
+            },
+            {
+              name: 'links',
+              type: 'array',
+              label: '',
+              labels: { singular: 'Lien', plural: 'Liens' },
+              admin: {
+                components: {
+                  RowLabel: '@/components/programs/LinkRowLabel#LinkRowLabel',
+                },
+              },
+              fields: [
+                {
+                  name: 'url',
+                  type: 'text',
+                  label: 'URL',
+                  admin: {
+                    description: 'Lien de votre document au format https://...',
+                  },
+                },
+                {
+                  name: 'linkLabel',
+                  type: 'text',
+                  label: 'Titre du lien',
+                  admin: {
+                    description: 'Exemple : Document, Formulaire.',
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+
+    // ===================================================================
+    // CONTACT
+    // ===================================================================
+    {
+      type: 'collapsible',
+      label: 'Mode de contact en cas de question',
+      admin: { initCollapsed: false },
+      fields: [
+        {
+          name: 'contactMethods',
+          type: 'select',
+          label: 'Mode de contact',
+          hasMany: true,
+          options: [...CONTACT_METHOD_OPTIONS],
+        },
+        {
+          name: 'contactEmail',
+          type: 'email',
+          label: 'Adresse mail du conseiller',
+          admin: {
+            condition: (data) =>
+              Array.isArray(data?.contactMethods) &&
+              (data.contactMethods as string[]).includes('email'),
+          },
+        },
+        {
+          name: 'contactPageUrl',
+          type: 'text',
+          label: 'URL',
+          admin: {
+            condition: (data) =>
+              Array.isArray(data?.contactMethods) &&
+              (data.contactMethods as string[]).includes('url'),
+            description: 'Exemple : https://...',
+          },
+        },
+        {
+          name: 'validityStart',
+          type: 'date',
+          label: 'Date de début de validité',
+          admin: { date: { pickerAppearance: 'dayOnly' } },
+        },
+        {
+          name: 'validityEnd',
+          type: 'date',
+          label: 'Date de fin de validité',
+          admin: { date: { pickerAppearance: 'dayOnly' } },
+        },
+      ],
+    },
+
+    // ===================================================================
+    // PROJET
+    // ===================================================================
+    {
+      type: 'collapsible',
+      label: 'Projet',
+      admin: { initCollapsed: false },
+      fields: [
+        {
+          name: 'themes',
+          type: 'select',
+          label: 'Thématique',
+          hasMany: true,
+          options: THEMES_OPTIONS,
+          admin: {
+            description: 'Sert à filtrer les projets associables ci-dessous.',
+          },
+        },
+        {
+          name: 'linkedProjectsCounter',
+          type: 'ui',
+          label: '',
+          admin: {
+            components: {
+              Field:
+                '@/components/programs/LinkedProjectsCounter#LinkedProjectsCounter',
+            },
+          },
+        },
+        {
+          name: 'linkedProjects',
+          type: 'relationship',
+          label: 'Projet(s) lié(s) au dispositif',
+          relationTo: 'projects',
+          hasMany: true,
+        },
+      ],
+    },
+
+    // ===================================================================
+    // ÉLIGIBILITÉ
+    // ===================================================================
+    {
+      type: 'collapsible',
+      label: 'Éligibilité',
+      admin: { initCollapsed: false },
+      fields: [
+        {
+          name: 'companySizes',
+          type: 'select',
+          label: "Taille d'entreprise",
+          hasMany: true,
+          options: [...COMPANY_SIZE_OPTIONS],
+          defaultValue: [
+            '0-9',
+            '10-19',
+            '20-49',
+            '50-249',
+            '250-499',
+            '500-4999',
+            '5000+',
+          ],
+        },
+        {
+          name: 'companySizeOther',
+          type: 'text',
+          label: 'Eligibilité taille spécifique',
+          admin: {
+            condition: (data) =>
+              Array.isArray(data?.companySizes) &&
+              (data.companySizes as string[]).includes('other'),
+            description: 'Exemple : PME au sens européen.',
+          },
+        },
+        {
+          name: 'geographicAreas',
+          type: 'relationship',
+          label: "Zone géographique couverte par l'aide",
+          relationTo: 'geographic-areas',
+          hasMany: true,
+        },
+        {
+          name: 'geographicAreaFeedback',
+          type: 'text',
+          label: 'Vous ne trouvez pas de zone géographique appropriée ?',
+          admin: {
+            description:
+              'Décrivez librement la zone manquante — un administrateur pourra ensuite la créer.',
+          },
+        },
+        {
+          name: 'activitySectors',
+          type: 'select',
+          label: "Secteur d'activité",
+          hasMany: true,
+          options: [...ACTIVITY_SECTOR_OPTIONS],
+          defaultValue: ['all'],
+        },
+        {
+          name: 'activitySectorOther',
+          type: 'text',
+          label: 'Autre secteur spécifique',
+          admin: {
+            condition: (data) =>
+              Array.isArray(data?.activitySectors) &&
+              (data.activitySectors as string[]).includes('other'),
+          },
+        },
+        {
+          name: 'nafCodeOther',
+          type: 'text',
+          label: 'Code NAF spécifique associé',
+          admin: {
+            condition: (data) =>
+              Array.isArray(data?.activitySectors) &&
+              (data.activitySectors as string[]).includes('other'),
+          },
+        },
+        {
+          name: 'otherCriteria',
+          type: 'array',
+          label: 'Autres critères',
+          admin: {
+            components: {
+              RowLabel:
+                '@/components/programs/OtherCriterionRowLabel#OtherCriterionRowLabel',
+            },
+          },
+          fields: [
+            {
+              name: 'value',
+              type: 'text',
+              label: "Critère d'éligibilité",
+              required: true,
+            },
+          ],
+        },
+      ],
+    },
+
+    {
+      name: 'additionalInfo',
+      type: 'richText',
+      label: 'Informations complémentaires',
+    },
+
+    // ===================================================================
+    // KEPT FOR LATER ARBITRATION (hidden / legacy)
+    // ===================================================================
+    {
+      name: 'temporarilyUnavailable',
+      type: 'checkbox',
+      label: 'Temporairement indisponible',
+      defaultValue: false,
+      admin: {
+        description: 'Champ historique — à arbitrer.',
+      },
+    },
     {
       name: 'selfActivatable',
       type: 'select',
@@ -222,94 +570,17 @@ export const Programs: CollectionConfig = {
         { label: 'Oui', value: 'oui' },
         { label: 'Non', value: 'non' },
       ],
+      admin: {
+        description: 'Champ historique — à arbitrer.',
+      },
     },
-
-    // --- Objectives ---
-    {
-      name: 'objectives',
-      type: 'array',
-      label: 'Objectifs',
-      fields: [
-        {
-          name: 'description',
-          type: 'text',
-          label: 'Description',
-          required: true,
-        },
-        {
-          name: 'links',
-          type: 'array',
-          label: 'Liens',
-          fields: [
-            {
-              name: 'url',
-              type: 'text',
-              label: 'URL',
-            },
-            {
-              name: 'label',
-              type: 'text',
-              label: 'Libellé',
-            },
-          ],
-        },
-      ],
-    },
-
-    // --- Eligibility — human-readable text ---
-    {
-      name: 'eligibilityConditions',
-      type: 'group',
-      label: "Conditions d'éligibilité",
-      fields: [
-        {
-          name: 'companySize',
-          type: 'array',
-          label: "Taille de l'entreprise",
-          fields: [
-            { name: 'value', type: 'text', label: 'Valeur', required: true },
-          ],
-        },
-        {
-          name: 'geographicArea',
-          type: 'array',
-          label: 'Zone géographique',
-          fields: [
-            { name: 'value', type: 'text', label: 'Valeur', required: true },
-          ],
-        },
-        {
-          name: 'activitySector',
-          type: 'array',
-          label: "Secteur d'activité",
-          fields: [
-            { name: 'value', type: 'text', label: 'Valeur', required: true },
-          ],
-        },
-        {
-          name: 'activityYears',
-          type: 'array',
-          label: "Années d'activité",
-          fields: [
-            { name: 'value', type: 'text', label: 'Valeur', required: true },
-          ],
-        },
-        {
-          name: 'otherCriteria',
-          type: 'array',
-          label: 'Autres critères',
-          fields: [
-            { name: 'value', type: 'text', label: 'Valeur', required: true },
-          ],
-        },
-      ],
-    },
-
-    // --- Eligibility — machine-readable structured data ---
     {
       name: 'eligibilityData',
       type: 'group',
-      label: "Données d'éligibilité (structurées)",
+      label: "Données d'éligibilité (structurées, machine-readable)",
+      admin: {
+        description: 'Champ historique — à arbitrer (utilisé pour le scoring).',
+      },
       fields: [
         {
           name: 'company',
@@ -320,8 +591,6 @@ export const Programs: CollectionConfig = {
               name: 'allowedNafSections',
               type: 'array',
               label: 'Sections NAF autorisées',
-              // dbName shortens the join table name to stay under PG's 63-char limit
-              // (versioned table would be: _programs_v_version_eligibility_data_company_allowed_naf_sections = 65 chars)
               dbName: 'elig_data_co_naf_sections',
               fields: [
                 {
@@ -332,16 +601,8 @@ export const Programs: CollectionConfig = {
                 },
               ],
             },
-            {
-              name: 'minEmployees',
-              type: 'number',
-              label: 'Nombre minimum de salariés',
-            },
-            {
-              name: 'maxEmployees',
-              type: 'number',
-              label: 'Nombre maximum de salariés',
-            },
+            { name: 'minEmployees', type: 'number', label: 'Nombre minimum de salariés' },
+            { name: 'maxEmployees', type: 'number', label: 'Nombre maximum de salariés' },
             {
               name: 'excludeMicroentrepreneur',
               type: 'checkbox',
@@ -354,17 +615,13 @@ export const Programs: CollectionConfig = {
           name: 'validityStart',
           type: 'date',
           label: 'Début de validité',
-          admin: {
-            date: { pickerAppearance: 'dayOnly' },
-          },
+          admin: { date: { pickerAppearance: 'dayOnly' } },
         },
         {
           name: 'validityEnd',
           type: 'date',
           label: 'Fin de validité',
-          admin: {
-            date: { pickerAppearance: 'dayOnly' },
-          },
+          admin: { date: { pickerAppearance: 'dayOnly' } },
         },
         {
           name: 'priorityObjectives',
@@ -377,139 +634,20 @@ export const Programs: CollectionConfig = {
       ],
     },
 
-    // --- Workflow ---
-    {
-      name: 'workflowStatus',
-      type: 'select',
-      label: 'Statut de workflow',
-      defaultValue: 'en-creation',
-      required: true,
-      options: [
-        { label: 'En création', value: 'en-creation' },
-        { label: 'En relecture', value: 'en-relecture' },
-        { label: 'En cours de publication', value: 'en-cours-publication' },
-        { label: 'Publié', value: 'publie' },
-        { label: 'En cours de modification', value: 'en-cours-modification' },
-        { label: 'Importé', value: 'importe' },
-        { label: 'Annulé', value: 'annule' },
-        { label: 'Archivé', value: 'archive' },
-        { label: 'Remplacé', value: 'remplace' },
-      ],
-      admin: {
-        position: 'sidebar',
-        components: {
-          Cell: '@/components/programs/WorkflowStatusCell#WorkflowStatusCell',
-        },
-      },
-    },
-    {
-      name: 'replacedBy',
-      type: 'relationship',
-      label: 'Remplacé par',
-      relationTo: 'programs',
-      hasMany: false,
-      admin: {
-        position: 'sidebar',
-        description:
-          'Programme de remplacement. Requis lors du passage à l’état "Remplacé".',
-        condition: (data) =>
-          data?.workflowStatus === 'remplace' || Boolean(data?.replacedBy),
-      },
-      filterOptions: ({ id }) => ({
-        id: { not_equals: id },
-        workflowStatus: { not_in: ['annule', 'archive', 'remplace'] },
-      }),
-    },
-    {
-      name: 'workflowHistory',
-      type: 'array',
-      label: 'Historique des transitions',
-      admin: {
-        position: 'sidebar',
-        readOnly: true,
-        description: 'Historique automatique des changements de statut.',
-      },
-      fields: [
-        {
-          name: 'from',
-          type: 'text',
-          label: 'Depuis',
-          admin: { readOnly: true },
-        },
-        {
-          name: 'to',
-          type: 'text',
-          label: 'Vers',
-          admin: { readOnly: true },
-        },
-        {
-          name: 'changedBy',
-          type: 'relationship',
-          label: 'Par',
-          relationTo: 'users',
-          admin: { readOnly: true },
-        },
-        {
-          name: 'changedAt',
-          type: 'date',
-          label: 'Le',
-          admin: {
-            readOnly: true,
-            date: { pickerAppearance: 'dayAndTime' },
-          },
-        },
-      ],
-    },
-    {
-      name: '_status',
-      type: 'select',
-      label: 'Statut',
-      options: [
-        { label: 'Brouillon', value: 'draft' },
-        { label: 'Publié', value: 'published' },
-      ],
-      admin: {
-        position: 'sidebar',
-      },
-      access: {
-        update: (({ req: { user } }) => {
-          if (!user) return false;
-          return UserRole.isAdmin(user);
-        }) satisfies FieldAccess,
-      },
-    },
-    {
-      name: 'assignedContributors',
-      type: 'relationship',
-      label: 'Contributeurs assignés',
-      relationTo: 'users',
-      hasMany: true,
-      admin: {
-        position: 'sidebar',
-        description: 'Contributeurs autorisés à éditer ce programme.',
-      },
-      access: {
-        update: (({ req: { user } }) =>
-          UserRole.isAdmin(user)) satisfies FieldAccess,
-      },
-    },
-
-    // --- SEO ---
+    // ===================================================================
+    // SEO (sidebar, kept)
+    // ===================================================================
     {
       name: 'metaTitle',
       type: 'text',
       label: 'Titre SEO',
-      admin: {
-        position: 'sidebar',
-      },
+      admin: { position: 'sidebar' },
     },
     {
       name: 'metaDescription',
       type: 'textarea',
       label: 'Description SEO',
-      admin: {
-        position: 'sidebar',
-      },
+      admin: { position: 'sidebar' },
     },
   ],
-};
+}

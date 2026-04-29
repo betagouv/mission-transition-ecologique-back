@@ -45,7 +45,7 @@ pnpm seed                                  # seed complet : operators + programs
 
 ## Seed
 
-**`pnpm seed`** — seed complet idempotent (upsert) : operators + programs + projects + utilisateurs de dev.
+**`pnpm seed`** — actuellement seulement `UsersSeed` (4 utilisateurs de dev). Le seed des opérateurs / dispositifs / projets / zones géographiques est à recâbler après la refonte du modèle (PR program-refacto, avril 2026) — cf. `local/PR-program-refacto/README.md` pour les outils de migration one-shot utilisés.
 
 ### Utilisateurs de dev (`pnpm seed`)
 
@@ -56,10 +56,8 @@ pnpm seed                                  # seed complet : operators + programs
 | `createur@tee.test` | `createur@tee.test` | `creator` |
 
 Les fichiers seed vivent dans `apps/cms/src/scripts/seed/` :
-- `run.ts` — entrypoint `pnpm seed` (initialisation Payload + orchestration)
-- `programs/` — `ProgramsSeed`, `OperatorImporter`, `ProgramMapper`, `ProgramImporter`
-- `projects/` — `ProjectsSeed`, `ProjectMapper`, `ProjectImporter`, `LinkedProjectsUpdater`
-- `users/` — `UsersSeed`
+- `run.ts` — entrypoint `pnpm seed` (initialisation Payload + orchestration).
+- `users/` — `UsersSeed`.
 
 ## Langue
 
@@ -88,7 +86,7 @@ Les fichiers seed vivent dans `apps/cms/src/scripts/seed/` :
 - `src/constants/` — options de select réutilisables (`themesOptions.ts`, `nafSectionsOptions.ts`)
 - `src/services/workflow/` — `WorkflowTransitionPolicy` (logique de transitions, partagée client/serveur), `WorkflowAutomation` (point d'extension phase automatisée)
 - `src/hooks/programs/` — `beforeChangeWorkflow` (validation, sync `workflowStatus` ↔ `_status`, intégration `WorkflowAutomation`)
-- `src/components/programs/` — `WorkflowActionBar` (bouton contextuel), `WorkflowStatusBadge` (statut sidebar), `WorkflowStatusCell` (badge liste)
+- `src/components/programs/` — `WorkflowActionBar` (bouton contextuel), `WorkflowStatusBadge` (statut sidebar), `WorkflowStatusCell` (badge liste), `StepRowLabel` / `LinkRowLabel` / `OtherCriterionRowLabel` (labels d'array auto-numérotés), `LinkedProjectsCounter` (champ `type: 'ui'` qui affiche en live le nombre de projets matchant les thèmes sélectionnés)
 
 ## Documentation de référence
 
@@ -102,7 +100,7 @@ Ne lire un ADR que s'il est pertinent pour la tâche en cours.
 
 | Fichier | Thématique |
 |---|---|
-| `docs/adr/0001-programs-collection.md` | Schéma de la collection `Programs` — champs, types, relations, workflowStatus |
+| `docs/adr/0001-programs-collection.md` | Schéma des collections `Programs`, `Operators` et `GeographicAreas` — champs, sections du formulaire, conditionnels, modèle d'éligibilité |
 | `docs/adr/0002-user-roles-and-access-control.md` | Rôles utilisateurs, hiérarchie des rôles, `UserRole`, access control (`AuthAccessPolicy`, `ProgramAccessPolicy`, `OperatorAccessPolicy`) |
 | `docs/adr/0003-projects-collection.md` | Schéma de la collection `Projects` — thèmes, secteurs NAF, liaisons entre projets |
 | `docs/adr/0004-programs-workflow.md` | ⚠️ Obsolète — superseded par ADR 0005 |

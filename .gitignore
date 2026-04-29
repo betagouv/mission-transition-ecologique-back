@@ -58,6 +58,9 @@ apps/cms/media/
 *.db-wal
 test.db
 
+# Local-only working directory (per-developer scratch, never committed)
+/local/
+
 # Env
 .env
 
