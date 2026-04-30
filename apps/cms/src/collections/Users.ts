@@ -6,7 +6,7 @@ export const Users: CollectionConfig = {
   admin: {
     useAsTitle: 'email',
     hidden: ({ user }) =>
-      !UserRole.isSuperAdmin(user as unknown as { role: UserRoleValue }),
+      !UserRole.isAdmin(user as unknown as { role: UserRoleValue }),
   },
   auth: true,
   fields: [
@@ -16,7 +16,7 @@ export const Users: CollectionConfig = {
       type: 'select',
       label: 'Rôle',
       required: true,
-      defaultValue: UserRole.OBSERVATEUR,
+      defaultValue: UserRole.CREATOR,
       options: [...UserRole.options],
     },
     {
@@ -26,7 +26,7 @@ export const Users: CollectionConfig = {
       relationTo: 'operators',
       admin: {
         condition: (data) =>
-          !UserRole.isSuperAdmin(data as unknown as { role: UserRoleValue }),
+          !UserRole.isAdmin(data as unknown as { role: UserRoleValue }),
         description: 'Opérateur auquel cet utilisateur est rattaché.',
       },
     },
@@ -36,7 +36,7 @@ export const Users: CollectionConfig = {
       label: 'Région',
       admin: {
         condition: (data) =>
-          !UserRole.isSuperAdmin(data as unknown as { role: UserRoleValue }),
+          !UserRole.isAdmin(data as unknown as { role: UserRoleValue }),
         description: 'Ex : "Grand Est"',
       },
     },
@@ -46,7 +46,7 @@ export const Users: CollectionConfig = {
       label: 'Équipe',
       admin: {
         condition: (data) =>
-          !UserRole.isSuperAdmin(data as unknown as { role: UserRoleValue }),
+          !UserRole.isAdmin(data as unknown as { role: UserRoleValue }),
         description: 'Ex : "CCI Grand Est"',
       },
     },

@@ -5,11 +5,10 @@ const u = (role: UserRoleValue) => ({ role })
 
 describe('UserRole', () => {
   describe('constants', () => {
-    it('defines the four role values', () => {
+    it('defines the three role values', () => {
       expect(UserRole.SUPER_ADMIN).toBe('super-admin')
-      expect(UserRole.ADMIN_AIDE).toBe('administrateur-aide')
-      expect(UserRole.CONTRIBUTEUR).toBe('contributeur')
-      expect(UserRole.OBSERVATEUR).toBe('observateur')
+      expect(UserRole.ADMIN).toBe('admin')
+      expect(UserRole.CREATOR).toBe('creator')
     })
   })
 
@@ -19,9 +18,8 @@ describe('UserRole', () => {
     })
 
     it('returns false for roles below super-admin', () => {
-      expect(UserRole.isSuperAdmin(u(UserRole.ADMIN_AIDE))).toBe(false)
-      expect(UserRole.isSuperAdmin(u(UserRole.CONTRIBUTEUR))).toBe(false)
-      expect(UserRole.isSuperAdmin(u(UserRole.OBSERVATEUR))).toBe(false)
+      expect(UserRole.isSuperAdmin(u(UserRole.ADMIN))).toBe(false)
+      expect(UserRole.isSuperAdmin(u(UserRole.CREATOR))).toBe(false)
     })
 
     it('returns false for null or undefined', () => {
@@ -30,66 +28,47 @@ describe('UserRole', () => {
     })
   })
 
-  describe('isAdminAide', () => {
-    it('returns true for super-admin and administrateur-aide', () => {
-      expect(UserRole.isAdminAide(u(UserRole.SUPER_ADMIN))).toBe(true)
-      expect(UserRole.isAdminAide(u(UserRole.ADMIN_AIDE))).toBe(true)
+  describe('isAdmin', () => {
+    it('returns true for super-admin and admin', () => {
+      expect(UserRole.isAdmin(u(UserRole.SUPER_ADMIN))).toBe(true)
+      expect(UserRole.isAdmin(u(UserRole.ADMIN))).toBe(true)
     })
 
-    it('returns false for roles below administrateur-aide', () => {
-      expect(UserRole.isAdminAide(u(UserRole.CONTRIBUTEUR))).toBe(false)
-      expect(UserRole.isAdminAide(u(UserRole.OBSERVATEUR))).toBe(false)
-    })
-
-    it('returns false for null or undefined', () => {
-      expect(UserRole.isAdminAide(null)).toBe(false)
-      expect(UserRole.isAdminAide(undefined)).toBe(false)
-    })
-  })
-
-  describe('isContributeur', () => {
-    it('returns true for super-admin, administrateur-aide and contributeur', () => {
-      expect(UserRole.isContributeur(u(UserRole.SUPER_ADMIN))).toBe(true)
-      expect(UserRole.isContributeur(u(UserRole.ADMIN_AIDE))).toBe(true)
-      expect(UserRole.isContributeur(u(UserRole.CONTRIBUTEUR))).toBe(true)
-    })
-
-    it('returns false for observateur', () => {
-      expect(UserRole.isContributeur(u(UserRole.OBSERVATEUR))).toBe(false)
+    it('returns false for roles below admin', () => {
+      expect(UserRole.isAdmin(u(UserRole.CREATOR))).toBe(false)
     })
 
     it('returns false for null or undefined', () => {
-      expect(UserRole.isContributeur(null)).toBe(false)
-      expect(UserRole.isContributeur(undefined)).toBe(false)
+      expect(UserRole.isAdmin(null)).toBe(false)
+      expect(UserRole.isAdmin(undefined)).toBe(false)
     })
   })
 
-  describe('isObservateur', () => {
+  describe('isCreator', () => {
     it('returns true for all roles', () => {
-      expect(UserRole.isObservateur(u(UserRole.SUPER_ADMIN))).toBe(true)
-      expect(UserRole.isObservateur(u(UserRole.ADMIN_AIDE))).toBe(true)
-      expect(UserRole.isObservateur(u(UserRole.CONTRIBUTEUR))).toBe(true)
-      expect(UserRole.isObservateur(u(UserRole.OBSERVATEUR))).toBe(true)
+      expect(UserRole.isCreator(u(UserRole.SUPER_ADMIN))).toBe(true)
+      expect(UserRole.isCreator(u(UserRole.ADMIN))).toBe(true)
+      expect(UserRole.isCreator(u(UserRole.CREATOR))).toBe(true)
     })
 
     it('returns false for null or undefined', () => {
-      expect(UserRole.isObservateur(null)).toBe(false)
-      expect(UserRole.isObservateur(undefined)).toBe(false)
+      expect(UserRole.isCreator(null)).toBe(false)
+      expect(UserRole.isCreator(undefined)).toBe(false)
     })
   })
 
   describe('isAtLeast', () => {
-    it('respects the hierarchy: observateur < contributeur < administrateur-aide < super-admin', () => {
+    it('respects the hierarchy: creator < admin < super-admin', () => {
       expect(UserRole.isAtLeast(UserRole.SUPER_ADMIN, UserRole.SUPER_ADMIN)).toBe(true)
-      expect(UserRole.isAtLeast(UserRole.SUPER_ADMIN, UserRole.OBSERVATEUR)).toBe(true)
-      expect(UserRole.isAtLeast(UserRole.OBSERVATEUR, UserRole.SUPER_ADMIN)).toBe(false)
-      expect(UserRole.isAtLeast(UserRole.CONTRIBUTEUR, UserRole.ADMIN_AIDE)).toBe(false)
-      expect(UserRole.isAtLeast(UserRole.ADMIN_AIDE, UserRole.CONTRIBUTEUR)).toBe(true)
+      expect(UserRole.isAtLeast(UserRole.SUPER_ADMIN, UserRole.CREATOR)).toBe(true)
+      expect(UserRole.isAtLeast(UserRole.CREATOR, UserRole.SUPER_ADMIN)).toBe(false)
+      expect(UserRole.isAtLeast(UserRole.CREATOR, UserRole.ADMIN)).toBe(false)
+      expect(UserRole.isAtLeast(UserRole.ADMIN, UserRole.CREATOR)).toBe(true)
     })
 
     it('returns true for equal roles', () => {
-      expect(UserRole.isAtLeast(UserRole.CONTRIBUTEUR, UserRole.CONTRIBUTEUR)).toBe(true)
-      expect(UserRole.isAtLeast(UserRole.OBSERVATEUR, UserRole.OBSERVATEUR)).toBe(true)
+      expect(UserRole.isAtLeast(UserRole.CREATOR, UserRole.CREATOR)).toBe(true)
+      expect(UserRole.isAtLeast(UserRole.ADMIN, UserRole.ADMIN)).toBe(true)
     })
   })
 })

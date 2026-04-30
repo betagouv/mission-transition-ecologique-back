@@ -6,7 +6,7 @@ import { WORKFLOW_STATUS_LABELS, type WorkflowStatus } from '@/services/workflow
 
 export const WorkflowStatusBadge: React.FC = () => {
   const { data } = useDocumentInfo();
-  const currentStatus = (data?.workflowStatus ?? 'brouillon') as WorkflowStatus;
+  const currentStatus = (data?.workflowStatus ?? 'en-creation') as WorkflowStatus;
 
   return (
     <div className="doc-controls__status">

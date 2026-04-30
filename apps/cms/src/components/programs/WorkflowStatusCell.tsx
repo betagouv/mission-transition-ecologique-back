@@ -9,7 +9,7 @@ import {
 } from '@/services/workflow/WorkflowTransitionPolicy'
 
 export const WorkflowStatusCell: React.FC<DefaultCellComponentProps> = ({ cellData }) => {
-  const status = (cellData ?? 'brouillon') as WorkflowStatus
+  const status = (cellData ?? 'en-creation') as WorkflowStatus
   const label = WORKFLOW_STATUS_LABELS[status] ?? status
   const colorClass = WORKFLOW_STATUS_COLORS[status] ?? ''
 

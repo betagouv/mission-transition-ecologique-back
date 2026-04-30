@@ -2,8 +2,10 @@
 
 **Date :** 2026-03-16
 **Feature :** [002-programs-workflow](../features/002-programs-workflow.md)
-**Statut :** Implémenté (2026-03-16)
+**Statut :** ⚠️ **Obsolète** — superseded par [ADR 0005 — Workflow des programmes — états étendus](0005-programs-workflow-extended.md) (2026-04-30)
 **Décideurs :** PO, Tech Lead
+
+> Cet ADR documente la première itération du workflow (4 états, 4 rôles). Le modèle a été refondu par l'ADR 0005 pour refléter le diagramme produit cible (9 états, 3 rôles). Conservé pour l'historique des décisions.
 
 ---
 

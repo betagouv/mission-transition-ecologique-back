@@ -9,24 +9,18 @@ const FIXTURES: UserFixture[] = [
     role: UserRole.SUPER_ADMIN,
   },
   {
-    email: 'admin.aide@tee.test',
-    role: UserRole.ADMIN_AIDE,
+    email: 'admin@tee.test',
+    role: UserRole.ADMIN,
     team: 'ADEME Grand Est',
     region: 'Grand Est',
     operatorSlug: 'ademe',
   },
   {
-    email: 'contributeur@tee.test',
-    role: UserRole.CONTRIBUTEUR,
+    email: 'createur@tee.test',
+    role: UserRole.CREATOR,
     team: 'CCI Grand Est',
     region: 'Grand Est',
     operatorSlug: 'ademe',
-  },
-  {
-    email: 'observateur@tee.test',
-    role: UserRole.OBSERVATEUR,
-    team: 'BPI France',
-    region: 'Île-de-France',
   },
 ]
 

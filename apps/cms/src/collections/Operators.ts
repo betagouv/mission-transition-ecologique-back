@@ -11,7 +11,7 @@ export const Operators: CollectionConfig = {
   },
   admin: {
     useAsTitle: 'name',
-    hidden: ({ user }) => !UserRole.isSuperAdmin(user as unknown as { role: UserRoleValue } | null),
+    hidden: ({ user }) => !UserRole.isAdmin(user as unknown as { role: UserRoleValue } | null),
   },
   access: {
     read: OperatorAccessPolicy.read,

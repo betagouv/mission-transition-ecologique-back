@@ -6,9 +6,9 @@ export class OperatorAccessPolicy {
 
   static update: Access = ({ req: { user } }) => {
     if (!user) return false
-    if (UserRole.isSuperAdmin(user)) return true;
+    if (UserRole.isAdmin(user)) return true;
 
-    if (UserRole.isAdminAide(user)) {
+    if (UserRole.isAdmin(user)) {
       const operatorId =
         typeof user.operator === 'object' && user.operator !== null
           ? user.operator.id

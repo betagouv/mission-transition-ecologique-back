@@ -4,7 +4,7 @@ import { UserRole, type UserRoleValue } from '@/utils/user/UserRole'
 export const Media: CollectionConfig = {
   slug: 'media',
   admin: {
-    hidden: ({ user }) => !UserRole.isSuperAdmin(user as unknown as { role: UserRoleValue } | null),
+    hidden: ({ user }) => !UserRole.isAdmin(user as unknown as { role: UserRoleValue } | null),
   },
   access: {
     read: () => true,
