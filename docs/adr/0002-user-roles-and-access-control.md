@@ -58,11 +58,13 @@ Les méthodes statiques sont équivalentes à des fonctions pures (sans état) t
 
 Un champ `assignedContributors` (relation `hasMany` vers `users`) est ajouté directement sur `Programs`. Il définit la liste des utilisateurs autorisés à **modifier** un programme. Le hook `assignCreatorOnCreate` y ajoute automatiquement l'utilisateur courant lorsqu'un `creator` crée un programme — le créateur initial est donc toujours assigné.
 
-**Read (lecture)** — un `creator` rattaché à un opérateur voit dans la liste **tous les programmes de son opérateur** (`{ operator: { equals: user.operator } }`). À défaut d'opérateur rattaché, le filtre retombe sur `{ assignedContributors: { contains: user.id } }`.
+**Read (lecture)** — un `creator` rattaché à un opérateur voit dans la liste **tous les programmes de son opérateur** _ou_ ceux où il figure dans `assignedContributors` (filtre `OR`). Le second terme garantit qu'un programme fraîchement créé en draft sans `operator` (Payload tolère les drafts incomplets) reste accessible à son auteur. À défaut d'opérateur rattaché, le filtre retombe sur `{ assignedContributors: { contains: user.id } }` seul.
 
 **Update (édition)** — la clause `access.update` retourne `{ assignedContributors: { contains: user.id } }` pour le rôle `creator`. Tout programme visible mais hors de cette liste s'ouvre en **lecture seule** dans l'admin (Payload affiche les champs en read-only quand l'access update échoue sur ce document précis).
 
-Cela répond au besoin : un créateur voit l'ensemble des programmes de son opérateur, mais ne peut éditer que ceux qu'il a créés ou pour lesquels il a été ajouté à `assignedContributors`.
+**Opérateur du programme** — à la création par un `creator`, le hook `assignCreatorOnCreate` force `data.operator = user.operator`. Le champ `Programs.operator` expose un `filterOptions` qui restreint le sélecteur d'opérateur à l'opérateur de l'utilisateur courant pour les `creator` (les `admin`/`super-admin` ont accès à la liste complète). Un créateur ne peut donc rattacher un programme qu'à son propre opérateur.
+
+Cela répond au besoin : un créateur voit l'ensemble des programmes de son opérateur, mais ne peut éditer que ceux qu'il a créés ou pour lesquels il a été ajouté à `assignedContributors`, et ne peut pas créer de programme rattaché à un autre opérateur.
 
 **Pourquoi pas une table de jointure séparée ?**
 Une relation directe suffit pour le POC. Une table de jointure apporterait plus de flexibilité (métadonnées d'assignation, historique) mais complexifie la stack sans bénéfice immédiat.

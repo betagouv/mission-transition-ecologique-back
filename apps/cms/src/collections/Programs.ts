@@ -2,7 +2,7 @@ import type { CollectionConfig, FieldAccess } from 'payload'
 import { ProgramAccessPolicy } from '@/services/access/ProgramAccessPolicy'
 import { beforeChangeWorkflow } from '@/hooks/programs/beforeChangeWorkflow'
 import { assignCreatorOnCreate } from '@/hooks/programs/assignCreatorOnCreate'
-import { UserRole } from '@/utils/user/UserRole'
+import { UserRole, type UserRoleValue } from '@/utils/user/UserRole'
 
 export const Programs: CollectionConfig = {
   slug: 'programs',
@@ -93,6 +93,12 @@ export const Programs: CollectionConfig = {
       label: 'Opérateur principal',
       relationTo: 'operators',
       required: true,
+      filterOptions: ({ user }) => {
+        if (!user) return true
+        if (UserRole.isAdmin(user as { role: UserRoleValue })) return true
+        const operatorId = UserRole.getOperatorId(user)
+        return operatorId ? { id: { equals: operatorId } } : true
+      },
     },
     {
       name: 'otherOperators',

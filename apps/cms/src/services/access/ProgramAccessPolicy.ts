@@ -8,8 +8,15 @@ export class ProgramAccessPolicy {
     if (UserRole.isAdmin(user)) return true
 
     if (UserRole.isCreator(user)) {
-      const operatorId = ProgramAccessPolicy.resolveOperatorId(user)
-      if (operatorId) return { operator: { equals: operatorId } }
+      const operatorId = UserRole.getOperatorId(user)
+      if (operatorId) {
+        return {
+          or: [
+            { operator: { equals: operatorId } },
+            { assignedContributors: { contains: user.id } },
+          ],
+        }
+      }
       return { assignedContributors: { contains: user.id } }
     }
 
@@ -33,15 +40,4 @@ export class ProgramAccessPolicy {
   }
 
   static delete: Access = ({ req: { user } }) => UserRole.isAdmin(user)
-
-  private static resolveOperatorId(user: {
-    operator?: unknown
-  }): number | undefined {
-    const op = user.operator
-    if (typeof op === 'object' && op !== null && 'id' in op) {
-      return (op as { id: number }).id
-    }
-    if (typeof op === 'number') return op
-    return undefined
-  }
 }

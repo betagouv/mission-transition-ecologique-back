@@ -30,6 +30,17 @@ export class UserRole {
   static isCreator(user: { role: UserRoleValue } | null | undefined): boolean {
     return user != null && UserRole.isAtLeast(user.role, UserRole.CREATOR)
   }
+
+  static getOperatorId(user: { operator?: unknown } | null | undefined): number | undefined {
+    if (!user) return undefined
+    const op = user.operator
+    if (typeof op === 'number') return op
+    if (typeof op === 'object' && op !== null && 'id' in op) {
+      const id = (op as { id: unknown }).id
+      if (typeof id === 'number') return id
+    }
+    return undefined
+  }
 }
 
 export type UserRoleValue =
