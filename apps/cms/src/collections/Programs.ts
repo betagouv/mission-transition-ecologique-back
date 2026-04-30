@@ -391,6 +391,9 @@ export const Programs: CollectionConfig = {
       ],
       admin: {
         position: 'sidebar',
+        components: {
+          Cell: '@/components/programs/WorkflowStatusCell#WorkflowStatusCell',
+        },
       },
     },
     {

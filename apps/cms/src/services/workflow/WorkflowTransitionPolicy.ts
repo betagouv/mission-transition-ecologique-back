@@ -26,18 +26,6 @@ export const WORKFLOW_STATUS_LABELS: Record<WorkflowStatus, string> = {
   remplace: 'Remplacé',
 }
 
-export const WORKFLOW_STATUS_COLORS: Record<WorkflowStatus, string> = {
-  'en-creation': 'bg-gray-100 text-gray-700',
-  'en-relecture': 'bg-yellow-100 text-yellow-800',
-  'en-cours-publication': 'bg-orange-100 text-orange-800',
-  publie: 'bg-green-100 text-green-800',
-  'en-cours-modification': 'bg-blue-100 text-blue-800',
-  importe: 'bg-purple-100 text-purple-800',
-  annule: 'bg-red-100 text-red-700',
-  archive: 'bg-stone-200 text-stone-700',
-  remplace: 'bg-indigo-100 text-indigo-700',
-}
-
 export const TRANSITION_LABELS: Partial<Record<WorkflowStatus, string>> = {
   'en-relecture': 'Demander la relecture',
   'en-cours-publication': 'Publier',
@@ -52,8 +40,6 @@ export const FINAL_STATUSES: ReadonlySet<WorkflowStatus> = new Set([
   'archive',
   'remplace',
 ])
-
-export const AUTOMATED_PUBLISH_STATUS: WorkflowStatus = 'en-cours-publication'
 
 const ALLOWED_TRANSITIONS: Record<WorkflowStatus, Partial<Record<UserRoleValue, WorkflowStatus[]>>> = {
   'en-creation': {

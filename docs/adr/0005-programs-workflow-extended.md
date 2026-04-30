@@ -32,13 +32,13 @@ Cet ADR remplace l'ADR 0004. Aucune migration de données n'est nécessaire : la
 |------|------|-----------|
 | Super Admin | `super-admin` | Tous les droits, peut effectuer toute transition |
 | Admin | `admin` | Mêmes droits que `super-admin` pour le POC, distinction conservée pour évolutions futures |
-| Créateur | `createur` | Crée et soumet à relecture des programmes auxquels il est rattaché |
+| Créateur | `creator` | Crée et soumet à relecture des programmes auxquels il est rattaché |
 
 Mapping depuis l'ancien :
 
 | Avant (ADR 0002 / 0004) | Après |
 |---|---|
-| `contributeur` | `createur` |
+| `contributeur` | `creator` |
 | `administrateur-aide` | `admin` |
 | `super-admin` | `super-admin` (inchangé) |
 | `observateur` | _supprimé_ |
@@ -79,12 +79,12 @@ Représente fidèlement le cycle métier. Les états finaux (`annule`, `archive`
 
 | De | Vers | Rôles |
 |----|------|-------|
-| `en-creation` | `en-relecture`, `annule` | createur, admin, super-admin |
+| `en-creation` | `en-relecture`, `annule` | créateur, admin, super-admin |
 | `en-relecture` | `en-cours-publication`, `annule` | admin, super-admin |
-| `en-relecture` | `en-cours-modification` | createur, admin, super-admin (souvent implicite via "Enregistrer le brouillon") |
+| `en-relecture` | `en-cours-modification` | créateur, admin, super-admin (souvent implicite via "Enregistrer le brouillon") |
 | `en-cours-publication` | `publie` (auto), `annule` | système (auto) / admin (annuler) |
 | `publie` | `en-cours-modification`, `archive`, `remplace` | admin, super-admin |
-| `en-cours-modification` | `en-relecture` | createur, admin, super-admin |
+| `en-cours-modification` | `en-relecture` | créateur, admin, super-admin |
 | `en-cours-modification` | `en-cours-publication` | admin, super-admin |
 | `importe` | `en-relecture` | admin, super-admin |
 | États finaux (`annule`, `archive`, `remplace`) | _aucune_ | — |
@@ -120,7 +120,7 @@ La transition instantanée préserve la simplicité de l'UI (l'utilisateur cliqu
 **Décision :** Deux portes d'entrée vers `en-cours-modification` :
 
 1. **Explicite** — depuis `publie`, l'admin sélectionne "Modifier" dans le `WorkflowActionBar`. Le hook applique la transition `publie → en-cours-modification` et bascule `_status` en `draft`.
-2. **Implicite (Save Draft)** — depuis `publie` _ou_ `en-relecture`, l'utilisateur (createur ou admin) modifie le formulaire et clique "Enregistrer le brouillon" (bouton natif Payload). Le hook détecte `previousStatus ∈ { 'publie', 'en-relecture' }` + `data._status === 'draft'` et force `workflowStatus = 'en-cours-modification'` avant la persistance. Cela évite à l'utilisateur d'avoir à choisir explicitement la transition pour entrer dans le mode "édition" — qu'il s'agisse de retirer un programme de la file de relecture pour l'amender, ou d'éditer un publié.
+2. **Implicite (Save Draft)** — depuis `publie` _ou_ `en-relecture`, l'utilisateur (créateur ou admin) modifie le formulaire et clique "Enregistrer le brouillon" (bouton natif Payload). Le hook détecte `previousStatus ∈ { 'publie', 'en-relecture' }` + `data._status === 'draft'` et force `workflowStatus = 'en-cours-modification'` avant la persistance. Cela évite à l'utilisateur d'avoir à choisir explicitement la transition pour entrer dans le mode "édition" — qu'il s'agisse de retirer un programme de la file de relecture pour l'amender, ou d'éditer un publié.
 
 Dans les deux cas, grâce au système natif Payload `versions: { drafts: true }` (déjà configuré sur la collection), la version `published` précédente reste accessible via l'API publique (`GET /api/programs?draft=false`) jusqu'à ce que la nouvelle version soit re-publiée.
 
@@ -177,6 +177,6 @@ Conserver la trace de l'ADR 0004 est utile pour comprendre l'historique des choi
 - `payload-types.ts` doit être régénéré : `pnpm nx run @tee-backoffice/cms:generate:types`.
 - `importMap.js` doit être régénéré : `pnpm nx run @tee-backoffice/cms:generate:importmap`.
 - Les utilisateurs de dev seedés changent : `super.admin@tee.test`, `admin@tee.test`, `createur@tee.test` (suppression d'`observateur@tee.test`, `admin.aide@tee.test`, `contributeur@tee.test`).
-- L'access policy `ProgramAccessPolicy` est conservée mais ses appels passent par `UserRole.isAdmin` / `UserRole.isCreateur`.
+- L'access policy `ProgramAccessPolicy` est conservée mais ses appels passent par `UserRole.isAdmin` / `UserRole.isCreator`.
 - Le composant `WorkflowActionBar` ouvre désormais un `window.prompt` simple pour la transition `remplace`. Une UX plus fine (modal + relation picker Payload) est laissée à une feature future.
 - La phase automatisée n'a pas d'effet observable au POC (transition instantanée). Toute future tâche post-publication (mailing, attente date) doit s'ajouter dans `WorkflowAutomation.runPublishingPipeline()` — point d'extension unique.

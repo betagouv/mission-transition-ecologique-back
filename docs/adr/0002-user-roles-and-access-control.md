@@ -88,15 +88,17 @@ L'admin UI utilise un `WorkflowActionBar` custom (cf. ADR 0005) qui pilote les t
 
 La propriété `admin.hidden` de Payload contrôle l'affichage d'une collection dans le menu de navigation, indépendamment des règles d'accès API.
 
-Seule la collection `Programs` est visible pour tous les rôles. Les collections `Users`, `Media`, `Operators` et `Projects` sont réservées au `super-admin` via `admin.hidden: ({ user }) => !UserRole.isSuperAdmin(user)`.
+Seule la collection `Programs` est visible pour tous les rôles. Les collections `Users`, `Media`, `Operators` et `Projects` sont réservées aux rôles `admin` et `super-admin` via `admin.hidden: ({ user }) => !UserRole.isAdmin(user)`. Le `creator` n'y a pas accès depuis la sidebar.
 
 | Collection | creator | admin | super-admin |
 |---|---|---|---|
 | Programs | ✅ visible | ✅ visible | ✅ visible |
-| Users | ❌ masqué | ❌ masqué | ✅ visible |
-| Media | ❌ masqué | ❌ masqué | ✅ visible |
-| Operators | ❌ masqué | ❌ masqué | ✅ visible |
-| Projects | ❌ masqué | ❌ masqué | ✅ visible |
+| Users | ❌ masqué | ✅ visible | ✅ visible |
+| Media | ❌ masqué | ✅ visible | ✅ visible |
+| Operators | ❌ masqué | ✅ visible | ✅ visible |
+| Projects | ❌ masqué | ✅ visible | ✅ visible |
+
+> Conséquence ADR 0005 : `admin` ayant les mêmes droits que `super-admin` au POC, les collections de configuration sont accessibles aux deux. La distinction `admin` / `super-admin` reste portée par le rôle pour évolutions futures.
 
 **Pourquoi `admin.hidden` et non une restriction sur `access.read` ?**
 `admin.hidden` est l'outil Payload dédié à la visibilité UI, orthogonal à la sécurité API. Modifier `access.read` pour cacher des collections aurait des effets de bord sur les requêtes API internes (ex. chargement des relations dans les formulaires). Pour le POC, la restriction est UI-only — les endpoints API restent accessibles aux utilisateurs authentifiés.
