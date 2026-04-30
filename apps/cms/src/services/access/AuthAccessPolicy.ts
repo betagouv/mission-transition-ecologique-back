@@ -4,7 +4,7 @@ import { UserRole } from '@/utils/user/UserRole'
 export class AuthAccessPolicy {
   static isAuthenticated: Access = ({ req: { user } }) => Boolean(user)
 
-  static isSuperAdmin: Access = ({ req: { user } }) => UserRole.isAdmin(user)
+  static isSuperAdmin: Access = ({ req: { user } }) => UserRole.isSuperAdmin(user)
 
   static isAdmin: Access = ({ req: { user } }) => UserRole.isAdmin(user)
 }
