@@ -61,9 +61,6 @@ test.db
 # Env
 .env
 
-# Documentation
-/docs/sources/
-
 test-output
 
 # Local memory files
