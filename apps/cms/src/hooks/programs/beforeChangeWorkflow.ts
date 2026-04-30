@@ -3,46 +3,71 @@ import { APIError } from 'payload'
 import {
   WorkflowTransitionPolicy,
   type WorkflowStatus,
-  type UserRole,
 } from '@/services/workflow/WorkflowTransitionPolicy'
+import { WorkflowAutomation } from '@/services/workflow/WorkflowAutomation'
+import type { UserRoleValue } from '@/utils/user/UserRole'
 
-export const beforeChangeWorkflow: CollectionBeforeChangeHook = async ({
+export const beforeChangeWorkflow: CollectionBeforeChangeHook = ({
   data,
   req,
   operation,
   originalDoc,
 }) => {
-  // --- CREATE : initialiser workflowStatus à 'brouillon' ---
   if (operation === 'create') {
-    data.workflowStatus = data.workflowStatus ?? 'brouillon'
-    data._status = 'draft'
+    data.workflowStatus = data.workflowStatus ?? 'en-creation'
+    data._status = data.workflowStatus === 'publie' ? 'published' : 'draft'
     return data
   }
 
-  // --- UPDATE : valider la transition si workflowStatus a changé ---
-  const previousStatus = (originalDoc?.workflowStatus ?? 'brouillon') as WorkflowStatus
-  const nextStatus = data.workflowStatus as WorkflowStatus | undefined
+  const previousStatus = (originalDoc?.workflowStatus ?? 'en-creation') as WorkflowStatus
 
-  // Pas de changement de statut : ne rien faire
-  if (!nextStatus || nextStatus === previousStatus) return data
+  // Auto-transition: editing a `publie` or `en-relecture` document and clicking
+  // "Save Draft" implicitly moves it to `en-cours-modification`.
+  if (
+    (previousStatus === 'publie' || previousStatus === 'en-relecture') &&
+    data._status === 'draft' &&
+    (!data.workflowStatus || data.workflowStatus === previousStatus)
+  ) {
+    data.workflowStatus = 'en-cours-modification'
+  }
 
-  const role = req.user?.role as UserRole | undefined
+  const nextStatusInput = data.workflowStatus as WorkflowStatus | undefined
+
+  if (!nextStatusInput || nextStatusInput === previousStatus) return data
+
+  const role = req.user?.role as UserRoleValue | undefined
   if (!role) throw new APIError('Utilisateur non authentifié', 401)
 
-  if (!WorkflowTransitionPolicy.canTransition(previousStatus, nextStatus, role)) {
+  if (!WorkflowTransitionPolicy.canTransition(previousStatus, nextStatusInput, role)) {
     throw new APIError(
-      `Transition non autorisée : ${previousStatus} → ${nextStatus} pour le rôle ${role}`,
+      `Transition non autorisée : ${previousStatus} → ${nextStatusInput} pour le rôle ${role}`,
       403,
     )
   }
 
-  // --- Synchroniser _status avec le statut métier ---
-  data._status = nextStatus === 'publie' ? 'published' : 'draft'
+  if (WorkflowTransitionPolicy.requiresReplacement(nextStatusInput) && !data.replacedBy) {
+    throw new APIError(
+      'Un programme remplaçant doit être renseigné (champ "Remplacé par") pour passer à l’état "Remplacé".',
+      400,
+    )
+  }
 
-  // --- Ajouter une entrée dans l'historique ---
+  let resolvedStatus: WorkflowStatus = nextStatusInput
+  if (nextStatusInput === 'en-cours-publication') {
+    const auto = WorkflowAutomation.runPublishingPipeline({
+      payload: req.payload,
+      programId: originalDoc?.id as string | number,
+      validityStart: (data.validityStart ?? originalDoc?.validityStart ?? null) as Date | string | null,
+    })
+    if (auto !== null) resolvedStatus = auto
+  }
+
+  data.workflowStatus = resolvedStatus
+  data._status = resolvedStatus === 'publie' ? 'published' : 'draft'
+
   const historyEntry = {
     from: previousStatus,
-    to: nextStatus,
+    to: resolvedStatus,
     changedBy: req.user?.id,
     changedAt: new Date().toISOString(),
   }

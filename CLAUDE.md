@@ -52,9 +52,8 @@ pnpm seed                                  # seed complet : operators + programs
 | Email | Mot de passe | Rôle |
 |---|---|---|
 | `super.admin@tee.test` | `super.admin@tee.test` | `super-admin` |
-| `admin.aide@tee.test` | `admin.aide@tee.test` | `administrateur-aide` |
-| `contributeur@tee.test` | `contributeur@tee.test` | `contributeur` |
-| `observateur@tee.test` | `observateur@tee.test` | `observateur` |
+| `admin@tee.test` | `admin@tee.test` | `admin` |
+| `createur@tee.test` | `createur@tee.test` | `creator` |
 
 Les fichiers seed vivent dans `apps/cms/src/scripts/seed/` :
 - `run.ts` — entrypoint `pnpm seed` (initialisation Payload + orchestration)
@@ -85,11 +84,11 @@ Les fichiers seed vivent dans `apps/cms/src/scripts/seed/` :
 - `src/app/(payload)/admin/` — routes UI admin PayloadCMS
 - `src/app/(payload)/api/[...slug]/` — routes REST API PayloadCMS
 - `payload-types.ts` — généré automatiquement par Payload, **ne pas modifier à la main**
-- `src/utils/user/UserRole.ts` — classe `UserRole` (constantes, hiérarchie, méthodes `isSuperAdmin` / `isAdminAide` / …) + type `UserRoleValue`
+- `src/utils/user/UserRole.ts` — classe `UserRole` (constantes, hiérarchie, méthodes `isSuperAdmin` / `isAdmin` / `isCreator`) + type `UserRoleValue`
 - `src/constants/` — options de select réutilisables (`themesOptions.ts`, `nafSectionsOptions.ts`)
-- `src/services/workflow/` — `WorkflowTransitionPolicy` (logique de transitions, partagée client/serveur)
-- `src/hooks/programs/` — `beforeChangeWorkflow` (validation et sync `workflowStatus` ↔ `_status`)
-- `src/components/programs/` — `WorkflowActionBar` (bouton contextuel), `WorkflowStatusCell` (badge liste)
+- `src/services/workflow/` — `WorkflowTransitionPolicy` (logique de transitions, partagée client/serveur), `WorkflowAutomation` (point d'extension phase automatisée)
+- `src/hooks/programs/` — `beforeChangeWorkflow` (validation, sync `workflowStatus` ↔ `_status`, intégration `WorkflowAutomation`)
+- `src/components/programs/` — `WorkflowActionBar` (bouton contextuel), `WorkflowStatusBadge` (statut sidebar), `WorkflowStatusCell` (badge liste)
 
 ## Documentation de référence
 
@@ -106,7 +105,8 @@ Ne lire un ADR que s'il est pertinent pour la tâche en cours.
 | `docs/adr/0001-programs-collection.md` | Schéma de la collection `Programs` — champs, types, relations, workflowStatus |
 | `docs/adr/0002-user-roles-and-access-control.md` | Rôles utilisateurs, hiérarchie des rôles, `UserRole`, access control (`AuthAccessPolicy`, `ProgramAccessPolicy`, `OperatorAccessPolicy`) |
 | `docs/adr/0003-projects-collection.md` | Schéma de la collection `Projects` — thèmes, secteurs NAF, liaisons entre projets |
-| `docs/adr/0004-programs-workflow.md` | Workflow éditorial des programmes — transitions, `WorkflowTransitionPolicy`, `WorkflowActionBar`, hook `beforeChangeWorkflow` |
+| `docs/adr/0004-programs-workflow.md` | ⚠️ Obsolète — superseded par ADR 0005 |
+| `docs/adr/0005-programs-workflow-extended.md` | Workflow éditorial des programmes — 9 états, 3 rôles, `WorkflowTransitionPolicy`, `WorkflowAutomation`, `replacedBy` |
 
 ## Commits
 

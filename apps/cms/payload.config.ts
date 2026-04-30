@@ -33,7 +33,16 @@ export default buildConfig({
   }),
   i18n: {
     fallbackLanguage: 'en',
-    supportedLanguages:  { fr },
+    supportedLanguages: { fr },
+    translations: {
+      fr: {
+        general: {
+          createNew: 'Créer un nouveau',
+          createNewLabel: 'Créer un nouveau {{label}}',
+          creatingNewLabel: 'Création d’un nouveau {{label}}',
+        },
+      },
+    },
   },
   plugins: [],
 })

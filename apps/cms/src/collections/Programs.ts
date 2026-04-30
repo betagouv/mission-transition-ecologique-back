@@ -1,7 +1,8 @@
 import type { CollectionConfig, FieldAccess } from 'payload'
 import { ProgramAccessPolicy } from '@/services/access/ProgramAccessPolicy'
 import { beforeChangeWorkflow } from '@/hooks/programs/beforeChangeWorkflow'
-import { UserRole } from '@/utils/user/UserRole'
+import { assignCreatorOnCreate } from '@/hooks/programs/assignCreatorOnCreate'
+import { UserRole, type UserRoleValue } from '@/utils/user/UserRole'
 
 export const Programs: CollectionConfig = {
   slug: 'programs',
@@ -11,6 +12,7 @@ export const Programs: CollectionConfig = {
   },
   admin: {
     useAsTitle: 'title',
+    defaultColumns: ['title', 'operator', 'aidType', 'workflowStatus', 'updatedAt'],
     components: {
       edit: {
         PublishButton:
@@ -20,7 +22,7 @@ export const Programs: CollectionConfig = {
     },
   },
   hooks: {
-    beforeChange: [beforeChangeWorkflow],
+    beforeChange: [assignCreatorOnCreate, beforeChangeWorkflow],
   },
   access: {
     read: ProgramAccessPolicy.read,
@@ -91,6 +93,12 @@ export const Programs: CollectionConfig = {
       label: 'Opérateur principal',
       relationTo: 'operators',
       required: true,
+      filterOptions: ({ user }) => {
+        if (!user) return true
+        if (UserRole.isAdmin(user as { role: UserRoleValue })) return true
+        const operatorId = UserRole.getOperatorId(user)
+        return operatorId ? { id: { equals: operatorId } } : true
+      },
     },
     {
       name: 'otherOperators',
@@ -374,17 +382,43 @@ export const Programs: CollectionConfig = {
       name: 'workflowStatus',
       type: 'select',
       label: 'Statut de workflow',
-      defaultValue: 'brouillon',
+      defaultValue: 'en-creation',
       required: true,
       options: [
-        { label: 'Brouillon', value: 'brouillon' },
-        { label: 'En révision', value: 'en-revision' },
-        { label: 'Validé', value: 'valide' },
+        { label: 'En création', value: 'en-creation' },
+        { label: 'En relecture', value: 'en-relecture' },
+        { label: 'En cours de publication', value: 'en-cours-publication' },
         { label: 'Publié', value: 'publie' },
+        { label: 'En cours de modification', value: 'en-cours-modification' },
+        { label: 'Importé', value: 'importe' },
+        { label: 'Annulé', value: 'annule' },
+        { label: 'Archivé', value: 'archive' },
+        { label: 'Remplacé', value: 'remplace' },
       ],
       admin: {
         position: 'sidebar',
+        components: {
+          Cell: '@/components/programs/WorkflowStatusCell#WorkflowStatusCell',
+        },
       },
+    },
+    {
+      name: 'replacedBy',
+      type: 'relationship',
+      label: 'Remplacé par',
+      relationTo: 'programs',
+      hasMany: false,
+      admin: {
+        position: 'sidebar',
+        description:
+          'Programme de remplacement. Requis lors du passage à l’état "Remplacé".',
+        condition: (data) =>
+          data?.workflowStatus === 'remplace' || Boolean(data?.replacedBy),
+      },
+      filterOptions: ({ id }) => ({
+        id: { not_equals: id },
+        workflowStatus: { not_in: ['annule', 'archive', 'remplace'] },
+      }),
     },
     {
       name: 'workflowHistory',
@@ -440,7 +474,7 @@ export const Programs: CollectionConfig = {
       access: {
         update: (({ req: { user } }) => {
           if (!user) return false;
-          return UserRole.isAdminAide(user);
+          return UserRole.isAdmin(user);
         }) satisfies FieldAccess,
       },
     },
@@ -456,7 +490,7 @@ export const Programs: CollectionConfig = {
       },
       access: {
         update: (({ req: { user } }) =>
-          UserRole.isAdminAide(user)) satisfies FieldAccess,
+          UserRole.isAdmin(user)) satisfies FieldAccess,
       },
     },
 

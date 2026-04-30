@@ -73,18 +73,16 @@ Elle insère :
 | Email | Mot de passe | Rôle |
 |---|---|---|
 | `super.admin@tee.test` | `super.admin@tee.test` | `super-admin` |
-| `admin.aide@tee.test` | `admin.aide@tee.test` | `administrateur-aide` |
-| `contributeur@tee.test` | `contributeur@tee.test` | `contributeur` |
-| `observateur@tee.test` | `observateur@tee.test` | `observateur` |
+| `admin@tee.test` | `admin@tee.test` | `admin` |
+| `createur@tee.test` | `createur@tee.test` | `creator` |
 
-Les rôles suivent une hiérarchie : `super-admin` > `administrateur-aide` > `contributeur` > `observateur`. Un rôle supérieur hérite des droits de tous les rôles inférieurs.
+Les rôles suivent une hiérarchie : `super-admin` > `admin` > `creator`. Un rôle supérieur hérite des droits de tous les rôles inférieurs.
 
-| méthode `UserRole` | observateur | contributeur | administrateur-aide | super-admin |
-|---|---|---|---|---|
-| `isSuperAdmin` | ❌ | ❌ | ❌ | ✅ |
-| `isAdminAide` | ❌ | ❌ | ✅ | ✅ |
-| `isContributeur` | ❌ | ✅ | ✅ | ✅ |
-| `isObservateur` | ✅ | ✅ | ✅ | ✅ |
+| méthode `UserRole` | creator | admin | super-admin |
+|---|---|---|---|
+| `isSuperAdmin` | ❌ | ❌ | ✅ |
+| `isAdmin` | ❌ | ✅ | ✅ |
+| `isCreator` | ✅ | ✅ | ✅ |
 
 L'interface d'administration est accessible sur `http://localhost:3000/admin` après `pnpm nx run @tee-backoffice/cms:dev`.
 

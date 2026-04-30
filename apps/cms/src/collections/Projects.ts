@@ -12,7 +12,7 @@ export const Projects: CollectionConfig = {
   },
   admin: {
     useAsTitle: 'title',
-    hidden: ({ user }) => !UserRole.isSuperAdmin(user as unknown as { role: UserRoleValue }),
+    hidden: ({ user }) => !UserRole.isAdmin(user as unknown as { role: UserRoleValue }),
   },
   fields: [
     // --- Identity ---

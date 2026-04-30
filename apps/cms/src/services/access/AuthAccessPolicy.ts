@@ -6,5 +6,5 @@ export class AuthAccessPolicy {
 
   static isSuperAdmin: Access = ({ req: { user } }) => UserRole.isSuperAdmin(user)
 
-  static isAdminOrAbove: Access = ({ req: { user } }) => UserRole.isAdminAide(user)
+  static isAdmin: Access = ({ req: { user } }) => UserRole.isAdmin(user)
 }

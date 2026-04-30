@@ -5,40 +5,39 @@ export class ProgramAccessPolicy {
   static read: Access = ({ req: { user } }): AccessResult => {
     if (!user) return false
 
-    if (UserRole.isAdminAide(user)) return true
+    if (UserRole.isAdmin(user)) return true
 
-    if (UserRole.isContributeur(user)) {
-      return { assignedContributors: { contains: user.id } };
-    }
-
-    return true
-  }
-
-  static create: Access = ({ req: { user } }) => {
-    if (!user) return false
-    return UserRole.isContributeur(user)
-  }
-
-  static update: Access = ({ req: { user } }): AccessResult => {
-    if (!user) return false
-
-    if (UserRole.isSuperAdmin(user)) return true;
-
-    if (UserRole.isAdminAide(user)) {
-      const operatorId =
-        typeof user.operator === 'object' && user.operator !== null
-          ? (user.operator as { id: number }).id
-          : (user.operator as number | null | undefined);
-      if (!operatorId) return false;
-      return { operator: { equals: operatorId } };
-    }
-
-    if (UserRole.isContributeur(user)) {
+    if (UserRole.isCreator(user)) {
+      const operatorId = UserRole.getOperatorId(user)
+      if (operatorId) {
+        return {
+          or: [
+            { operator: { equals: operatorId } },
+            { assignedContributors: { contains: user.id } },
+          ],
+        }
+      }
       return { assignedContributors: { contains: user.id } }
     }
 
     return false
   }
 
-  static delete: Access = ({ req: { user } }) => UserRole.isSuperAdmin(user)
+  static create: Access = ({ req: { user } }) => {
+    return UserRole.isCreator(user)
+  }
+
+  static update: Access = ({ req: { user } }): AccessResult => {
+    if (!user) return false
+
+    if (UserRole.isAdmin(user)) return true
+
+    if (UserRole.isCreator(user)) {
+      return { assignedContributors: { contains: user.id } }
+    }
+
+    return false
+  }
+
+  static delete: Access = ({ req: { user } }) => UserRole.isAdmin(user)
 }
