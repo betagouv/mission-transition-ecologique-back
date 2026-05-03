@@ -13,16 +13,8 @@ export interface SourceEligibilityConditions {
 
 export interface SourceEligibilityData {
   company?: {
-    allowedNafSections?: string[]
-    minEmployees?: string | number
-    maxEmployees?: string | number
     excludeMicroentrepreneur?: boolean
   }
-  validity?: {
-    start?: string
-    end?: string
-  }
-  priorityObjectives?: string[]
 }
 
 export interface SourceProgram {

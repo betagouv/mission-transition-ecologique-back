@@ -64,21 +64,7 @@ export class ProgramMapper {
         activityYears: ValueArrayConverter.from(eligibilityCondition?.["nombre d'années d'activité"]),
         otherCriteria: ValueArrayConverter.from(eligibilityCondition?.["autres critères d'éligibilité"]),
       },
-      eligibilityData: {
-        company: {
-          allowedNafSections: ValueArrayConverter.from(eligibilityData?.company?.allowedNafSections),
-          minEmployees: eligibilityData?.company?.minEmployees !== undefined
-            ? Number(eligibilityData.company.minEmployees)
-            : undefined,
-          maxEmployees: eligibilityData?.company?.maxEmployees !== undefined
-            ? Number(eligibilityData.company.maxEmployees)
-            : undefined,
-          excludeMicroentrepreneur: eligibilityData?.company?.excludeMicroentrepreneur ?? false,
-        },
-        validityStart: FrenchDateParser.parse(eligibilityData?.validity?.start),
-        validityEnd: FrenchDateParser.parse(eligibilityData?.validity?.end),
-        priorityObjectives: ValueArrayConverter.from(eligibilityData?.priorityObjectives),
-      },
+      excludeMicroentrepreneur: eligibilityData?.company?.excludeMicroentrepreneur ?? false,
       workflowStatus: 'publie' as const,
       _status: 'published' as const,
       metaTitle: program.metaTitre,

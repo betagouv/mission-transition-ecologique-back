@@ -24,6 +24,7 @@ const ACTIVITY_SECTOR_OPTIONS = [
   { label: 'Artisanat', value: 'artisanat' },
   { label: 'Tourisme', value: 'tourisme' },
   { label: 'Autre secteur spécifique', value: 'other' },
+  { label: 'Code NAF spécifique associé', value: 'naf-code' },
 ] as const
 
 const CONTACT_METHOD_OPTIONS = [
@@ -389,19 +390,19 @@ export const Programs: CollectionConfig = {
             description: 'Exemple : https://...',
           },
         },
-        {
-          name: 'validityStart',
-          type: 'date',
-          label: 'Date de début de validité',
-          admin: { date: { pickerAppearance: 'dayOnly' } },
-        },
-        {
-          name: 'validityEnd',
-          type: 'date',
-          label: 'Date de fin de validité',
-          admin: { date: { pickerAppearance: 'dayOnly' } },
-        },
       ],
+    },
+    {
+      name: 'validityStart',
+      type: 'date',
+      label: 'Date de début de validité',
+      admin: { date: { pickerAppearance: 'dayOnly' } },
+    },
+    {
+      name: 'validityEnd',
+      type: 'date',
+      label: 'Date de fin de validité',
+      admin: { date: { pickerAppearance: 'dayOnly' } },
     },
 
     // ===================================================================
@@ -519,7 +520,7 @@ export const Programs: CollectionConfig = {
           admin: {
             condition: (data) =>
               Array.isArray(data?.activitySectors) &&
-              (data.activitySectors as string[]).includes('other'),
+              (data.activitySectors as string[]).includes('naf-code'),
           },
         },
         {
@@ -551,85 +552,33 @@ export const Programs: CollectionConfig = {
     },
 
     // ===================================================================
-    // KEPT FOR LATER ARBITRATION (hidden / legacy)
+    // CHAMPS À ARBITRER (legacy — décision PO en attente)
     // ===================================================================
     {
-      name: 'temporarilyUnavailable',
-      type: 'checkbox',
-      label: 'Temporairement indisponible',
-      defaultValue: false,
-      admin: {
-        description: 'Champ historique — à arbitrer.',
-      },
-    },
-    {
-      name: 'selfActivatable',
-      type: 'select',
-      label: 'Activable en autonomie',
-      options: [
-        { label: 'Oui', value: 'oui' },
-        { label: 'Non', value: 'non' },
-      ],
-      admin: {
-        description: 'Champ historique — à arbitrer.',
-      },
-    },
-    {
-      name: 'eligibilityData',
-      type: 'group',
-      label: "Données d'éligibilité (structurées, machine-readable)",
-      admin: {
-        description: 'Champ historique — à arbitrer (utilisé pour le scoring).',
-      },
+      type: 'collapsible',
+      label: 'Champs à arbitrer',
+      admin: { initCollapsed: true },
       fields: [
         {
-          name: 'company',
-          type: 'group',
-          label: 'Entreprise',
-          fields: [
-            {
-              name: 'allowedNafSections',
-              type: 'array',
-              label: 'Sections NAF autorisées',
-              dbName: 'elig_data_co_naf_sections',
-              fields: [
-                {
-                  name: 'value',
-                  type: 'text',
-                  label: 'Valeur',
-                  required: true,
-                },
-              ],
-            },
-            { name: 'minEmployees', type: 'number', label: 'Nombre minimum de salariés' },
-            { name: 'maxEmployees', type: 'number', label: 'Nombre maximum de salariés' },
-            {
-              name: 'excludeMicroentrepreneur',
-              type: 'checkbox',
-              label: 'Exclure les micro-entrepreneurs',
-              defaultValue: false,
-            },
+          name: 'temporarilyUnavailable',
+          type: 'checkbox',
+          label: 'Temporairement indisponible',
+          defaultValue: false,
+        },
+        {
+          name: 'selfActivatable',
+          type: 'select',
+          label: 'Activable en autonomie',
+          options: [
+            { label: 'Oui', value: 'oui' },
+            { label: 'Non', value: 'non' },
           ],
         },
         {
-          name: 'validityStart',
-          type: 'date',
-          label: 'Début de validité',
-          admin: { date: { pickerAppearance: 'dayOnly' } },
-        },
-        {
-          name: 'validityEnd',
-          type: 'date',
-          label: 'Fin de validité',
-          admin: { date: { pickerAppearance: 'dayOnly' } },
-        },
-        {
-          name: 'priorityObjectives',
-          type: 'array',
-          label: 'Objectifs prioritaires',
-          fields: [
-            { name: 'value', type: 'text', label: 'Valeur', required: true },
-          ],
+          name: 'excludeMicroentrepreneur',
+          type: 'checkbox',
+          label: 'Exclure les micro-entrepreneurs',
+          defaultValue: false,
         },
       ],
     },

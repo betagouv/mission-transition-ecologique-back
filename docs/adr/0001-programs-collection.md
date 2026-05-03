@@ -72,7 +72,8 @@ Default à la création : 3 étapes, dont les 2 premières contiennent un lien v
 | `contactMethods` | select hasMany | `advisor` / `email` / `url` |
 | `contactEmail` | email | conditionnel — affiché si `contactMethods` ⊃ `email` |
 | `contactPageUrl` | text | conditionnel — affiché si `contactMethods` ⊃ `url` |
-| `validityStart`, `validityEnd` | date | optional |
+
+Puis hors section, à la racine : `validityStart`, `validityEnd` (date, optional).
 
 #### Section "Projet"
 
@@ -90,9 +91,9 @@ Default à la création : 3 étapes, dont les 2 premières contiennent un lien v
 | `companySizeOther` | text | conditionnel si `companySizes` ⊃ `other` |
 | `geographicAreas` | relationship → geographic-areas[] | Voir §5 |
 | `geographicAreaFeedback` | text | Pour signaler une zone manquante |
-| `activitySectors` | select hasMany | Enums : `all`, `agriculture`, `industrie`, `tertiaire`, `commerce`, `artisanat`, `tourisme`, `other`. Default = `[all]`. |
+| `activitySectors` | select hasMany | Enums : `all`, `agriculture`, `industrie`, `tertiaire`, `commerce`, `artisanat`, `tourisme`, `other`, `naf-code`. Default = `[all]`. |
 | `activitySectorOther` | text | conditionnel si `activitySectors` ⊃ `other` |
-| `nafCodeOther` | text | conditionnel idem |
+| `nafCodeOther` | text | conditionnel si `activitySectors` ⊃ `naf-code` |
 | `otherCriteria` | array (RowLabel = "Autres critère d'éligibilité N") | `{ value: text required }[]` |
 
 Puis `additionalInfo` (richText) — "Informations complémentaires".
@@ -101,9 +102,15 @@ Puis `additionalInfo` (richText) — "Informations complémentaires".
 
 `slug`, `workflowStatus`, `workflowHistory`, `_status`, `assignedContributors`, `metaTitle`, `metaDescription`. Voir ADR 0004 pour le workflow éditorial.
 
-#### Champs conservés en sursis
+#### Section "Champs à arbitrer"
 
-`temporarilyUnavailable` (checkbox), `selfActivatable` (select `oui`/`non`), `eligibilityData` (groupe machine-readable historique). Ne figurent plus dans la spec produit mais restent en BDD pour permettre une décision PO future. Marqués comme tels dans `admin.description`.
+Section collapsible (repliée par défaut) regroupant les champs hérités qui ne figurent plus dans la spec produit mais restent en BDD pour permettre une décision PO future :
+
+| Champ | Type | Notes |
+|---|---|---|
+| `temporarilyUnavailable` | checkbox | Default `false` |
+| `selfActivatable` | select `oui` / `non` | |
+| `excludeMicroentrepreneur` | checkbox | Default `false` — extrait de l'ancien groupe `eligibilityData.company` pour réduire la profondeur visuelle |
 
 ### 4. Le formulaire est dérivé du schéma — comment plier la forme
 
@@ -136,7 +143,7 @@ Visibilité : `hidden: true` sauf super-admin. C'est de la donnée de référenc
 
 L'ancien double modèle (`eligibilityConditions` texte + `eligibilityData` machine-readable) est remplacé par des champs typés directement (enums, relations, arrays). Ce qui ne rentre pas dans les enums (libellés libres reçus du métier) est capturé dans des champs `*Other` jumeaux. Ce design supprime la duplication au prix d'une exigence : les nouvelles entrées doivent être mappées sur les enums dès la saisie.
 
-`eligibilityData` (groupe machine-readable historique) est conservé en sursis (cf. §3 fin) — sera tranché lorsque le moteur de scoring sera réintégré.
+Le seul rescapé du groupe `eligibilityData` est `excludeMicroentrepreneur`, désormais champ booléen à plat dans la section "Champs à arbitrer" (cf. §3) — sera tranché lorsque le moteur de scoring sera réintégré.
 
 ### 7. Cycle de vie éditorial
 
@@ -144,7 +151,7 @@ Cf. ADR 0004 pour le détail. En résumé : `versions: { drafts: true }` natif P
 
 ### 8. Champs Date natifs Payload
 
-`validityStart`, `validityEnd` (et leurs équivalents historiques dans `eligibilityData`) utilisent le type `date` de Payload pour bénéficier du date-picker admin et des requêtes par plage.
+`validityStart`, `validityEnd` utilisent le type `date` de Payload pour bénéficier du date-picker admin et des requêtes par plage.
 
 ---
 
