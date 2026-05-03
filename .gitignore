@@ -65,3 +65,5 @@ test-output
 
 # Local memory files
 memory/MEMORY.local.md
+local/**
+docs/sources/exports/**
