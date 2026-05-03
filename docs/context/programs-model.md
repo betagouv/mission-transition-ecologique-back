@@ -1,7 +1,7 @@
 # Modèle des collections Programs, Operators et GeographicAreas
 
 Spec consolidée pour l'implémentation dans PayloadCMS (post-refonte du formulaire).
-Voir aussi : `docs/adr/0001-programs-collection.md` (modèle initial), `docs/adr/0005-programs-form-refactor.md` (refonte 2026-04), `docs/adr/0006-geographic-areas-collection.md`.
+Voir aussi : `docs/adr/0001-programs-collection.md` (modèle initial), `docs/adr/0006-programs-form-refactor.md` (refonte 2026-04 — schéma actuel + collection `GeographicAreas`).
 
 ---
 

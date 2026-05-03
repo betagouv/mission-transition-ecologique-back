@@ -1,7 +1,6 @@
-# ADR 0001 — Collections Programs, Operators et GeographicAreas
+# ADR 0001 — Collection Programs dans PayloadCMS
 
-**Date initiale :** 2026-03-11
-**Dernière révision :** 2026-04-29 (refonte du formulaire des dispositifs)
+**Date :** 2026-03-11
 **Statut :** Accepté
 **Décideurs :** PO, SM, Tech Lead
 
@@ -9,155 +8,122 @@
 
 ## Contexte
 
-Le projet TEE POC Backoffice ingère et expose des dispositifs d'aide à la transition écologique (la collection `Programs` ; "dispositifs" côté métier). L'objectif est double : permettre l'édition de ces dispositifs via l'interface d'administration PayloadCMS, et exposer les données via API à un frontend public.
-
-Cette ADR documente le modèle de données **dans son état actuel**, après la refonte du formulaire menée en avril 2026 sur la base d'une nouvelle spec produit.
+Le projet TEE POC Backoffice doit ingérer et exposer 234 programmes d'aide à la transition écologique, actuellement stockés dans `docs/sources/programs.json`. L'objectif est double : importer les données existantes (seed initial) et permettre leur édition via l'interface d'administration PayloadCMS.
 
 ---
 
 ## Décisions
 
-### 1. Trois collections : `Programs`, `Operators`, `GeographicAreas`
+### 1. Deux collections distinctes : `Programs` + `Operators`
 
-- **`Operators`** : opérateurs (ADEME, BPI France, CCI…). Collection séparée pour déduplication, cohérence des noms et édition centralisée. Lien via `operator` (relationship requis) et `otherOperators` (hasMany) sur `Programs`.
-- **`Programs`** : les dispositifs eux-mêmes. Voir §3 pour le détail.
-- **`GeographicAreas`** : zones géographiques (régions, départements, communes, EPCI). Référencées par `Programs.geographicAreas` (hasMany) — voir §5.
+**Décision :** Créer une collection `Operators` séparée de `Programs`, liée par une relation Payload.
+
+**Alternatives considérées :**
+- Collection plate (opérateur comme simple champ texte dans Programs)
+- Collection plate avec duplication des données opérateur
+
+**Justification :**
+Le JSON source contient ~40 opérateurs distincts référencés par plusieurs programmes. Une collection dédiée permet la déduplication, la cohérence des noms, et l'édition centralisée d'un opérateur (URL de contact, nom canonique). La relation Payload garantit l'intégrité référentielle.
+
+---
 
 ### 2. Exclusion de `publicodes` du modèle CMS
 
-Le moteur de règles métier `publicodes` (DSL YAML/JSON) reste géré hors-CMS. Sa structure est complexe et évolutive ; risque de corruption élevé via un formulaire d'admin. Le moteur de calcul d'éligibilité consomme `publicodes` depuis sa propre source de vérité.
+**Décision :** Le champ `publicodes` du JSON source n'est pas importé dans PayloadCMS.
 
-### 3. Modèle de la collection `Programs`
+**Justification :**
+- `publicodes` est un moteur de règles métier (DSL YAML/JSON) géré par une équipe dédiée et un outillage spécifique.
+- Sa structure est complexe, évolutive, et non adaptée à l'édition manuelle dans un formulaire CMS.
+- Le moteur de calcul d'éligibilité consomme `publicodes` depuis sa propre source de vérité — le CMS n'est pas cette source.
+- Risque élevé de corruption si édité via l'admin Payload.
 
-Le formulaire est organisé en sections (collapsibles Payload) qui suivent la spec métier.
+**Conséquence :** Les règles `publicodes` restent dans le fichier JSON source ou dans un système dédié. Le CMS stocke uniquement `eligibilityData`, qui est la représentation structurée machine-readable des critères d'éligibilité sans logique de règles.
 
-#### En-tête
+---
 
-| Champ | Type | Contraintes |
-|---|---|---|
-| `title` | text | required — "Titre" |
-| `operator` | relationship → operators | required — "Opérateur principal" |
-| `otherOperators` | relationship → operators[] | hasMany — "Autres opérateurs" |
-| `url` | text | required — "Lien du dispositif" |
-| `aidType` | select | required — `financement` / `pret` / `avantage-fiscal` / `formation` / `diagnostic-etude` |
+### 3. Double modèle d'éligibilité conservé
 
-Champs conditionnels par `aidType` (montants/durées spécifiques) :
+**Décision :** Conserver à la fois `eligibilityConditions` (texte lisible humain) et `eligibilityData` (données structurées machine-readable).
 
-| `aidType` | Champs visibles |
+**Justification :**
+- `eligibilityConditions` est rédigé pour l'affichage à l'utilisateur final (ex : « Plus de 50 salariés »).
+- `eligibilityData` est consommé programmatiquement pour le filtrage/scoring (ex : `minEmployees: 50`).
+- Ces deux représentations ont des cycles de vie différents : le texte peut évoluer sans changer la logique, et vice versa.
+- Supprimer l'un forcerait une transformation coûteuse à chaque lecture ou écriture.
+
+---
+
+### 4. Champs Date natifs Payload
+
+**Décision :** Utiliser le type `date` de Payload pour `validityStart`, `validityEnd` (et leurs équivalents dans `eligibilityData`).
+
+**Justification :**
+- Les dates du JSON source sont au format `DD/MM/YYYY` (ex : `"06/02/2023"`).
+- Le script de seed convertit ces dates en ISO 8601 avant insertion.
+- Le type `date` de Payload offre un date-picker dans l'admin et facilite les requêtes par plage de dates via l'API.
+
+---
+
+### 5. Stratégie de migration : script de seed
+
+**Décision :** Fournir un script `apps/cms/src/scripts/seed/run.ts` utilisant la Local API Payload pour l'import initial.
+
+**Justification :**
+- La Local API Payload bypasse HTTP, est typée, et respecte les hooks/validations Payload.
+- Le script est idempotent (upsert par slug) pour permettre des ré-exécutions sans duplication.
+- Ordre d'import : Operators d'abord (déduplication), puis Programs (résolution des relations).
+
+---
+
+### 7. Cycle de vie éditorial via le système natif `versions/drafts` de Payload
+
+**Décision :** Remplacer le champ `status` custom (6 valeurs) par le système natif `versions: { drafts: true }` de Payload, avec surcharge du champ `_status` pour y ajouter un `access.update` restreint.
+
+**Configuration :**
+```typescript
+versions: {
+  drafts: true,
+  maxPerDoc: 100,
+}
+```
+
+**Mapping des anciens états :**
+
+| Ancien `status` | Nouveau `_status` Payload |
 |---|---|
-| `financement` | `fundingAmount` |
-| `pret` | `loanAmount` |
-| `avantage-fiscal` | `taxBenefitAmount` |
-| `formation` | `formationRemainingCost`, `formationDuration` |
-| `diagnostic-etude` | `studyRemainingCost`, `studyDuration` |
+| `brouillon` | `draft` |
+| `en_attente_de_validation` | `draft` (soumis par contributeur) |
+| `a_relire` | `draft` (retourné par admin) |
+| `en_ligne` | `published` |
+| `derniers_jours` | `published` + `validityEnd` proche (dérivé) |
+| `expiree` | `draft` + `validityEnd` passé |
 
-Pitch : `promise` (text required), `description` (richText required).
+**Justification :**
+- Le système natif offre l'historique des versions dans l'admin UI et les boutons "Save Draft" / "Publish" natifs.
+- Les états intermédiaires (`en_attente_de_validation`, `a_relire`) deviennent implicites via l'historique des versions et les droits d'accès, sans nécessiter de valeurs explicites.
+- La surcharge du champ `_status` injecté par Payload permet d'y ajouter `access.update` pour restreindre la publication aux `administrateur-aide` et `super-admin`.
+- L'historique des versions est conservé en base dans la table `_programs_v`.
 
-#### Section "Étapes pour en bénéficier"
+**Conséquence :**
+- Un `contributeur` peut sauvegarder en brouillon mais ne peut pas publier (le champ `_status` est en lecture seule pour ce rôle).
+- Les programmes seedés depuis `docs/sources/programs.json` reçoivent `_status: 'published'`.
+- La requête `fetchExisting` du seeder utilise `draft: true` pour trouver les programmes quel que soit leur statut (idempotence).
 
-```
-steps: array (RowLabel = "Étape N")
-  ├─ description: text required
-  └─ links: array (RowLabel = "Lien" / "Lien 2" / …)
-       ├─ url: text
-       └─ linkLabel: text
-```
+---
 
-Default à la création : 3 étapes, dont les 2 premières contiennent un lien vide.
+### 6. Illustration comme chemin relatif (pas Media)
 
-#### Section "Mode de contact"
+**Décision :** Le champ `illustration` est un champ `text` stockant un chemin relatif (ex : `"images/TEE_energie_verte.webp"`), non une relation vers la collection `Media`.
 
-| Champ | Type | Notes |
-|---|---|---|
-| `contactMethods` | select hasMany | `advisor` / `email` / `url` |
-| `contactEmail` | email | conditionnel — affiché si `contactMethods` ⊃ `email` |
-| `contactPageUrl` | text | conditionnel — affiché si `contactMethods` ⊃ `url` |
-
-Puis hors section, à la racine : `validityStart`, `validityEnd` (date, optional).
-
-#### Section "Projet"
-
-| Champ | Type | Notes |
-|---|---|---|
-| `themes` | select hasMany | `THEMES_OPTIONS` ; sert à filtrer les projets associables |
-| `linkedProjectsCounter` | `type: 'ui'` | Compteur live "[x] projets possiblement liés à ce dispositif" |
-| `linkedProjects` | relationship → projects[] | Liaison explicite |
-
-#### Section "Éligibilité"
-
-| Champ | Type | Notes |
-|---|---|---|
-| `companySizes` | select hasMany | Enums : `0-9` … `5000+` + `other`. Default = toutes sauf `other`. |
-| `companySizeOther` | text | conditionnel si `companySizes` ⊃ `other` |
-| `geographicAreas` | relationship → geographic-areas[] | Voir §5 |
-| `geographicAreaFeedback` | text | Pour signaler une zone manquante |
-| `activitySectors` | select hasMany | Enums : `all`, `agriculture`, `industrie`, `tertiaire`, `commerce`, `artisanat`, `tourisme`, `other`, `naf-code`. Default = `[all]`. |
-| `activitySectorOther` | text | conditionnel si `activitySectors` ⊃ `other` |
-| `nafCodeOther` | text | conditionnel si `activitySectors` ⊃ `naf-code` |
-| `otherCriteria` | array (RowLabel = "Autres critère d'éligibilité N") | `{ value: text required }[]` |
-
-Puis `additionalInfo` (richText) — "Informations complémentaires".
-
-#### Sidebar / workflow
-
-`slug`, `workflowStatus`, `workflowHistory`, `_status`, `assignedContributors`, `metaTitle`, `metaDescription`. Voir ADR 0004 pour le workflow éditorial.
-
-#### Section "Champs à arbitrer"
-
-Section collapsible (repliée par défaut) regroupant les champs hérités qui ne figurent plus dans la spec produit mais restent en BDD pour permettre une décision PO future :
-
-| Champ | Type | Notes |
-|---|---|---|
-| `temporarilyUnavailable` | checkbox | Default `false` |
-| `selfActivatable` | select `oui` / `non` | |
-| `excludeMicroentrepreneur` | checkbox | Default `false` — extrait de l'ancien groupe `eligibilityData.company` pour réduire la profondeur visuelle |
-
-### 4. Le formulaire est dérivé du schéma — comment plier la forme
-
-PayloadCMS génère simultanément le formulaire admin, le schéma SQL et les types TypeScript à partir du tableau `fields` de la collection. On ne sépare donc pas "formulaire" et "données". Pour obtenir une ergonomie spécifique sans dédoubler le modèle :
-
-- `type: 'collapsible'` pour les sections.
-- `admin.condition` pour l'affichage conditionnel.
-- `admin.description` pour les exemples sous chaque champ.
-- `type: 'ui'` pour les composants purement visuels (`LinkedProjectsCounter`).
-- `admin.components.RowLabel` pour les labels de lignes auto-numérotés (`StepRowLabel`, `LinkRowLabel`, `OtherCriterionRowLabel`).
-
-Tous les composants custom vivent dans `apps/cms/src/components/programs/`.
-
-### 5. Collection `GeographicAreas`
-
-Les valeurs des zones géographiques étaient autrefois en texte libre, ce qui empêchait tout filtrage/scoring fiable. Une collection dédiée centralise les zones de référence.
-
-| Champ | Type | Notes |
-|---|---|---|
-| `name` | text required | Nom officiel |
-| `coverageType` | select required | `region` / `departement` / `commune` / `epci` / `autre` |
-| `inseeCode` | text | Code INSEE officiel |
-| `parentArea` | relationship → geographic-areas | Hiérarchie (commune → EPCI → département → région) |
-
-**Seed initial** : 18 régions + 101 départements (codes INSEE officiels) — fixtures dans le code de seed. Les communes (~35 000) et EPCI (~1 240) ne sont pas seedés au POC : volume trop important, ajout à la demande par les admins.
-
-Visibilité : `hidden: true` sauf super-admin. C'est de la donnée de référence, pas un objet métier édité au quotidien.
-
-### 6. Modèle d'éligibilité simplifié
-
-L'ancien double modèle (`eligibilityConditions` texte + `eligibilityData` machine-readable) est remplacé par des champs typés directement (enums, relations, arrays). Ce qui ne rentre pas dans les enums (libellés libres reçus du métier) est capturé dans des champs `*Other` jumeaux. Ce design supprime la duplication au prix d'une exigence : les nouvelles entrées doivent être mappées sur les enums dès la saisie.
-
-Le seul rescapé du groupe `eligibilityData` est `excludeMicroentrepreneur`, désormais champ booléen à plat dans la section "Champs à arbitrer" (cf. §3) — sera tranché lorsque le moteur de scoring sera réintégré.
-
-### 7. Cycle de vie éditorial
-
-Cf. ADR 0004 pour le détail. En résumé : `versions: { drafts: true }` natif Payload + champ `workflowStatus` séparé qui pilote `_status` via le hook `beforeChangeWorkflow`. La validation des transitions est centralisée dans `WorkflowTransitionPolicy`.
-
-### 8. Champs Date natifs Payload
-
-`validityStart`, `validityEnd` utilisent le type `date` de Payload pour bénéficier du date-picker admin et des requêtes par plage.
+**Justification :**
+- Les illustrations ne sont pas gérées dans PayloadCMS — elles sont servies statiquement depuis le projet frontend TEE.
+- Ajouter les assets à Media nécessiterait un upload manuel de ~234 fichiers, hors scope du POC.
+- Un champ texte permet l'édition simple du chemin sans blocage.
 
 ---
 
 ## Conséquences
 
-- `payload-types.ts` est régénéré automatiquement par Payload au build/dev — ne pas modifier manuellement.
-- L'ancien JSON source (`docs/sources/programs.json`) n'est plus la référence : son shape est obsolète. Le seed canonique du POC est à reconstruire (cf. README de la PR de refacto pour les outils de migration utilisés une fois).
+- Le script de seed doit être exécuté une fois après la première migration de base de données.
+- `payload-types.ts` sera régénéré automatiquement par Payload lors du build/dev — ne pas modifier manuellement.
 - Si `publicodes` doit un jour être éditable dans le CMS, une ADR dédiée devra évaluer l'approche (JSON Editor custom, champ code, etc.).
-- Le couple `companySizes` + `companySizeOther` (et symétrique pour `activitySectors`) doit être pris en compte par tout consommateur API : un dispositif "tagué" peut avoir des contraintes en plus dans le champ texte libre.

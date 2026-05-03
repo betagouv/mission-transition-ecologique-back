@@ -63,7 +63,7 @@ describe('ProgramsSeed', () => {
   it('covers all 5 aid types', async () => {
     const result = await payload.find({ collection: 'programs', limit: FIXTURE_PROGRAMS })
     const aidTypes = new Set(result.docs.map((p) => p.aidType))
-    expect(aidTypes).toContain('etude')
+    expect(aidTypes).toContain('diagnostic-etude')
     expect(aidTypes).toContain('financement')
     expect(aidTypes).toContain('formation')
     expect(aidTypes).toContain('pret')
