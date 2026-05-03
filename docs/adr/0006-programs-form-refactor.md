@@ -95,16 +95,14 @@ Chaque valeur active des champs de montant/durée spécifiques :
 
 ### 4. Composants admin custom pour la saisie
 
-**Décision :** Quatre composants React injectés dans `admin.components` :
+**Décision :** Deux composants React injectés dans `admin.components` :
 
 | Composant | Rôle |
 |---|---|
-| `StepRowLabel` | Auto-numérote les lignes de `steps[]` ("Étape 1", "Étape 2"…) |
-| `LinkRowLabel` | Auto-numérote les lignes de `links[]` à l'intérieur d'une étape |
-| `OtherCriterionRowLabel` | Auto-numérote les lignes de `otherCriteria[]` |
+| `NumberedRowLabel` | Auto-numérote les lignes d'un `array` Payload (ex : "Étape 1", "Lien 2", "Autre critère d'éligibilité 3"). Le libellé singulier est passé en `clientProps.singular` côté field config — un seul composant pour les trois usages (`steps`, `steps.links`, `otherCriteria`). |
 | `LinkedProjectsCounter` | Champ `type: 'ui'` qui affiche en live le nombre de projets matchant les `themes` sélectionnés (avant que l'éditeur ne choisisse `linkedProjects`) |
 
-**Justification :** Sans ces composants, les arrays Payload affichent des labels génériques ("Item 1") qui rendent la relecture pénible. `LinkedProjectsCounter` aide l'éditeur à anticiper la liste de projets à lier sans avoir à ouvrir un autre onglet.
+**Justification :** Sans `NumberedRowLabel`, les arrays Payload affichent des labels génériques ("Item 1") qui rendent la relecture pénible. La factorisation via `clientProps` évite la prolifération de composants thin-wrapper. `LinkedProjectsCounter` aide l'éditeur à anticiper la liste de projets à lier sans avoir à ouvrir un autre onglet.
 
 ---
 

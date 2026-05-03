@@ -3,7 +3,7 @@ import { ProgramAccessPolicy } from '@/services/access/ProgramAccessPolicy'
 import { beforeChangeWorkflow } from '@/hooks/programs/beforeChangeWorkflow'
 import { assignCreatorOnCreate } from '@/hooks/programs/assignCreatorOnCreate'
 import { THEMES_OPTIONS } from '@/constants/themesOptions'
-import { UserRole } from '@/utils/user/UserRole'
+import { UserRole, type UserRoleValue } from '@/utils/user/UserRole'
 
 const COMPANY_SIZE_OPTIONS = [
   { label: '0 à 9 salariés', value: '0-9' },
@@ -97,6 +97,12 @@ export const Programs: CollectionConfig = {
       label: 'Opérateur principal',
       relationTo: 'operators',
       required: true,
+      filterOptions: ({ user }) => {
+        if (!user) return true
+        if (UserRole.isAdmin(user as { role: UserRoleValue })) return true
+        const operatorId = UserRole.getOperatorId(user)
+        return operatorId ? { id: { equals: operatorId } } : true
+      },
     },
     {
       name: 'otherOperators',
@@ -223,7 +229,10 @@ export const Programs: CollectionConfig = {
           labels: { singular: 'une étape', plural: 'étapes' },
           admin: {
             components: {
-              RowLabel: '@/components/programs/StepRowLabel#StepRowLabel',
+              RowLabel: {
+                path: '@/components/programs/NumberedRowLabel#NumberedRowLabel',
+                clientProps: { singular: 'Étape' },
+              },
             },
           },
           defaultValue: [
@@ -249,7 +258,10 @@ export const Programs: CollectionConfig = {
               labels: { singular: 'un lien', plural: 'liens' },
               admin: {
                 components: {
-                  RowLabel: '@/components/programs/LinkRowLabel#LinkRowLabel',
+                  RowLabel: {
+                    path: '@/components/programs/NumberedRowLabel#NumberedRowLabel',
+                    clientProps: { singular: 'Lien' },
+                  },
                 },
               },
               fields: [
@@ -452,8 +464,10 @@ export const Programs: CollectionConfig = {
           labels: { singular: 'un autre critère', plural: 'autres critères' },
           admin: {
             components: {
-              RowLabel:
-                '@/components/programs/OtherCriterionRowLabel#OtherCriterionRowLabel',
+              RowLabel: {
+                path: '@/components/programs/NumberedRowLabel#NumberedRowLabel',
+                clientProps: { singular: "Autre critère d'éligibilité" },
+              },
             },
           },
           fields: [
