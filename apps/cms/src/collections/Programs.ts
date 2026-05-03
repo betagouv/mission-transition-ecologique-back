@@ -45,11 +45,18 @@ const AID_TYPE_OPTIONS = [
 export const Programs: CollectionConfig = {
   slug: 'programs',
   labels: {
-    singular: 'Dispositif',
-    plural: 'Dispositifs',
+    singular: 'Programme',
+    plural: 'Programmes',
   },
   admin: {
     useAsTitle: 'title',
+    defaultColumns: [
+      'title',
+      'operator',
+      'aidType',
+      'workflowStatus',
+      'updatedAt',
+    ],
     components: {
       edit: {
         PublishButton:
@@ -72,121 +79,6 @@ export const Programs: CollectionConfig = {
     maxPerDoc: 100,
   },
   fields: [
-    // ===================================================================
-    // SIDEBAR
-    // ===================================================================
-    {
-      name: 'slug',
-      type: 'text',
-      label: 'Identifiant',
-      required: true,
-      unique: true,
-      admin: {
-        description: 'Identifiant unique du dispositif.',
-        position: 'sidebar',
-      },
-    },
-    {
-      name: 'workflowStatus',
-      type: 'select',
-      label: 'Statut de workflow',
-      defaultValue: 'en-creation',
-      required: true,
-      options: [
-        { label: 'En création', value: 'en-creation' },
-        { label: 'En relecture', value: 'en-relecture' },
-        { label: 'En cours de publication', value: 'en-cours-publication' },
-        { label: 'Publié', value: 'publie' },
-        { label: 'En cours de modification', value: 'en-cours-modification' },
-        { label: 'Importé', value: 'importe' },
-        { label: 'Annulé', value: 'annule' },
-        { label: 'Archivé', value: 'archive' },
-        { label: 'Remplacé', value: 'remplace' },
-      ],
-      admin: {
-        position: 'sidebar',
-        components: {
-          Cell: '@/components/programs/WorkflowStatusCell#WorkflowStatusCell',
-        },
-      },
-    },
-    {
-      name: 'replacedBy',
-      type: 'relationship',
-      label: 'Remplacé par',
-      relationTo: 'programs',
-      hasMany: false,
-      admin: {
-        position: 'sidebar',
-        description:
-          'Programme de remplacement. Requis lors du passage à l’état "Remplacé".',
-        condition: (data) =>
-          data?.workflowStatus === 'remplace' || Boolean(data?.replacedBy),
-      },
-      filterOptions: ({ id }) => ({
-        id: { not_equals: id },
-        workflowStatus: { not_in: ['annule', 'archive', 'remplace'] },
-      }),
-    },
-    {
-      name: 'workflowHistory',
-      type: 'array',
-      label: 'Historique des transitions',
-      admin: {
-        position: 'sidebar',
-        readOnly: true,
-        description: 'Historique automatique des changements de statut.',
-      },
-      fields: [
-        { name: 'from', type: 'text', label: 'Depuis', admin: { readOnly: true } },
-        { name: 'to', type: 'text', label: 'Vers', admin: { readOnly: true } },
-        {
-          name: 'changedBy',
-          type: 'relationship',
-          label: 'Par',
-          relationTo: 'users',
-          admin: { readOnly: true },
-        },
-        {
-          name: 'changedAt',
-          type: 'date',
-          label: 'Le',
-          admin: { readOnly: true, date: { pickerAppearance: 'dayAndTime' } },
-        },
-      ],
-    },
-    {
-      name: '_status',
-      type: 'select',
-      label: 'Statut',
-      options: [
-        { label: 'Brouillon', value: 'draft' },
-        { label: 'Publié', value: 'published' },
-      ],
-      admin: { position: 'sidebar' },
-      access: {
-        update: (({ req: { user } }) => {
-          if (!user) return false
-          return UserRole.isAdmin(user)
-        }) satisfies FieldAccess,
-      },
-    },
-    {
-      name: 'assignedContributors',
-      type: 'relationship',
-      label: 'Contributeurs assignés',
-      relationTo: 'users',
-      hasMany: true,
-      admin: {
-        position: 'sidebar',
-        description: 'Contributeurs autorisés à éditer ce dispositif.',
-      },
-      access: {
-        update: (({ req: { user } }) =>
-          UserRole.isAdmin(user)) satisfies FieldAccess,
-      },
-    },
-
     // ===================================================================
     // MAIN
     // ===================================================================
@@ -235,7 +127,8 @@ export const Programs: CollectionConfig = {
       label: 'Montant du financement',
       admin: {
         condition: (data) => data?.aidType === 'financement',
-        description: 'Exemple : Jusqu\'à 35% des dépenses, dans un maximum de 50 000 €.',
+        description:
+          "Exemple : Jusqu'à 35% des dépenses, dans un maximum de 50 000 €.",
       },
     },
     {
@@ -280,7 +173,8 @@ export const Programs: CollectionConfig = {
       label: 'Coût restant à charge',
       admin: {
         condition: (data) => data?.aidType === 'diagnostic-etude',
-        description: "Exemple : entre 5 000€ et 7 000€ HT selon la taille d'entreprise.",
+        description:
+          "Exemple : entre 5 000€ et 7 000€ HT selon la taille d'entreprise.",
       },
     },
     {
@@ -289,7 +183,8 @@ export const Programs: CollectionConfig = {
       label: "Durée du diagnostic ou de l'étude",
       admin: {
         condition: (data) => data?.aidType === 'diagnostic-etude',
-        description: 'Exemple : 18 jours de prestation répartis sur 6 à 8 mois.',
+        description:
+          'Exemple : 18 jours de prestation répartis sur 6 à 8 mois.',
       },
     },
     {
@@ -610,6 +505,125 @@ export const Programs: CollectionConfig = {
         },
       ],
     },
+    // ===================================================================
+    // SIDEBAR
+    // ===================================================================
+    {
+      name: 'slug',
+      type: 'text',
+      label: 'Identifiant',
+      required: true,
+      unique: true,
+      admin: {
+        description: 'Identifiant unique du dispositif.',
+        position: 'sidebar',
+      },
+    },
+    {
+      name: 'workflowStatus',
+      type: 'select',
+      label: 'Statut de workflow',
+      defaultValue: 'en-creation',
+      required: true,
+      options: [
+        { label: 'En création', value: 'en-creation' },
+        { label: 'En relecture', value: 'en-relecture' },
+        { label: 'En cours de publication', value: 'en-cours-publication' },
+        { label: 'Publié', value: 'publie' },
+        { label: 'En cours de modification', value: 'en-cours-modification' },
+        { label: 'Importé', value: 'importe' },
+        { label: 'Annulé', value: 'annule' },
+        { label: 'Archivé', value: 'archive' },
+        { label: 'Remplacé', value: 'remplace' },
+      ],
+      admin: {
+        position: 'sidebar',
+        components: {
+          Cell: '@/components/programs/WorkflowStatusCell#WorkflowStatusCell',
+        },
+      },
+    },
+    {
+      name: 'replacedBy',
+      type: 'relationship',
+      label: 'Remplacé par',
+      relationTo: 'programs',
+      hasMany: false,
+      admin: {
+        position: 'sidebar',
+        description:
+          'Programme de remplacement. Requis lors du passage à l’état "Remplacé".',
+        condition: (data) =>
+          data?.workflowStatus === 'remplace' || Boolean(data?.replacedBy),
+      },
+      filterOptions: ({ id }) => ({
+        id: { not_equals: id },
+        workflowStatus: { not_in: ['annule', 'archive', 'remplace'] },
+      }),
+    },
+    {
+      name: 'workflowHistory',
+      type: 'array',
+      label: 'Historique des transitions',
+      admin: {
+        position: 'sidebar',
+        readOnly: true,
+        description: 'Historique automatique des changements de statut.',
+      },
+      fields: [
+        {
+          name: 'from',
+          type: 'text',
+          label: 'Depuis',
+          admin: { readOnly: true },
+        },
+        { name: 'to', type: 'text', label: 'Vers', admin: { readOnly: true } },
+        {
+          name: 'changedBy',
+          type: 'relationship',
+          label: 'Par',
+          relationTo: 'users',
+          admin: { readOnly: true },
+        },
+        {
+          name: 'changedAt',
+          type: 'date',
+          label: 'Le',
+          admin: { readOnly: true, date: { pickerAppearance: 'dayAndTime' } },
+        },
+      ],
+    },
+    {
+      name: '_status',
+      type: 'select',
+      label: 'Statut',
+      options: [
+        { label: 'Brouillon', value: 'draft' },
+        { label: 'Publié', value: 'published' },
+      ],
+      admin: { position: 'sidebar' },
+      access: {
+        update: (({ req: { user } }) => {
+          if (!user) return false;
+          return UserRole.isAdmin(user);
+        }) satisfies FieldAccess,
+      },
+    },
+    {
+      name: 'assignedContributors',
+      type: 'relationship',
+      label: 'Contributeurs assignés',
+      relationTo: 'users',
+      hasMany: true,
+      admin: {
+        position: 'sidebar',
+        description: 'Contributeurs autorisés à éditer ce dispositif.',
+      },
+      access: {
+        update: (({ req: { user } }) =>
+          UserRole.isAdmin(user)) satisfies FieldAccess,
+      },
+    },
 
     // ===================================================================
     // SEO (sidebar, kept)
@@ -627,4 +641,4 @@ export const Programs: CollectionConfig = {
       admin: { position: 'sidebar' },
     },
   ],
-}
+};
