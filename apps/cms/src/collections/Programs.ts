@@ -298,7 +298,7 @@ export const Programs: CollectionConfig = {
           name: 'steps',
           type: 'array',
           label: '',
-          labels: { singular: 'Étape', plural: 'Étapes' },
+          labels: { singular: 'une étape', plural: 'étapes' },
           admin: {
             components: {
               RowLabel: '@/components/programs/StepRowLabel#StepRowLabel',
@@ -317,14 +317,14 @@ export const Programs: CollectionConfig = {
               required: true,
               admin: {
                 description:
-                  "Exemple : 'Consultez le document pour vérifier l'éligibilité de votre projet', 'Déposez votre demande de financement via le formulaire', 'Recevez votre aide financière et réalisez vos travaux'.",
+                  "Une étape courte et actionnable, dans l'ordre chronologique. Ex. étape 1 : « Consultez le document pour vérifier l'éligibilité de votre projet » — étape 2 : « Déposez votre demande de financement via le formulaire » — étape 3 : « Recevez votre aide financière et réalisez vos travaux ».",
               },
             },
             {
               name: 'links',
               type: 'array',
               label: '',
-              labels: { singular: 'Lien', plural: 'Liens' },
+              labels: { singular: 'un lien', plural: 'liens' },
               admin: {
                 components: {
                   RowLabel: '@/components/programs/LinkRowLabel#LinkRowLabel',
@@ -527,6 +527,7 @@ export const Programs: CollectionConfig = {
           name: 'otherCriteria',
           type: 'array',
           label: 'Autres critères',
+          labels: { singular: 'un autre critère', plural: 'autres critères' },
           admin: {
             components: {
               RowLabel:
