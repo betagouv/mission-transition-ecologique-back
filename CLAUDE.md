@@ -53,7 +53,7 @@ pnpm seed                                  # seed complet : operators + programs
 |---|---|---|
 | `super.admin@tee.test` | `super.admin@tee.test` | `super-admin` |
 | `admin@tee.test` | `admin@tee.test` | `admin` |
-| `createur@tee.test` | `createur@tee.test` | `creator` |
+| `createur@ademe.test` | `createur@ademe.test` | `creator` |
 
 Les fichiers seed vivent dans `apps/cms/src/scripts/seed/` :
 - `run.ts` — entrypoint `pnpm seed` (initialisation Payload + orchestration)

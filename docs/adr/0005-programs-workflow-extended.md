@@ -176,7 +176,7 @@ Conserver la trace de l'ADR 0004 est utile pour comprendre l'historique des choi
 - Le schéma de la table `programs` change (nouvelles valeurs d'enum sur `workflowStatus`, nouveau champ `replacedBy`). La DB doit être reset (`rm apps/cms/data/payload.db` puis `pnpm seed`).
 - `payload-types.ts` doit être régénéré : `pnpm nx run @tee-backoffice/cms:generate:types`.
 - `importMap.js` doit être régénéré : `pnpm nx run @tee-backoffice/cms:generate:importmap`.
-- Les utilisateurs de dev seedés changent : `super.admin@tee.test`, `admin@tee.test`, `createur@tee.test` (suppression d'`observateur@tee.test`, `admin.aide@tee.test`, `contributeur@tee.test`).
+- Les utilisateurs de dev seedés changent : `super.admin@tee.test`, `admin@tee.test`, `createur@ademe.test` (suppression d'`observateur@tee.test`, `admin.aide@tee.test`, `contributeur@tee.test`).
 - L'access policy `ProgramAccessPolicy` est conservée mais ses appels passent par `UserRole.isAdmin` / `UserRole.isCreator`.
 - Le composant `WorkflowActionBar` ouvre désormais un `window.prompt` simple pour la transition `remplace`. Une UX plus fine (modal + relation picker Payload) est laissée à une feature future.
 - La phase automatisée n'a pas d'effet observable au POC (transition instantanée). Toute future tâche post-publication (mailing, attente date) doit s'ajouter dans `WorkflowAutomation.runPublishingPipeline()` — point d'extension unique.

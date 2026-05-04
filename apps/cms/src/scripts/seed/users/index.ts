@@ -16,7 +16,7 @@ const FIXTURES: UserFixture[] = [
     operatorSlug: 'ademe',
   },
   {
-    email: 'createur@tee.test',
+    email: 'createur@ademe.test',
     role: UserRole.CREATOR,
     team: 'CCI Grand Est',
     region: 'Grand Est',
