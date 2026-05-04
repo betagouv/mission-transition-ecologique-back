@@ -1,0 +1,83 @@
+// Tokens DSFR — sous-ensemble minimal nécessaire pour Phase 1 (option B)
+// Référence : https://www.systeme-de-design.gouv.fr/fondamentaux/couleurs-palette/
+//
+// On ne duplique PAS l'ensemble du DSFR. On expose uniquement les couleurs,
+// espacements et tailles qui servent réellement aux overrides Payload.
+
+:root {
+  // ---- Couleurs principales (palette officielle) ----
+  --tee-blue-france: #000091;        // Bleu France — couleur identitaire principale
+  --tee-blue-france-hover: #1212ff;  // Bleu France hover (sun-113-active)
+  --tee-blue-france-active: #2323ff; // Bleu France pressed
+  --tee-red-marianne: #e1000f;       // Rouge Marianne
+  --tee-red-marianne-hover: #ff292f;
+  --tee-success: #18753c;            // Vert succès DSFR
+  --tee-success-bg: #b8fec9;
+  --tee-warning: #b34000;            // Orange avertissement DSFR
+  --tee-warning-bg: #ffe9e6;
+  --tee-error: #ce0500;              // Rouge erreur DSFR
+  --tee-error-bg: #ffe9e9;
+  --tee-info: #0063cb;               // Bleu info DSFR
+  --tee-info-bg: #e8edff;
+
+  // ---- Neutres ----
+  --tee-grey-1000: #161616; // texte principal
+  --tee-grey-900: #3a3a3a;  // gris ardoise DSFR
+  --tee-grey-700: #6a6a6a;  // texte secondaire
+  --tee-grey-500: #929292;  // bordures/inputs
+  --tee-grey-300: #cecece;  // bordures discrètes
+  --tee-grey-200: #dddddd;  // séparateurs
+  --tee-grey-100: #eeeeee;  // surfaces alternatives
+  --tee-grey-50: #f6f6f6;   // fond DSFR (page)
+  --tee-white: #ffffff;
+
+  // ---- Focus / accessibilité ----
+  --tee-focus-color: #0a76f6; // outline focus DSFR (bleu)
+  --tee-focus-yellow: #ffe800; // outline focus DSFR sur fond foncé
+
+  // ---- Typographie ----
+  --tee-font-family-sans: 'Marianne', arial, sans-serif;
+  --tee-font-family-mono: 'JetBrains Mono', 'SFMono-Regular', menlo, monospace;
+
+  --tee-font-size-xs: 0.75rem;   // 12px — caption, badges
+  --tee-font-size-sm: 0.875rem;  // 14px — labels, hint
+  --tee-font-size-base: 1rem;    // 16px — corps standard
+  --tee-font-size-lg: 1.125rem;  // 18px — sous-titres
+  --tee-font-size-xl: 1.375rem;  // 22px — titres section
+  --tee-font-size-2xl: 1.75rem;  // 28px — titres page
+  --tee-font-size-3xl: 2rem;     // 32px — h1
+
+  --tee-font-weight-regular: 400;
+  --tee-font-weight-medium: 500;
+  --tee-font-weight-bold: 700;
+
+  --tee-line-height-tight: 1.25;
+  --tee-line-height-base: 1.5;
+
+  // ---- Espacements (échelle DSFR : 4 / 8 / 12 / 16 / 24 / 32 / 48) ----
+  --tee-space-1: 0.25rem; // 4px
+  --tee-space-2: 0.5rem;  // 8px
+  --tee-space-3: 0.75rem; // 12px
+  --tee-space-4: 1rem;    // 16px
+  --tee-space-6: 1.5rem;  // 24px
+  --tee-space-8: 2rem;    // 32px
+  --tee-space-12: 3rem;   // 48px
+
+  // ---- Géométrie ----
+  --tee-radius-none: 0;
+  --tee-radius-sm: 0;     // DSFR : angles droits par défaut
+  --tee-radius-md: 0;
+  --tee-radius-lg: 4px;   // exception douce pour quelques cartes
+  --tee-button-height: 40px;
+  --tee-input-height: 40px;
+  --tee-border-width: 1px;
+  --tee-border-width-emphasis: 2px;
+  --tee-border-width-accent: 4px; // bordure haute carte / indicateur d'item actif
+
+  // ---- Ombres (DSFR utilise très peu d'ombres) ----
+  --tee-shadow-sm: 0 1px 2px rgba(22, 22, 22, 0.06);
+  --tee-shadow-md: 0 2px 6px rgba(22, 22, 22, 0.08);
+
+  // ---- Transitions ----
+  --tee-transition-fast: 0.15s ease;
+}

@@ -1,0 +1,212 @@
+// Champs de formulaire — grammaire DSFR.
+// Réf. https://www.systeme-de-design.gouv.fr/composants-et-modeles/composants/champ-de-saisie/
+//
+// Spécificité DSFR : input avec fond gris clair, bordure basse soulignée
+// (look « formulaire impôts »). Label au-dessus, en gras moyen.
+// On override les classes Payload existantes (`.field-type input`,
+// `.field-label`, `.rs__control`).
+
+// ---- Label ----
+.field-label,
+.field-type__label,
+label.field-label {
+  font-size: var(--tee-font-size-base);
+  font-weight: var(--tee-font-weight-medium);
+  color: var(--tee-grey-1000);
+  margin-bottom: var(--tee-space-1);
+  line-height: var(--tee-line-height-tight);
+}
+
+// Astérisque champ requis
+.field-label .required,
+.field-required {
+  color: var(--tee-red-marianne);
+  margin-left: var(--tee-space-1);
+}
+
+// ---- Inputs natifs ----
+// On ne couvre que les champs dans `.field-type` pour ne pas casser les
+// inputs internes des popups/menus.
+.field-type input[type='text'],
+.field-type input[type='email'],
+.field-type input[type='password'],
+.field-type input[type='number'],
+.field-type input[type='url'],
+.field-type input[type='tel'],
+.field-type input[type='search'],
+.field-type input[type='date'],
+.field-type input[type='datetime-local'],
+.field-type input[type='time'],
+.field-type textarea {
+  background: var(--tee-grey-100);
+  border: 0;
+  border-bottom: var(--tee-border-width-emphasis) solid var(--tee-grey-700);
+  border-radius: 0;
+  color: var(--tee-grey-1000);
+  font-family: var(--tee-font-family-sans);
+  font-size: var(--tee-font-size-base);
+  padding: var(--tee-space-2) var(--tee-space-3);
+  box-shadow: none;
+  min-height: var(--tee-input-height);
+
+  &::placeholder {
+    color: var(--tee-grey-700);
+    opacity: 0.7;
+  }
+
+  &:hover {
+    background: var(--tee-grey-200);
+    border-bottom-color: var(--tee-grey-1000);
+    box-shadow: none;
+  }
+
+  &:focus,
+  &:focus-visible {
+    outline: 2px solid var(--tee-focus-color);
+    outline-offset: 2px;
+    border-bottom-color: var(--tee-blue-france);
+    background: var(--tee-grey-50);
+  }
+
+  &:disabled,
+  &[readonly] {
+    background: var(--tee-grey-100);
+    color: var(--tee-grey-700);
+    border-bottom-color: var(--tee-grey-500);
+    cursor: not-allowed;
+  }
+}
+
+// ---- Textarea : même look mais hauteur libre ----
+.field-type textarea {
+  min-height: calc(var(--tee-input-height) * 2);
+  resize: vertical;
+}
+
+// ---- États d'erreur ----
+.field-type.error input,
+.field-type.error textarea,
+.field-type.error .rs__control {
+  border-bottom-color: var(--tee-error);
+  background: var(--tee-error-bg);
+}
+
+.field-error,
+.field-type__error {
+  color: var(--tee-error);
+  font-size: var(--tee-font-size-sm);
+  font-weight: var(--tee-font-weight-medium);
+  margin-top: var(--tee-space-1);
+}
+
+// ---- Description / hint ----
+.field-description,
+.field-type__description {
+  color: var(--tee-grey-700);
+  font-size: var(--tee-font-size-sm);
+  margin-top: var(--tee-space-1);
+}
+
+// ---- Selects (react-select) ----
+// La structure react-select de Payload est `.rs__control` (wrapper),
+// `.rs__value-container`, `.rs__menu`, etc.
+.rs__control {
+  background: var(--tee-grey-100) !important;
+  border: 0 !important;
+  border-bottom: var(--tee-border-width-emphasis) solid var(--tee-grey-700) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  min-height: var(--tee-input-height);
+
+  &:hover {
+    background: var(--tee-grey-200) !important;
+    border-bottom-color: var(--tee-grey-1000) !important;
+  }
+
+  &--is-focused {
+    outline: 2px solid var(--tee-focus-color) !important;
+    outline-offset: 2px;
+    border-bottom-color: var(--tee-blue-france) !important;
+  }
+}
+
+.rs__menu {
+  background: var(--tee-white) !important;
+  border: 1px solid var(--tee-grey-300) !important;
+  border-radius: 0 !important;
+  box-shadow: var(--tee-shadow-md) !important;
+}
+
+.rs__option {
+  font-family: var(--tee-font-family-sans);
+
+  &--is-focused {
+    background: var(--tee-grey-100) !important;
+  }
+
+  &--is-selected {
+    background: var(--tee-blue-france) !important;
+    color: var(--tee-white) !important;
+  }
+}
+
+.rs__multi-value {
+  background: var(--tee-blue-france) !important;
+  border-radius: 0 !important;
+
+  &__label {
+    color: var(--tee-white) !important;
+  }
+
+  &__remove {
+    color: var(--tee-white) !important;
+
+    &:hover {
+      background: var(--tee-blue-france-hover) !important;
+      color: var(--tee-white) !important;
+    }
+  }
+}
+
+// ---- Checkbox / radio : couleur d'accent DSFR ----
+.field-type input[type='checkbox'],
+.field-type input[type='radio'] {
+  accent-color: var(--tee-blue-france);
+}
+
+// Custom checkbox Payload (.checkbox-input)
+.checkbox-input__icon,
+.checkbox-input__input:checked + .checkbox-input__icon {
+  border-color: var(--tee-blue-france);
+}
+
+.checkbox-input__input:checked ~ .checkbox-input__icon {
+  background: var(--tee-blue-france);
+}
+
+// ---- Date picker ----
+// react-datepicker (utilisé par Payload) : on ne touche que les couleurs
+// pour ne pas casser le layout interne complexe du calendrier.
+.react-datepicker {
+  border: 1px solid var(--tee-grey-300) !important;
+  border-radius: 0 !important;
+  font-family: var(--tee-font-family-sans) !important;
+  box-shadow: var(--tee-shadow-md);
+
+  &__header {
+    background: var(--tee-grey-50) !important;
+    border-bottom: 1px solid var(--tee-grey-200) !important;
+  }
+
+  &__day--selected,
+  &__day--keyboard-selected {
+    background: var(--tee-blue-france) !important;
+    color: var(--tee-white) !important;
+    border-radius: 0 !important;
+  }
+
+  &__day:hover {
+    background: var(--tee-grey-100) !important;
+    border-radius: 0 !important;
+  }
+}

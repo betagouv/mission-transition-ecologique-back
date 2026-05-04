@@ -1,0 +1,86 @@
+// Sidebar de navigation et topbar — grammaire DSFR.
+// Structure Payload :
+//   .template-default__nav        — wrapper sidebar
+//   nav.nav                       — wrapper interne
+//   .nav__wrap                    — liste des liens
+//   .nav__link                    — chaque lien (hover/active)
+//   .nav__link-indicator          — barre verticale visible quand item actif
+//   .nav__link-label              — texte du lien
+//   .app-header                   — topbar
+
+// ---- Sidebar : fond blanc, bordure droite fine ----
+.nav,
+.template-default__nav,
+.nav__wrap {
+  background: var(--tee-white);
+  color: var(--tee-grey-1000);
+  border-right: 1px solid var(--tee-grey-200);
+}
+
+// ---- Liens de navigation ----
+.nav__link {
+  display: flex;
+  align-items: center;
+  gap: var(--tee-space-3);
+  padding: var(--tee-space-3) var(--tee-space-4);
+  color: var(--tee-grey-1000);
+  font-family: var(--tee-font-family-sans);
+  font-size: var(--tee-font-size-base);
+  text-decoration: none;
+  border: 0;
+  border-radius: 0;
+  position: relative;
+
+  &:hover {
+    background: var(--tee-grey-100);
+    color: var(--tee-blue-france);
+  }
+
+  // Item actif : couleur Bleu France + indicateur barre gauche
+  &:has(.nav__link-indicator) {
+    background: var(--tee-grey-50);
+    color: var(--tee-blue-france);
+    font-weight: var(--tee-font-weight-medium);
+  }
+}
+
+// L'indicateur d'item actif : barre verticale Bleu France à gauche
+.nav__link-indicator {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--tee-border-width-accent);
+  background: var(--tee-blue-france);
+}
+
+.nav__link-label {
+  font-weight: inherit;
+}
+
+// ---- Groupes de nav (ex: « Collections », « Globals ») ----
+.nav-group__toggle,
+.nav-group__label {
+  font-family: var(--tee-font-family-sans);
+  font-size: var(--tee-font-size-sm);
+  font-weight: var(--tee-font-weight-bold);
+  color: var(--tee-grey-700);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding-inline: var(--tee-space-4);
+}
+
+// ---- Header (topbar) ----
+.app-header,
+.nav__header {
+  background: var(--tee-white);
+  border-bottom: 1px solid var(--tee-grey-200);
+  box-shadow: var(--tee-shadow-sm);
+  color: var(--tee-grey-1000);
+}
+
+// ---- Section « controls » en bas de sidebar (settings + logout) ----
+.nav__controls {
+  border-top: 1px solid var(--tee-grey-200);
+  padding: var(--tee-space-3) var(--tee-space-4);
+}

@@ -1,0 +1,72 @@
+// Page de connexion — grammaire DSFR.
+// Structure Payload :
+//   .template-minimal              — wrapper plein écran
+//   .template-minimal__wrap        — carte centrée
+//   .login__brand                  — bloc logo (placeholder remplacé en T16)
+//   .login__form                   — formulaire de connexion
+//
+// Design DSFR : carte blanche centrée sur fond gris clair, avec une bordure
+// haute Bleu France de 4px qui « signe » la carte (pattern card DSFR).
+
+.template-minimal {
+  background: var(--tee-grey-50);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--tee-space-6);
+
+  &__wrap {
+    background: var(--tee-white);
+    border-top: var(--tee-border-width-accent) solid var(--tee-blue-france);
+    box-shadow: var(--tee-shadow-md);
+    padding: var(--tee-space-12) var(--tee-space-8);
+    max-width: 480px;
+    width: 100%;
+  }
+
+  // ---- Bloc marque (logo placeholder) ----
+  .login__brand {
+    margin-bottom: var(--tee-space-8);
+    text-align: center;
+
+    h1,
+    h2,
+    h3 {
+      font-family: var(--tee-font-family-sans);
+      font-weight: var(--tee-font-weight-bold);
+      color: var(--tee-blue-france);
+      font-size: var(--tee-font-size-2xl);
+      letter-spacing: -0.01em;
+    }
+  }
+
+  // ---- Formulaire ----
+  .login__form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--tee-space-4);
+  }
+
+  // Bouton de connexion : couleur Bleu France pleine largeur
+  .login__form .form-submit .btn,
+  .login__form button[type='submit'] {
+    width: 100%;
+    --bg-color: var(--tee-blue-france);
+    --color: var(--tee-white);
+    --hover-bg: var(--tee-blue-france-hover);
+    --hover-color: var(--tee-white);
+    margin-top: var(--tee-space-4);
+  }
+
+  // Lien « mot de passe oublié »
+  a {
+    color: var(--tee-blue-france);
+    font-weight: var(--tee-font-weight-medium);
+    text-underline-offset: 2px;
+
+    &:hover {
+      color: var(--tee-blue-france-hover);
+    }
+  }
+}

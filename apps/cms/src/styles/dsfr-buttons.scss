@@ -1,0 +1,84 @@
+// Boutons DSFR :
+//   - primary    : fond bleu France, texte blanc
+//   - secondary  : contour bleu France, fond blanc, texte bleu France
+//   - tertiary   : pas de bordure, texte bleu France (icon-label / pill DSFR)
+// Réf. https://www.systeme-de-design.gouv.fr/composants-et-modeles/composants/bouton/
+//
+// On surcharge les *custom properties* internes du bouton Payload (`--bg-color`,
+// `--color`, `--btn-border`, `--hover-bg`, `--hover-color`) plutôt que de
+// dupliquer les règles : c'est l'API d'override la plus stable.
+
+// ---- Hauteur uniformisée ----
+.btn {
+  min-height: var(--tee-button-height);
+  padding-block: 0;
+  padding-inline: var(--tee-space-4);
+  font-weight: var(--tee-font-weight-medium);
+  letter-spacing: 0.01em;
+}
+
+// ---- Primary : fond bleu France ----
+.btn--style-primary {
+  --bg-color: var(--tee-blue-france);
+  --color: var(--tee-white);
+  --hover-bg: var(--tee-blue-france-hover);
+  --hover-color: var(--tee-white);
+
+  &.btn--disabled {
+    --bg-color: var(--tee-grey-200);
+    --color: var(--tee-grey-700);
+    --hover-bg: var(--tee-grey-200);
+    --hover-color: var(--tee-grey-700);
+  }
+}
+
+// ---- Secondary : contour bleu France ----
+.btn--style-secondary {
+  --bg-color: var(--tee-white);
+  --color: var(--tee-blue-france);
+  --btn-border: 1px solid var(--tee-blue-france);
+  --hover-bg: rgba(0, 0, 145, 0.05);
+  --hover-color: var(--tee-blue-france);
+  --hover-btn-border: 1px solid var(--tee-blue-france);
+
+  &.btn--disabled {
+    --color: var(--tee-grey-500);
+    --btn-border: 1px solid var(--tee-grey-300);
+    --hover-bg: var(--tee-white);
+    --hover-color: var(--tee-grey-500);
+    --hover-btn-border: 1px solid var(--tee-grey-300);
+  }
+}
+
+// ---- Tertiary / pill / icon-label : sans bordure, texte Bleu France ----
+.btn--style-pill,
+.btn--style-icon-label,
+.btn--style-tab {
+  --color: var(--tee-blue-france);
+  --bg-color: transparent;
+  --hover-bg: rgba(0, 0, 145, 0.06);
+  --hover-color: var(--tee-blue-france-hover);
+
+  &.btn--disabled {
+    --color: var(--tee-grey-500);
+    --hover-bg: transparent;
+    --hover-color: var(--tee-grey-500);
+  }
+}
+
+// ---- Subtle : fond grisé clair ----
+.btn--style-subtle {
+  --bg-color: var(--tee-grey-100);
+  --color: var(--tee-grey-1000);
+  --btn-border: 1px solid var(--tee-grey-300);
+  --hover-bg: var(--tee-grey-200);
+  --hover-color: var(--tee-grey-1000);
+  --hover-btn-border: 1px solid var(--tee-grey-500);
+}
+
+// ---- Bouton « Save » dans la barre d'action document : couleur d'accent DSFR ----
+.doc-controls__save .btn--style-primary,
+.btn--style-publish {
+  --bg-color: var(--tee-blue-france);
+  --hover-bg: var(--tee-blue-france-hover);
+}
