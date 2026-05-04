@@ -116,7 +116,7 @@ Default à la création : 3 étapes (les 2 premières contiennent un lien vide).
 | `activitySectors` | select hasMany | Enums : `all`, `agriculture`, `industrie`, `tertiaire`, `commerce`, `artisanat`, `tourisme`, `other`. Default = `[all]`. |
 | `activitySectorOther` | text | conditionnel : si `activitySectors` ⊃ `other` |
 | `nafCodeOther` | text | conditionnel : idem |
-| `otherCriteria` | array (RowLabel = "Autres critère d'éligibilité N") | `{ value: text required }[]` |
+| `otherCriteria` | array (RowLabel = "Autre critère d'éligibilité N") | `{ value: text required }[]` |
 
 ### Informations complémentaires
 

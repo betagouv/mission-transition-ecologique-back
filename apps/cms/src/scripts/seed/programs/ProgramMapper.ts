@@ -110,6 +110,8 @@ export class ProgramMapper {
 
     const contact = this.mapContact(program['contact question'])
     const amounts = this.mapAmountFields(aidType, program)
+    const trimmedUrl = program.url?.trim()
+    const hasValidUrl = Boolean(trimmedUrl)
 
     return {
       slug: program.id,
@@ -122,7 +124,7 @@ export class ProgramMapper {
         : undefined,
       operator: operatorId,
       otherOperators: otherOperatorIds.length > 0 ? otherOperatorIds : undefined,
-      url: program.url ?? '',
+      url: trimmedUrl,
       ...amounts,
       steps: (program.objectifs ?? []).map((obj) => ({
         description: obj.description,
@@ -145,8 +147,8 @@ export class ProgramMapper {
       temporarilyUnavailable: program['aide temporairement indisponible'] === 'oui',
       selfActivatable: program['activable en autonomie'] as 'oui' | 'non' | undefined,
       excludeMicroentrepreneur: program.eligibilityData?.company?.excludeMicroentrepreneur ?? false,
-      workflowStatus: 'publie' as const,
-      _status: 'published' as const,
+      workflowStatus: hasValidUrl ? ('publie' as const) : ('en-creation' as const),
+      _status: hasValidUrl ? ('published' as const) : ('draft' as const),
       metaTitle: program.metaTitre,
       metaDescription: program.metaDescription,
     }
