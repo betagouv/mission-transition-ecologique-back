@@ -11,20 +11,6 @@ export interface SourceEligibilityConditions {
   "autres critères d'éligibilité"?: string[]
 }
 
-export interface SourceEligibilityData {
-  company?: {
-    allowedNafSections?: string[]
-    minEmployees?: string | number
-    maxEmployees?: string | number
-    excludeMicroentrepreneur?: boolean
-  }
-  validity?: {
-    start?: string
-    end?: string
-  }
-  priorityObjectives?: string[]
-}
-
 export interface SourceProgram {
   id: string
   titre: string
@@ -39,17 +25,14 @@ export interface SourceProgram {
   url?: string
   'début de validité'?: string
   'fin de validité'?: string
-  'aide temporairement indisponible'?: string
   'montant du financement'?: string
   "coût de l'accompagnement"?: string
   "durée de l'accompagnement"?: string
   'montant du prêt'?: string
   'durée du prêt'?: string
   "montant de l'avantage fiscal"?: string
-  'activable en autonomie'?: string
   objectifs?: SourceObjective[]
   "conditions d'éligibilité"?: SourceEligibilityConditions
-  eligibilityData?: SourceEligibilityData
   metaTitre?: string
   metaDescription?: string
 }

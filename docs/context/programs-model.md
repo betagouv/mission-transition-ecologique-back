@@ -1,7 +1,7 @@
-# Modèle des collections Programs et Operators
+# Modèle des collections Programs, Operators et GeographicAreas
 
-Spec consolidée pour l'implémentation dans PayloadCMS.
-Voir aussi : `docs/adr/0001-programs-collection.md`
+Spec consolidée pour l'implémentation dans PayloadCMS (post-refonte du formulaire).
+Voir aussi : `docs/adr/0001-programs-collection.md` (modèle initial), `docs/adr/0006-programs-form-refactor.md` (refonte 2026-04 — schéma actuel + collection `GeographicAreas`).
 
 ---
 
@@ -12,11 +12,30 @@ slug: 'operators'
 admin.useAsTitle: 'name'
 ```
 
-| Champ | Type Payload | Contraintes | Source JSON |
-|-------|-------------|-------------|-------------|
-| `name` | text | required, unique | `opérateur de contact` / `autres opérateurs[]` |
-| `slug` | text | unique, auto-généré depuis name | — |
-| `contactUrl` | text | optional | — |
+| Champ | Type Payload | Contraintes |
+|-------|-------------|-------------|
+| `name` | text | required, unique |
+| `slug` | text | unique, auto-généré depuis `name` |
+| `contactUrl` | text | optional |
+
+---
+
+## Collection `GeographicAreas`
+
+```
+slug: 'geographic-areas'
+admin.useAsTitle: 'name'
+admin.hidden: non super-admin
+```
+
+| Champ | Type Payload | Contraintes |
+|-------|-------------|-------------|
+| `name` | text | required |
+| `coverageType` | select | required — `region` / `departement` / `commune` / `epci` / `autre` |
+| `inseeCode` | text | optional |
+| `parentArea` | relationship → `geographic-areas` | optional |
+
+Seed initial : 18 régions + 101 départements (cf. `apps/cms/src/scripts/seed/geographic-areas/fixtures.ts`).
 
 ---
 
@@ -25,166 +44,111 @@ admin.useAsTitle: 'name'
 ```
 slug: 'programs'
 admin.useAsTitle: 'title'
+labels: { singular: 'Dispositif', plural: 'Dispositifs' }
+versions: { drafts: true }
 ```
 
-### Identité
+### Identité (en-tête de formulaire)
 
-| Champ | Type Payload | Contraintes | Source JSON |
-|-------|-------------|-------------|-------------|
-| `slug` | text | required, unique | `id` |
-| `title` | text | required | `titre` |
-| `promise` | text | required | `promesse` |
-| `aidType` | select | required | `nature de l'aide` |
+| Champ | Type | Contraintes |
+|-------|------|-------------|
+| `title` | text | required |
+| `operator` | relationship → operators | required |
+| `otherOperators` | relationship → operators[] | optional, hasMany |
+| `url` | text | required — "Lien du dispositif" |
+| `aidType` | select | required — `financement` / `pret` / `avantage-fiscal` / `formation` / `diagnostic-etude` |
 
-Valeurs `aidType` :
-- `etude` ← `"étude"`
-- `financement` ← `"financement"`
-- `formation` ← `"formation"`
-- `pret` ← `"prêt"`
-- `avantage-fiscal` ← `"avantage fiscal"`
+### Champs conditionnels par `aidType`
 
-### Contenu
+| `aidType` | Champs visibles |
+|---|---|
+| `financement` | `fundingAmount` |
+| `pret` | `loanAmount` |
+| `avantage-fiscal` | `taxBenefitAmount` |
+| `formation` | `formationRemainingCost`, `formationDuration` |
+| `diagnostic-etude` | `studyRemainingCost`, `studyDuration` |
 
-| Champ | Type Payload | Contraintes | Source JSON |
-|-------|-------------|-------------|-------------|
-| `description` | richText | required | `description` |
-| `longDescription` | richText | optional | `description longue` |
+### Pitch
 
-### Relations
+| Champ | Type | Contraintes |
+|-------|------|-------------|
+| `promise` | text | required |
+| `description` | richText (Lexical) | required |
 
-| Champ | Type Payload | Contraintes | Source JSON |
-|-------|-------------|-------------|-------------|
-| `operator` | relationship → Operators | required | `opérateur de contact` |
-| `otherOperators` | relationship → Operators[] | optional, hasMany | `autres opérateurs` |
-| `illustration` | text | optional | `illustration` (chemin relatif) |
-
-### Contact & URL
-
-| Champ | Type Payload | Contraintes | Source JSON |
-|-------|-------------|-------------|-------------|
-| `contactUrl` | text | required | `contact question` |
-| `url` | text | optional | `url` |
-
-### Validité
-
-| Champ | Type Payload | Contraintes | Source JSON |
-|-------|-------------|-------------|-------------|
-| `validityStart` | date | optional | `début de validité` (conv. DD/MM/YYYY → ISO) |
-| `validityEnd` | date | optional | `fin de validité` (conv. DD/MM/YYYY → ISO) |
-| `temporarilyUnavailable` | checkbox | — | `aide temporairement indisponible` |
-
-### Financier (conditionnel selon aidType)
-
-| Champ | Type Payload | Contraintes | Affiché pour |
-|-------|-------------|-------------|-------------|
-| `fundingAmount` | text | optional | financement |
-| `accompanyingCost` | text | optional | étude |
-| `accompanyingDuration` | text | optional | étude |
-| `loanAmount` | text | optional | pret |
-| `loanDuration` | text | optional | pret |
-| `taxBenefitAmount` | text | optional | avantage-fiscal |
-
-Source JSON : `montant du financement`, `coût de l'accompagnement`, `durée de l'accompagnement`, `montant du prêt`, `durée du prêt`, `montant de l'avantage fiscal`
-
-### Autonomie
-
-| Champ | Type Payload | Contraintes | Source JSON |
-|-------|-------------|-------------|-------------|
-| `selfActivatable` | select | optional | `activable en autonomie` |
-
-Valeurs : `oui` | `non`
-
-### Objectifs
+### Étapes pour en bénéficier
 
 ```
-objectives: array
-  └─ description: text (required)
-  └─ links: array
+steps: array (RowLabel = "Étape N")
+  ├─ description: text required
+  └─ links: array (RowLabel = "Lien" / "Lien 2" / …)
        ├─ url: text
-       └─ label: text
+       └─ linkLabel: text
 ```
 
-Source JSON : `objectifs[].description`, `objectifs[].liens[].lien`, `objectifs[].liens[].texte`
+Default à la création : 3 étapes (les 2 premières contiennent un lien vide).
 
-### Éligibilité — texte lisible
+### Mode de contact
 
-```
-eligibilityConditions: group
-  ├─ companySize: array → { value: text }
-  ├─ geographicArea: array → { value: text }
-  ├─ activitySector: array → { value: text }
-  ├─ activityYears: array → { value: text }
-  └─ otherCriteria: array → { value: text }
-```
+| Champ | Type | Contraintes |
+|-------|------|-------------|
+| `contactMethods` | select hasMany | `advisor` / `email` / `url` |
+| `contactEmail` | email | conditionnel : si `contactMethods` ⊃ `email` |
+| `contactPageUrl` | text | conditionnel : si `contactMethods` ⊃ `url` |
+| `validityStart` | date | optional |
+| `validityEnd` | date | optional |
 
-Source JSON : `conditions d'éligibilité` → `taille de l'entreprise`, `secteur géographique`, `secteur d'activité`, `nombre d'années d'activité`, `autres critères d'éligibilité`
+### Projet
 
-### Éligibilité — structurée machine
+| Champ | Type | Notes |
+|-------|------|-------|
+| `themes` | select hasMany | `THEMES_OPTIONS` ; sert à filtrer les projets |
+| `linkedProjectsCounter` | `ui` field | Affiche "[x] projets possiblement liés" en live |
+| `linkedProjects` | relationship → projects[] | Liaison explicite |
 
-```
-eligibilityData: group
-  ├─ company: group
-  │    ├─ allowedNafSections: array → { value: text }
-  │    ├─ minEmployees: number (optional)
-  │    ├─ maxEmployees: number (optional)
-  │    └─ excludeMicroentrepreneur: checkbox
-  ├─ validityStart: date (optional)
-  ├─ validityEnd: date (optional)
-  └─ priorityObjectives: array → { value: text }
-```
+### Éligibilité
 
-Source JSON : `eligibilityData.company`, `eligibilityData.validity.start/end`, `eligibilityData.priorityObjectives`
+| Champ | Type | Notes |
+|-------|------|-------|
+| `companySizes` | select hasMany | Enums : `0-9`, `10-19`, `20-49`, `50-249`, `250-499`, `500-4999`, `5000+`, `other`. Default = toutes sauf `other`. |
+| `companySizeOther` | text | conditionnel : si `companySizes` ⊃ `other` |
+| `geographicAreas` | relationship → geographic-areas[] | Sélection multiple |
+| `geographicAreaFeedback` | text | Pour signaler une zone manquante |
+| `activitySectors` | select hasMany | Enums : `all`, `agriculture`, `industrie`, `tertiaire`, `commerce`, `artisanat`, `tourisme`, `other`. Default = `[all]`. |
+| `activitySectorOther` | text | conditionnel : si `activitySectors` ⊃ `other` |
+| `nafCodeOther` | text | conditionnel : idem |
+| `otherCriteria` | array (RowLabel = "Autre critère d'éligibilité N") | `{ value: text required }[]` |
 
-Note : dans le JSON source, `minEmployees` est parfois une string (`"50"`) — conversion en number lors du seed.
+### Informations complémentaires
 
-### SEO (~6% des programmes)
+| Champ | Type | Notes |
+|-------|------|-------|
+| `additionalInfo` | richText | ex-`longDescription` |
 
-| Champ | Type Payload | Contraintes | Source JSON |
-|-------|-------------|-------------|-------------|
-| `metaTitle` | text | optional | `metaTitre` |
-| `metaDescription` | textarea | optional | `metaDescription` |
+### Workflow & sidebar (inchangé vs ADR 0001/0004)
+
+`slug`, `workflowStatus`, `workflowHistory`, `_status`, `assignedContributors`, `metaTitle`, `metaDescription`.
 
 ---
 
-## Mapping complet JSON → Payload
+## Mapping export → restore (legacy → new)
 
-| Clé JSON | Champ Payload | Transformation |
-|----------|--------------|----------------|
-| `id` | `slug` | — |
-| `titre` | `title` | — |
-| `promesse` | `promise` | — |
-| `nature de l'aide` | `aidType` | `étude`→`etude`, `prêt`→`pret`, `avantage fiscal`→`avantage-fiscal` |
-| `description` | `description` | Texte → lexical richText |
-| `description longue` | `longDescription` | Texte → lexical richText |
-| `opérateur de contact` | `operator` | Nom → ID Operator |
-| `autres opérateurs` | `otherOperators` | Noms[] → IDs Operators |
-| `illustration` | `illustration` | — |
-| `contact question` | `contactUrl` | — |
-| `url` | `url` | — |
-| `début de validité` | `validityStart` | DD/MM/YYYY → ISO 8601 |
-| `fin de validité` | `validityEnd` | DD/MM/YYYY → ISO 8601 |
-| `aide temporairement indisponible` | `temporarilyUnavailable` | `"oui"` → `true` |
-| `montant du financement` | `fundingAmount` | — |
-| `coût de l'accompagnement` | `accompanyingCost` | — |
-| `durée de l'accompagnement` | `accompanyingDuration` | — |
-| `montant du prêt` | `loanAmount` | — |
-| `durée du prêt` | `loanDuration` | — |
-| `montant de l'avantage fiscal` | `taxBenefitAmount` | — |
-| `activable en autonomie` | `selfActivatable` | — |
-| `objectifs[].description` | `objectives[].description` | — |
-| `objectifs[].liens[].lien` | `objectives[].links[].url` | — |
-| `objectifs[].liens[].texte` | `objectives[].links[].label` | — |
-| `conditions d'éligibilité.taille de l'entreprise` | `eligibilityConditions.companySize` | String[] → `{value}[]` |
-| `conditions d'éligibilité.secteur géographique` | `eligibilityConditions.geographicArea` | String[] → `{value}[]` |
-| `conditions d'éligibilité.secteur d'activité` | `eligibilityConditions.activitySector` | String[] → `{value}[]` |
-| `conditions d'éligibilité.nombre d'années d'activité` | `eligibilityConditions.activityYears` | String[] → `{value}[]` |
-| `conditions d'éligibilité.autres critères d'éligibilité` | `eligibilityConditions.otherCriteria` | String[] → `{value}[]` |
-| `eligibilityData.company.allowedNafSections` | `eligibilityData.company.allowedNafSections` | String[] → `{value}[]` |
-| `eligibilityData.company.minEmployees` | `eligibilityData.company.minEmployees` | String → number |
-| `eligibilityData.company.maxEmployees` | `eligibilityData.company.maxEmployees` | String → number |
-| `eligibilityData.company.excludeMicroentrepreneur` | `eligibilityData.company.excludeMicroentrepreneur` | boolean |
-| `eligibilityData.validity.start` | `eligibilityData.validityStart` | DD/MM/YYYY → ISO 8601 |
-| `eligibilityData.validity.end` | `eligibilityData.validityEnd` | DD/MM/YYYY → ISO 8601 |
-| `eligibilityData.priorityObjectives` | `eligibilityData.priorityObjectives` | String[] → `{value}[]` |
-| `metaTitre` | `metaTitle` | — |
-| `metaDescription` | `metaDescription` | — |
+Voir `apps/cms/src/scripts/seed/restore/ProgramExportMapper.ts` pour le code.
+
+| Champ ancien export | Champ nouveau | Transformation |
+|---|---|---|
+| `aidType: 'etude'` | `aidType: 'diagnostic-etude'` | Renommage de la valeur |
+| `accompanyingCost` | `studyRemainingCost` | — |
+| `accompanyingDuration` | `studyDuration` | — |
+| `loanDuration` | — | dropped (pas dans la spec) |
+| `longDescription` | `additionalInfo` | — |
+| `illustration`, `contactUrl` (top-level) | — | dropped |
+| `objectives[].description` | `steps[].description` | — |
+| `objectives[].links[].url` | `steps[].links[].url` | — |
+| `objectives[].links[].label` | `steps[].links[].linkLabel` | — |
+| `eligibilityConditions.companySize[].value` | `companySizes` (enum) + `companySizeOther` | Match regex sur les libellés ; non-match → `other` + concat dans `companySizeOther` |
+| `eligibilityConditions.activitySector[].value` | `activitySectors` (enum) + `activitySectorOther` | Idem |
+| `eligibilityConditions.geographicArea[].value` | `geographicAreaFeedback` (concat) | Pas de match auto vers `geographic-areas` |
+| `eligibilityConditions.activityYears[].value` | `otherCriteria[].value` | Fusion |
+| `eligibilityConditions.otherCriteria[].value` | `otherCriteria[].value` | — |
+
+Le mapping est **lossy** sur les enums (les libellés français libres ne matchent pas tous parfaitement). Les programmes dont `url` est manquant restent `_status: 'draft'` après restore (cf. publish pass dans `ProgramsRestore`).

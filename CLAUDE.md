@@ -45,7 +45,7 @@ pnpm seed                                  # seed complet : operators + programs
 
 ## Seed
 
-**`pnpm seed`** — seed complet idempotent (upsert) : operators + programs + projects + utilisateurs de dev.
+**`pnpm seed`** — seed complet idempotent (upsert) : `GeographicAreasSeed` (18 régions + 101 départements) → `ProgramsSeed` (operators + programs depuis `docs/sources/programs.json`) → `ProjectsSeed` (depuis `docs/sources/projects.json`) → `UsersSeed` (utilisateurs de dev).
 
 ### Utilisateurs de dev (`pnpm seed`)
 
@@ -56,10 +56,11 @@ pnpm seed                                  # seed complet : operators + programs
 | `createur@ademe.test` | `createur@ademe.test` | `creator` |
 
 Les fichiers seed vivent dans `apps/cms/src/scripts/seed/` :
-- `run.ts` — entrypoint `pnpm seed` (initialisation Payload + orchestration)
-- `programs/` — `ProgramsSeed`, `OperatorImporter`, `ProgramMapper`, `ProgramImporter`
-- `projects/` — `ProjectsSeed`, `ProjectMapper`, `ProjectImporter`, `LinkedProjectsUpdater`
-- `users/` — `UsersSeed`
+- `run.ts` — entrypoint `pnpm seed` (initialisation Payload + orchestration).
+- `geographic-areas/` — `GeographicAreasSeed` (régions + départements, fixtures dans `fixtures.ts`).
+- `programs/` — `ProgramsSeed`, `OperatorImporter`, `ProgramMapper`, `ProgramImporter`.
+- `projects/` — `ProjectsSeed`, `ProjectMapper`, `ProjectImporter`, `LinkedProjectsUpdater`.
+- `users/` — `UsersSeed`.
 
 ## Langue
 
@@ -88,7 +89,7 @@ Les fichiers seed vivent dans `apps/cms/src/scripts/seed/` :
 - `src/constants/` — options de select réutilisables (`themesOptions.ts`, `nafSectionsOptions.ts`)
 - `src/services/workflow/` — `WorkflowTransitionPolicy` (logique de transitions, partagée client/serveur), `WorkflowAutomation` (point d'extension phase automatisée)
 - `src/hooks/programs/` — `beforeChangeWorkflow` (validation, sync `workflowStatus` ↔ `_status`, intégration `WorkflowAutomation`)
-- `src/components/programs/` — `WorkflowActionBar` (bouton contextuel), `WorkflowStatusBadge` (statut sidebar), `WorkflowStatusCell` (badge liste)
+- `src/components/programs/` — `WorkflowActionBar` (bouton contextuel), `WorkflowStatusBadge` (statut sidebar), `WorkflowStatusCell` (badge liste), `NumberedRowLabel` (label d'array auto-numéroté, `singular` passé via `clientProps`), `LinkedProjectsCounter` (champ `type: 'ui'` qui affiche en live le nombre de projets matchant les thèmes sélectionnés)
 
 ## Documentation de référence
 
@@ -102,11 +103,12 @@ Ne lire un ADR que s'il est pertinent pour la tâche en cours.
 
 | Fichier | Thématique |
 |---|---|
-| `docs/adr/0001-programs-collection.md` | Schéma de la collection `Programs` — champs, types, relations, workflowStatus |
+| `docs/adr/0001-programs-collection.md` | ⚠️ Schéma initial — voir ADR 0006 pour le schéma actuel. Reste valide pour : exclusion de `publicodes`, deux collections `Programs` + `Operators`, type `date` natif, illustration en chemin texte |
 | `docs/adr/0002-user-roles-and-access-control.md` | Rôles utilisateurs, hiérarchie des rôles, `UserRole`, access control (`AuthAccessPolicy`, `ProgramAccessPolicy`, `OperatorAccessPolicy`) |
 | `docs/adr/0003-projects-collection.md` | Schéma de la collection `Projects` — thèmes, secteurs NAF, liaisons entre projets |
 | `docs/adr/0004-programs-workflow.md` | ⚠️ Obsolète — superseded par ADR 0005 |
 | `docs/adr/0005-programs-workflow-extended.md` | Workflow éditorial des programmes — 9 états, 3 rôles, `WorkflowTransitionPolicy`, `WorkflowAutomation`, `replacedBy` |
+| `docs/adr/0006-programs-form-refactor.md` | Refonte du formulaire `Programs` — sections collapsibles, conditionnels par `aidType`, suppression du double modèle d'éligibilité, collection `GeographicAreas`, composants admin custom |
 
 ## Commits
 

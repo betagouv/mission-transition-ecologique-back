@@ -5,6 +5,8 @@ import config from '@payload-config'
 import { describe, it, beforeAll, expect } from 'vitest'
 import { resolve } from 'path'
 import { fileURLToPath } from 'url'
+import { GeographicAreasSeed } from '@/scripts/seed/geographic-areas'
+import { DEPARTEMENTS, REGIONS } from '@/scripts/seed/geographic-areas/fixtures'
 import { ProgramsSeed } from '@/scripts/seed/programs'
 
 const fixturesDir = fileURLToPath(new URL('../fixtures', import.meta.url))
@@ -12,6 +14,7 @@ const programsFixture = resolve(fixturesDir, 'programs.json')
 
 const FIXTURE_PROGRAMS = 22
 const FIXTURE_OPERATORS = 8
+const EXPECTED_GEOGRAPHIC_AREAS = REGIONS.length + DEPARTEMENTS.length
 
 let payload: Payload
 
@@ -63,7 +66,7 @@ describe('ProgramsSeed', () => {
   it('covers all 5 aid types', async () => {
     const result = await payload.find({ collection: 'programs', limit: FIXTURE_PROGRAMS })
     const aidTypes = new Set(result.docs.map((p) => p.aidType))
-    expect(aidTypes).toContain('etude')
+    expect(aidTypes).toContain('diagnostic-etude')
     expect(aidTypes).toContain('financement')
     expect(aidTypes).toContain('formation')
     expect(aidTypes).toContain('pret')
@@ -81,5 +84,55 @@ describe('ProgramsSeed', () => {
 
     expect(after.totalDocs).toBe(before.totalDocs)
     expect(afterOperators.totalDocs).toBe(beforeOperators.totalDocs)
+  }, 60_000)
+})
+
+describe('GeographicAreasSeed', () => {
+  beforeAll(async () => {
+    const payloadConfig = await config
+    payload = await getPayload({ config: payloadConfig })
+
+    await new GeographicAreasSeed(payload).run()
+  }, 60_000)
+
+  it(`creates ${EXPECTED_GEOGRAPHIC_AREAS} geographic areas (${REGIONS.length} regions + ${DEPARTEMENTS.length} departments)`, async () => {
+    const result = await payload.find({ collection: 'geographic-areas', limit: 0 })
+    expect(result.totalDocs).toBe(EXPECTED_GEOGRAPHIC_AREAS)
+  })
+
+  it('creates regions and departments with the expected coverageType', async () => {
+    const regions = await payload.find({
+      collection: 'geographic-areas',
+      where: { coverageType: { equals: 'region' } },
+      limit: 0,
+    })
+    const departements = await payload.find({
+      collection: 'geographic-areas',
+      where: { coverageType: { equals: 'departement' } },
+      limit: 0,
+    })
+    expect(regions.totalDocs).toBe(REGIONS.length)
+    expect(departements.totalDocs).toBe(DEPARTEMENTS.length)
+  })
+
+  it('links each department to its parent region via parentArea', async () => {
+    const result = await payload.find({
+      collection: 'geographic-areas',
+      where: { coverageType: { equals: 'departement' } },
+      limit: DEPARTEMENTS.length,
+      depth: 0,
+    })
+    for (const dept of result.docs) {
+      expect(dept.parentArea).toBeDefined()
+    }
+  })
+
+  it('is idempotent — second run does not create duplicates', async () => {
+    const before = await payload.find({ collection: 'geographic-areas', limit: 0 })
+
+    await new GeographicAreasSeed(payload).run()
+
+    const after = await payload.find({ collection: 'geographic-areas', limit: 0 })
+    expect(after.totalDocs).toBe(before.totalDocs)
   }, 60_000)
 })
