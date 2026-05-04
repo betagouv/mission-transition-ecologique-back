@@ -489,37 +489,6 @@ export const Programs: CollectionConfig = {
     },
 
     // ===================================================================
-    // CHAMPS À ARBITRER (legacy — décision PO en attente)
-    // ===================================================================
-    {
-      type: 'collapsible',
-      label: 'Champs à arbitrer',
-      admin: { initCollapsed: true },
-      fields: [
-        {
-          name: 'temporarilyUnavailable',
-          type: 'checkbox',
-          label: 'Temporairement indisponible',
-          defaultValue: false,
-        },
-        {
-          name: 'selfActivatable',
-          type: 'select',
-          label: 'Activable en autonomie',
-          options: [
-            { label: 'Oui', value: 'oui' },
-            { label: 'Non', value: 'non' },
-          ],
-        },
-        {
-          name: 'excludeMicroentrepreneur',
-          type: 'checkbox',
-          label: 'Exclure les micro-entrepreneurs',
-          defaultValue: false,
-        },
-      ],
-    },
-    // ===================================================================
     // SIDEBAR
     // ===================================================================
     {

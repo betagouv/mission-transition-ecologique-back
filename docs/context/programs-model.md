@@ -128,10 +128,6 @@ Default à la création : 3 étapes (les 2 premières contiennent un lien vide).
 
 `slug`, `workflowStatus`, `workflowHistory`, `_status`, `assignedContributors`, `metaTitle`, `metaDescription`.
 
-### Champs conservés en sursis (à arbitrer)
-
-`temporarilyUnavailable` (checkbox), `selfActivatable` (select), `eligibilityData` (groupe machine-readable). Ne figurent pas dans la nouvelle spec mais sont conservés pour ne pas perdre la donnée — voir ADR 0005 §5.
-
 ---
 
 ## Mapping export → restore (legacy → new)
