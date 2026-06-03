@@ -1,14 +1,14 @@
-// Boutons DSFR :
-//   - primary    : fond bleu France, texte blanc
-//   - secondary  : contour bleu France, fond blanc, texte bleu France
-//   - tertiary   : pas de bordure, texte bleu France (icon-label / pill DSFR)
-// Réf. https://www.systeme-de-design.gouv.fr/composants-et-modeles/composants/bouton/
+// DSFR buttons:
+//   - primary    : Bleu France background, white text
+//   - secondary  : Bleu France outline, white background, Bleu France text
+//   - tertiary   : no border, Bleu France text (icon-label / pill DSFR)
+// Ref. https://www.systeme-de-design.gouv.fr/composants-et-modeles/composants/bouton/
 //
-// On surcharge les *custom properties* internes du bouton Payload (`--bg-color`,
-// `--color`, `--btn-border`, `--hover-bg`, `--hover-color`) plutôt que de
-// dupliquer les règles : c'est l'API d'override la plus stable.
+// We override Payload's internal button *custom properties* (`--bg-color`,
+// `--color`, `--btn-border`, `--hover-bg`, `--hover-color`) rather than
+// duplicating rules: this is the most stable override API.
 
-// ---- Hauteur uniformisée ----
+// ---- Unified height ----
 // Payload's `.btn` is `display: inline-block`, so a bare `min-height` leaves the
 // inner `.btn__content` top-aligned. We make the button a centering flex box.
 .btn {
@@ -22,7 +22,7 @@
   letter-spacing: 0.01em;
 }
 
-// ---- Primary : fond bleu France ----
+// ---- Primary: Bleu France background ----
 .btn--style-primary {
   --bg-color: var(--tee-blue-france);
   --color: var(--tee-white);
@@ -37,7 +37,7 @@
   }
 }
 
-// ---- Secondary : contour bleu France ----
+// ---- Secondary: Bleu France outline ----
 .btn--style-secondary {
   --bg-color: var(--tee-white);
   --color: var(--tee-blue-france);
@@ -55,7 +55,7 @@
   }
 }
 
-// ---- Tertiary / pill / icon-label : sans bordure, texte Bleu France ----
+// ---- Tertiary / pill / icon-label: no border, Bleu France text ----
 .btn--style-pill,
 .btn--style-icon-label,
 .btn--style-tab {
@@ -71,7 +71,7 @@
   }
 }
 
-// ---- Subtle : fond grisé clair ----
+// ---- Subtle: light grey background ----
 .btn--style-subtle {
   --bg-color: var(--tee-grey-100);
   --color: var(--tee-grey-1000);
@@ -81,10 +81,10 @@
   --hover-btn-border: 1px solid var(--tee-grey-500);
 }
 
-// ---- Boutons d'action de l'en-tête de liste (à côté du titre) ----
-// « Créer un nouveau » est un `.pill` enveloppé, les actions secondaires des
-// `.btn` : on leur donne à tous la grammaire « secondaire DSFR » (contour bleu
-// France, texte bleu, fond blanc).
+// ---- List header action buttons (next to the title) ----
+// "Create new" is a wrapped `.pill`, the secondary actions are
+// `.btn`: we give them all the "DSFR secondary" style (Bleu France
+// outline, blue text, white background).
 .list-header .btn {
   --bg-color: var(--tee-white);
   --color: var(--tee-blue-france);

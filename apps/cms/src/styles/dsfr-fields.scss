@@ -1,8 +1,8 @@
-// Champs de formulaire — grammaire DSFR.
-// Réf. https://www.systeme-de-design.gouv.fr/composants-et-modeles/composants/champ-de-saisie/
+// Form fields — DSFR style.
+// Ref. https://www.systeme-de-design.gouv.fr/composants-et-modeles/composants/champ-de-saisie/
 //
-// Inputs encadrés (fond blanc, bordure fine, angles droits), label au-dessus en
-// gras moyen. On surcharge les classes Payload (`.field-type input`, `.field-label`,
+// Bordered inputs (white background, thin border, square corners), label above in
+// medium weight. We override Payload classes (`.field-type input`, `.field-label`,
 // `.rs__control`).
 
 // ---- Label ----
@@ -15,15 +15,15 @@ label.field-label {
   line-height: var(--tee-line-height-tight);
 }
 
-// Astérisque champ requis
+// Required field asterisk
 .field-label .required {
   color: var(--tee-red-marianne);
   margin-left: var(--tee-space-1);
 }
 
-// ---- Inputs natifs ----
-// On ne couvre que les champs dans `.field-type` pour ne pas casser les
-// inputs internes des popups/menus.
+// ---- Native inputs ----
+// We only target fields inside `.field-type` to avoid breaking the
+// internal inputs of popups/menus.
 .field-type input[type='text'],
 .field-type input[type='email'],
 .field-type input[type='password'],
@@ -71,17 +71,17 @@ label.field-label {
   }
 }
 
-// ---- Textarea : même look mais hauteur libre ----
+// ---- Textarea: same look but free height ----
 .field-type textarea {
   min-height: calc(var(--tee-input-height) * 2);
   resize: vertical;
 }
 
-// ---- États d'erreur ----
+// ---- Error states ----
 .field-type.error input,
 .field-type.error textarea,
 .field-type.error .rs__control {
-  // `!important` requis car `.rs__control` pose sa bordure en `!important`.
+  // `!important` required because `.rs__control` sets its border with `!important`.
   border-color: var(--tee-error) !important;
 }
 
@@ -100,18 +100,18 @@ label.field-label {
 }
 
 // ---- Selects (react-select) ----
-// La structure react-select de Payload est `.rs__control` (wrapper),
+// Payload's react-select structure is `.rs__control` (wrapper),
 // `.rs__value-container`, `.rs__menu`, etc.
 .rs__control {
   background: var(--tee-white) !important;
   border: 1px solid var(--tee-grey-300) !important;
   border-radius: 0 !important;
   box-shadow: none !important;
-  // `height` et non `min-height` : Payload force `min-height: auto !important` dans son
-  // `@layer` (qu'un `!important` non-layered ne peut pas battre) ; `height` non-layered,
-  // lui, l'emporte. `flex-wrap: nowrap` côté Payload garde les puces multi sur 1 ligne.
+  // `height` not `min-height`: Payload forces `min-height: auto !important` in its
+  // `@layer` (which an unlayered `!important` cannot beat); an unlayered `height`,
+  // however, wins. Payload's `flex-wrap: nowrap` keeps multi-value chips on one line.
   height: var(--tee-input-height);
-  // La hauteur fixe colle le contenu en bas → on recentre.
+  // The fixed height pins content to the bottom → re-center it.
   align-items: center;
   padding-block: 0;
 
@@ -146,8 +146,8 @@ label.field-label {
   }
 }
 
-// Puces multi-select : look « tag DSFR » (contour bleu France sur fond blanc).
-// Plus lisible que blanc/noir sur bleu plein, et plus léger visuellement.
+// Multi-select chips: "DSFR tag" style (Bleu France outline on white background).
+// More readable than white/black on solid blue, and visually lighter.
 .rs__multi-value {
   background: var(--tee-white) !important;
   border: 1px solid var(--tee-blue-france) !important;
@@ -167,13 +167,13 @@ label.field-label {
   }
 }
 
-// ---- Checkbox / radio : couleur d'accent DSFR ----
+// ---- Checkbox / radio: DSFR accent color ----
 .field-type input[type='checkbox'],
 .field-type input[type='radio'] {
   accent-color: var(--tee-blue-france);
 }
 
-// Custom checkbox Payload (.checkbox-input)
+// Payload custom checkbox (.checkbox-input)
 .checkbox-input__icon,
 .checkbox-input__input:checked + .checkbox-input__icon {
   border-color: var(--tee-blue-france);
@@ -184,8 +184,8 @@ label.field-label {
 }
 
 // ---- Date picker ----
-// react-datepicker (utilisé par Payload) : on ne touche que les couleurs
-// pour ne pas casser le layout interne complexe du calendrier.
+// react-datepicker (used by Payload): we only override colors
+// to avoid breaking the calendar's complex internal layout.
 .react-datepicker {
   border: 1px solid var(--tee-grey-300) !important;
   border-radius: 0 !important;

@@ -1,8 +1,8 @@
-// Badges DSFR : rectangulaires, contrastés, mapping états workflow → variantes.
-// Réf. https://www.systeme-de-design.gouv.fr/composants-et-modeles/composants/badge/
+// DSFR badges: rectangular, high-contrast, mapping workflow states → variants.
+// Ref. https://www.systeme-de-design.gouv.fr/composants-et-modeles/composants/badge/
 //
-// On définit une classe `.tee-badge` (et ses variantes) plutôt que de
-// surcharger `.pill` Payload, pour rester scopé au composant workflow.
+// We define a `.tee-badge` class (and its variants) rather than
+// overriding Payload's `.pill`, to stay scoped to the workflow component.
 
 .tee-badge {
   display: inline-flex;
@@ -16,7 +16,7 @@
   white-space: nowrap;
   letter-spacing: 0;
 
-  // Variantes — alignement DSFR fr-badge
+  // Variants — aligned with DSFR fr-badge
   &--info {
     background: var(--tee-info-bg);
     color: var(--tee-info);
@@ -43,7 +43,7 @@
   }
 
   &--purple {
-    // pour les états « final » (remplacé) — gris foncé DSFR
+    // for "final" states (replaced) — dark grey DSFR
     background: var(--tee-grey-700);
     color: var(--tee-white);
   }

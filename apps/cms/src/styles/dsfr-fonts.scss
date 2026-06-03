@@ -1,7 +1,7 @@
-// Marianne — police officielle du DSFR (licence Etalab 2.0)
-// Source : @gouvfr/dsfr (https://www.systeme-de-design.gouv.fr/), .woff2 dans /public/fonts/Marianne/
-// Variants embarqués : Regular / Regular Italic / Medium / Bold / Bold Italic
-// font-display: swap pour éviter le FOIT sur premier rendu
+// Marianne — official DSFR typeface (Etalab 2.0 licence)
+// Source: @gouvfr/dsfr (https://www.systeme-de-design.gouv.fr/), .woff2 in /public/fonts/Marianne/
+// Bundled variants: Regular / Regular Italic / Medium / Bold / Bold Italic
+// font-display: swap to avoid FOIT on first render
 
 @font-face {
   font-family: 'Marianne';

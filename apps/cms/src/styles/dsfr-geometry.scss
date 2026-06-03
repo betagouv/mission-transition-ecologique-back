@@ -1,13 +1,13 @@
-// Géométrie DSFR : angles droits.
+// DSFR geometry: sharp corners.
 //
-// L'essentiel est déjà fait par les variables `--style-radius-*` (mises à 0 dans
-// dsfr-payload-overrides), qui aplatissent la majorité des composants Payload
-// (boutons, cartes, inputs…). Il ne reste qu'à neutraliser les rares composants
-// qui codent un `border-radius` en dur.
+// The bulk of the work is already done by the `--style-radius-*` variables (set to 0 in
+// dsfr-payload-overrides), which flatten most Payload components
+// (buttons, cards, inputs…). All that remains is to neutralise the rare components
+// that hardcode a `border-radius`.
 //
-// Le focus clavier et les transitions ne sont PAS gérés ici : Payload applique
-// déjà un `:focus-visible { outline: var(--accessibility-outline) }` universel
-// (qu'on surcharge en bleu DSFR via la variable) et anime déjà ses boutons.
+// Keyboard focus and transitions are NOT handled here: Payload already applies
+// a universal `:focus-visible { outline: var(--accessibility-outline) }`
+// (which we override to DSFR blue via the variable) and already animates its buttons.
 
 .pill,
 .banner,

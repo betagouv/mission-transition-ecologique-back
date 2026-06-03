@@ -1,50 +1,50 @@
-// Tokens DSFR — sous-ensemble minimal nécessaire pour un site "DSFR like"
-// Référence : https://www.systeme-de-design.gouv.fr/fondamentaux/couleurs-palette/
+// DSFR tokens — minimal subset required for a "DSFR like" site
+// Reference: https://www.systeme-de-design.gouv.fr/fondamentaux/couleurs-palette/
 //
-// On ne duplique PAS l'ensemble du DSFR. On expose uniquement les couleurs,
-// espacements et tailles qui servent réellement aux overrides Payload.
+// The full DSFR is NOT duplicated. Only the colors, spacings and sizes
+// actually used by Payload overrides are exposed.
 
 :root {
-  // ---- Couleurs principales (palette officielle) ----
-  --tee-blue-france: #000091;        // Bleu France — couleur identitaire principale
+  // ---- Main colors (official palette) ----
+  --tee-blue-france: #000091;        // Bleu France — primary brand color
   --tee-blue-france-hover: #1212ff;  // Bleu France hover (sun-113-active)
   --tee-red-marianne: #e1000f;       // Rouge Marianne
-  --tee-success: #18753c;            // Vert succès DSFR
+  --tee-success: #18753c;            // DSFR success green
   --tee-success-bg: #b8fec9;
-  --tee-warning: #b34000;            // Orange avertissement DSFR
+  --tee-warning: #b34000;            // DSFR warning orange
   --tee-warning-bg: #ffe9e6;
-  --tee-error: #ce0500;              // Rouge erreur DSFR
+  --tee-error: #ce0500;              // DSFR error red
   --tee-error-bg: #ffe9e9;
-  --tee-info: #0063cb;               // Bleu info DSFR
+  --tee-info: #0063cb;               // DSFR info blue
   --tee-info-bg: #e8edff;
 
-  // ---- Neutres ----
-  --tee-grey-1000: #161616; // texte principal
-  --tee-grey-700: #6a6a6a;  // texte secondaire
-  --tee-grey-500: #929292;  // bordures/inputs
-  --tee-grey-300: #cecece;  // bordures discrètes
-  --tee-grey-200: #dddddd;  // séparateurs
-  --tee-grey-100: #eeeeee;  // surfaces alternatives
-  --tee-grey-50: #f6f6f6;   // fond DSFR (page)
+  // ---- Neutrals ----
+  --tee-grey-1000: #161616; // primary text
+  --tee-grey-700: #6a6a6a;  // secondary text
+  --tee-grey-500: #929292;  // borders/inputs
+  --tee-grey-300: #cecece;  // subtle borders
+  --tee-grey-200: #dddddd;  // dividers
+  --tee-grey-100: #eeeeee;  // alternate surfaces
+  --tee-grey-50: #f6f6f6;   // DSFR page background
   --tee-white: #ffffff;
 
-  // ---- Focus / accessibilité ----
-  --tee-focus-color: #0a76f6; // outline focus DSFR (bleu)
+  // ---- Focus / accessibility ----
+  --tee-focus-color: #0a76f6; // DSFR focus outline (blue)
 
-  // ---- Typographie ----
+  // ---- Typography ----
   --tee-font-family-sans: 'Marianne', arial, sans-serif;
 
   --tee-font-size-xs: 0.75rem;   // 12px — caption, badges
   --tee-font-size-sm: 0.875rem;  // 14px — labels, hint
-  --tee-font-size-base: 1rem;    // 16px — corps standard
-  --tee-font-size-2xl: 1.75rem;  // 28px — titres page
+  --tee-font-size-base: 1rem;    // 16px — standard body
+  --tee-font-size-2xl: 1.75rem;  // 28px — page headings
 
   --tee-font-weight-medium: 500;
   --tee-font-weight-bold: 700;
 
   --tee-line-height-tight: 1.25;
 
-  // ---- Espacements (échelle DSFR : 4 / 8 / 12 / 16 / 24 / 32 / 48) ----
+  // ---- Spacing (DSFR scale: 4 / 8 / 12 / 16 / 24 / 32 / 48) ----
   --tee-space-1: 0.25rem; // 4px
   --tee-space-2: 0.5rem;  // 8px
   --tee-space-3: 0.75rem; // 12px
@@ -53,14 +53,14 @@
   --tee-space-8: 2rem;    // 32px
   --tee-space-12: 3rem;   // 48px
 
-  // ---- Géométrie ----
-  --tee-radius-none: 0;   // DSFR : angles droits par défaut
-  --tee-radius-lg: 4px;   // exception douce pour quelques cartes
+  // ---- Geometry ----
+  --tee-radius-none: 0;   // DSFR: square corners by default
+  --tee-radius-lg: 4px;   // soft exception for some cards
   --tee-button-height: 40px;
   --tee-input-height: 40px;
-  --tee-border-width-accent: 4px; // bordure haute carte / indicateur d'item actif
+  --tee-border-width-accent: 4px; // card top border / active item indicator
 
-  // ---- Ombres (DSFR utilise très peu d'ombres) ----
+  // ---- Shadows (DSFR uses very few shadows) ----
   --tee-shadow-sm: 0 1px 2px rgba(22, 22, 22, 0.06);
   --tee-shadow-md: 0 2px 6px rgba(22, 22, 22, 0.08);
 }

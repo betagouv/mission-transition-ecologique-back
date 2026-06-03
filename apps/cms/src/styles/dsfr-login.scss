@@ -1,12 +1,12 @@
-// Page de connexion — grammaire DSFR.
-// Structure Payload :
-//   .template-minimal              — wrapper plein écran
-//   .template-minimal__wrap        — carte centrée
-//   .login__brand                  — bloc logo (placeholder)
-//   .login__form                   — formulaire de connexion
+// Login page — DSFR grammar.
+// Payload structure:
+//   .template-minimal              — full-screen wrapper
+//   .template-minimal__wrap        — centered card
+//   .login__brand                  — logo block (placeholder)
+//   .login__form                   — login form
 //
-// Design DSFR : carte blanche centrée sur fond gris clair, avec une bordure
-// haute Bleu France de 4px qui « signe » la carte (pattern card DSFR).
+// DSFR design: white card centered on a light grey background, with a 4px
+// Bleu France top border that "signs" the card (DSFR card pattern).
 
 .template-minimal {
   background: var(--tee-grey-50);
@@ -25,7 +25,7 @@
     width: 100%;
   }
 
-  // ---- Bloc marque (logo placeholder) ----
+  // ---- Brand block (logo placeholder) ----
   .login__brand {
     margin-bottom: var(--tee-space-8);
     text-align: center;
@@ -41,14 +41,14 @@
     }
   }
 
-  // ---- Formulaire ----
+  // ---- Form ----
   .login__form {
     display: flex;
     flex-direction: column;
     gap: var(--tee-space-4);
   }
 
-  // Bouton de connexion : couleur Bleu France pleine largeur
+  // Login button: full-width Bleu France color
   .login__form .form-submit .btn,
   .login__form button[type='submit'] {
     width: 100%;
@@ -59,7 +59,7 @@
     margin-top: var(--tee-space-4);
   }
 
-  // Lien « mot de passe oublié »
+  // "Forgot password" link
   a {
     color: var(--tee-blue-france);
     font-weight: var(--tee-font-weight-medium);

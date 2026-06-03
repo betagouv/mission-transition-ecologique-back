@@ -1,15 +1,15 @@
-// Sidebar de navigation et topbar — grammaire DSFR.
-// Structure Payload :
-//   .template-default__nav        — wrapper sidebar
-//   nav.nav                       — wrapper interne
-//   .nav__wrap                    — liste des liens
-//   .nav__link                    — chaque lien (hover/active)
-//   .nav__link-indicator          — barre verticale visible quand item actif
-//   .nav__link-label              — texte du lien
+// Navigation sidebar and topbar — DSFR grammar.
+// Payload structure:
+//   .template-default__nav        — sidebar wrapper
+//   nav.nav                       — inner wrapper
+//   .nav__wrap                    — link list
+//   .nav__link                    — each link (hover/active)
+//   .nav__link-indicator          — vertical bar visible when item is active
+//   .nav__link-label              — link text
 //   .app-header                   — topbar
 
-// ---- Sidebar : fond blanc ----
-// Pas de `border-right` ici : Payload en dessine déjà une, on ferait un double trait.
+// ---- Sidebar: white background ----
+// No `border-right` here: Payload already draws one, adding another would create a double border.
 .nav,
 .template-default__nav,
 .nav__wrap {
@@ -17,7 +17,7 @@
   color: var(--tee-grey-1000);
 }
 
-// ---- Liens de navigation ----
+// ---- Navigation links ----
 .nav__link {
   display: flex;
   align-items: center;
@@ -36,7 +36,7 @@
     color: var(--tee-blue-france);
   }
 
-  // Item actif : couleur Bleu France + indicateur barre gauche
+  // Active item: Bleu France color + left bar indicator
   &:has(.nav__link-indicator) {
     background: var(--tee-grey-50);
     color: var(--tee-blue-france);
@@ -44,9 +44,9 @@
   }
 }
 
-// L'indicateur d'item actif : barre verticale Bleu France à gauche, pleine hauteur.
-// Payload pose par défaut `height: 16px; inset-inline-start: -20px` — on neutralise
-// la hauteur fixe (`height: auto` + top/bottom) pour occuper toute la hauteur du lien.
+// Active item indicator: full-height Bleu France vertical bar on the left.
+// Payload defaults to `height: 16px; inset-inline-start: -20px` — we override
+// the fixed height (`height: auto` + top/bottom) to span the full link height.
 .nav__link-indicator {
   position: absolute;
   inset-inline-start: 0;
@@ -61,8 +61,8 @@
   font-weight: inherit;
 }
 
-// ---- Groupes de nav (ex: « Collections », « Globals ») ----
-// `margin-top` pour décoller le premier groupe du séparateur du header.
+// ---- Nav groups (e.g. "Collections", "Globals") ----
+// `margin-top` to separate the first group from the header divider.
 .nav-group__toggle {
   font-family: var(--tee-font-family-sans);
   font-size: var(--tee-font-size-sm);
@@ -83,26 +83,26 @@
   color: var(--tee-grey-1000);
 }
 
-// ---- Section « controls » en bas de sidebar (settings + logout) ----
+// ---- "Controls" section at the bottom of the sidebar (settings + logout) ----
 .nav__controls {
   border-top: 1px solid var(--tee-grey-200);
   padding: var(--tee-space-3) var(--tee-space-4);
 }
 
-// ---- En-tête de liste : espacement + alignement titre / bouton « Créer un nouveau » ----
-// Petit espace au-dessus de l'en-tête pour le décoller du séparateur du header.
+// ---- List header: spacing + alignment of title / "Create new" button ----
+// Small space above the header to separate it from the header divider.
 .list-header {
   margin-top: var(--tee-space-2);
 }
 
-// Payload aligne la ligne sur `align-items: flex-end` ; Marianne étant plus haute,
-// le bouton se retrouve décalé. On recentre.
+// Payload aligns the row with `align-items: flex-end`; since Marianne is taller,
+// the button ends up misaligned. We re-center it.
 .list-header__title-and-actions {
   align-items: center;
 }
 
-// Payload ajoute `margin-bottom: 4px` sur le wrapper du bouton, ce qui le décale
-// vers le haut une fois la ligne recentrée. On le retire.
+// Payload adds `margin-bottom: 4px` on the button wrapper, which shifts it upward
+// once the row is re-centered. We remove it.
 .list-header__title-actions {
   margin-bottom: 0;
 }

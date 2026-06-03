@@ -1,38 +1,37 @@
-// Surcharge des variables CSS Payload par les tokens DSFR.
+// Overrides Payload CSS variables with DSFR tokens.
 //
-// On laisse la cascade Payload intacte (elle référence ses `--theme-elevation-*`
-// partout) et on ne surcharge que :
-//   - la police de corps       → Marianne (`--font-body`)
-//   - le texte principal        → #161616 (`--theme-text`)
-//   - le fond des inputs + la couleur de bordure
-//   - les radius                → angles droits (`--style-radius-*`)
-//   - les couleurs sémantiques  → success / warning / error DSFR
-//   - le focus clavier          → outline bleu DSFR (`--accessibility-outline`)
+// The Payload cascade is left intact (it references its `--theme-elevation-*`
+// everywhere) and only the following are overridden:
+//   - body font                → Marianne (`--font-body`)
+//   - primary text             → #161616 (`--theme-text`)
+//   - input background + border color
+//   - radii                    → square corners (`--style-radius-*`)
+//   - semantic colors          → DSFR success / warning / error
+//   - keyboard focus           → DSFR blue outline (`--accessibility-outline`)
 //
-// On ne touche PAS aux neutres `--color-base-*` : la palette Payload est déjà à
-// <3/255 des gris DSFR (invisible). Pas de fond de page custom non plus (blanc Payload).
+// `--color-base-*` neutrals are NOT touched: the Payload palette is already
+// <3/255 away from DSFR greys (invisible). No custom page background either (Payload white).
 //
-// Déclarations *non-layered* → l'emportent sur le `@layer payload-default` de Payload.
+// *Non-layered* declarations → take precedence over Payload's `@layer payload-default`.
 
 :root {
-  // ---- Police principale ----
-  // On ne surcharge que la police de corps (Marianne). La police mono de
-  // Payload reste inchangée : aucune police mono custom n'est embarquée.
+  // ---- Main font ----
+  // Only the body font (Marianne) is overridden. The Payload monospace font
+  // remains unchanged: no custom monospace font is bundled.
   --font-body: var(--tee-font-family-sans), -apple-system, blinkmacsystemfont,
     'Segoe UI', roboto, 'Helvetica Neue', arial, sans-serif;
 
-  // ---- Texte / inputs ----
+  // ---- Text / inputs ----
   --theme-text: var(--tee-grey-1000);
   --theme-input-bg: var(--tee-white);
 
-  // ---- Bordures ----
+  // ---- Borders ----
   --theme-border-color: var(--tee-grey-300);
 
-  // ---- Couleurs sémantiques DSFR (success / warning / error) ----
-  // On conserve la cascade --theme-success-* / --theme-warning-* / --theme-error-*
-  // de Payload mais on substitue les paliers les plus utilisés par les
-  // valeurs DSFR. Les paliers extrêmes restent inchangés (Payload les utilise
-  // pour ses propres shadings de hover/active).
+  // ---- DSFR semantic colors (success / warning / error) ----
+  // The Payload --theme-success-* / --theme-warning-* / --theme-error-* cascade
+  // is preserved, but the most-used stops are replaced with DSFR values.
+  // Extreme stops remain unchanged (Payload uses them for its own hover/active shadings).
   --color-success-100: #b8fec9; // DSFR success bg
   --color-success-500: #18753c; // DSFR success
   --color-success-700: #18753c;
@@ -45,18 +44,18 @@
   --color-error-500: #ce0500;
   --color-error-700: #b50202;
 
-  // ---- Géométrie : angles droits DSFR ----
+  // ---- Geometry: DSFR square corners ----
   --style-radius-s: var(--tee-radius-none);
   --style-radius-m: var(--tee-radius-none);
   --style-radius-l: var(--tee-radius-lg);
 
-  // ---- Outline focus DSFR ----
+  // ---- DSFR focus outline ----
   --accessibility-outline: 2px solid var(--tee-focus-color);
   --accessibility-outline-offset: 2px;
 }
 
-// Application au body : forcer la police même si Payload essaie de la
-// remplacer ailleurs (cf. app.scss:104).
+// Applied to body: enforce the font even if Payload tries to override it
+// elsewhere (cf. app.scss:104).
 html,
 body {
   font-family: var(--font-body);

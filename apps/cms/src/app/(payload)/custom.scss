@@ -1,14 +1,14 @@
-// Thème « DSFR like » du backoffice Payload.
+// "DSFR like" theme for the Payload backoffice.
 //
-// Ordre d'import significatif :
+// Significant import order:
 //   1. fonts             : @font-face Marianne
-//   2. tokens            : variables `--tee-*` partagées
-//   3. payload-overrides : surcharge des variables CSS Payload
-//   4. modules visuels   : géométrie, boutons, champs, nav, login, badges, logo
+//   2. tokens            : shared `--tee-*` variables
+//   3. payload-overrides : override Payload CSS variables
+//   4. visual modules    : geometry, buttons, fields, nav, login, badges, logo
 //
-// Styles *non-layered* : Payload déclare les siens dans `@layer payload-default`,
-// donc nos règles l'emportent sans `!important` — sauf sur react-select, qui
-// cumule ses propres styles inline.
+// *Non-layered* styles: Payload declares its own in `@layer payload-default`,
+// so our rules win without `!important` — except for react-select, which
+// accumulates its own inline styles.
 
 @import '../../styles/dsfr-fonts.scss';
 @import '../../styles/dsfr-tokens.scss';
