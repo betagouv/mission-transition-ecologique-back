@@ -76,7 +76,7 @@ Le `super-admin` peut effectuer toute transition (override universel).
 | `apps/cms/src/services/access/AuthAccessPolicy.ts` | **Modifier** — renommer `isAdminOrAbove` → `isAdmin`, conserver `isSuperAdmin`, `isAuthenticated` |
 | `apps/cms/src/services/access/ProgramAccessPolicy.ts` | **Modifier** — adapter aux nouveaux rôles, gérer `assignedContributors` avec `creator` |
 | `apps/cms/src/services/access/OperatorAccessPolicy.ts` | **Modifier** — `isAdmin` au lieu d'`isAdminAide` |
-| `apps/cms/src/scripts/seed/users/index.ts` | **Modifier** — utilisateurs : `super.admin@tee.test`, `admin@tee.test`, `createur@tee.test` (suppression d'`observateur@tee.test`) |
+| `apps/cms/src/scripts/seed/users/index.ts` | **Modifier** — utilisateurs : `super.admin@tee.test`, `admin@tee.test`, `createur@ademe.test` (suppression d'`observateur@tee.test`) |
 | `apps/cms/src/services/workflow/WorkflowTransitionPolicy.ts` | **Modifier** — étendre `WorkflowStatus` à 9 valeurs, refondre `ALLOWED_TRANSITIONS`, retirer `valide`/`brouillon`/`en-revision` |
 | `apps/cms/src/services/workflow/WorkflowAutomation.ts` | **Créer** — orchestre la phase automatisée `en-cours-publication → publie` (instantané pour le POC + extension point) |
 | `apps/cms/src/hooks/programs/beforeChangeWorkflow.ts` | **Modifier** — intégrer `WorkflowAutomation`, valider `replacedBy`, gérer `_status` (publie ou en-cours-modification) |
@@ -136,7 +136,7 @@ const FIXTURES: UserFixture[] = [
     operatorSlug: 'ademe',
   },
   {
-    email: 'createur@tee.test',
+    email: 'createur@ademe.test',
     role: UserRole.CREATOR,
     team: 'CCI Grand Est',
     region: 'Grand Est',
@@ -565,7 +565,7 @@ Section "Utilisateurs de dev" :
 |---|---|---|
 | `super.admin@tee.test` | `super.admin@tee.test` | `super-admin` |
 | `admin@tee.test` | `admin@tee.test` | `admin` |
-| `createur@tee.test` | `createur@tee.test` | `creator` |
+| `createur@ademe.test` | `createur@ademe.test` | `creator` |
 
 (Suppression de la ligne `observateur@tee.test`.)
 

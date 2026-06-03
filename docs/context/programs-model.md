@@ -116,7 +116,7 @@ Default à la création : 3 étapes (les 2 premières contiennent un lien vide).
 | `activitySectors` | select hasMany | Enums : `all`, `agriculture`, `industrie`, `tertiaire`, `commerce`, `artisanat`, `tourisme`, `other`. Default = `[all]`. |
 | `activitySectorOther` | text | conditionnel : si `activitySectors` ⊃ `other` |
 | `nafCodeOther` | text | conditionnel : idem |
-| `otherCriteria` | array (RowLabel = "Autres critère d'éligibilité N") | `{ value: text required }[]` |
+| `otherCriteria` | array (RowLabel = "Autre critère d'éligibilité N") | `{ value: text required }[]` |
 
 ### Informations complémentaires
 
@@ -127,10 +127,6 @@ Default à la création : 3 étapes (les 2 premières contiennent un lien vide).
 ### Workflow & sidebar (inchangé vs ADR 0001/0004)
 
 `slug`, `workflowStatus`, `workflowHistory`, `_status`, `assignedContributors`, `metaTitle`, `metaDescription`.
-
-### Champs conservés en sursis (à arbitrer)
-
-`temporarilyUnavailable` (checkbox), `selfActivatable` (select), `eligibilityData` (groupe machine-readable). Ne figurent pas dans la nouvelle spec mais sont conservés pour ne pas perdre la donnée — voir ADR 0005 §5.
 
 ---
 

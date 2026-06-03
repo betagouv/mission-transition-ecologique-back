@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload';
+import { GeographicAreaAccessPolicy } from '@/services/access/GeographicAreaAccessPolicy';
 import { UserRole, type UserRoleValue } from '@/utils/user/UserRole';
 
 export const GeographicAreas: CollectionConfig = {
@@ -6,6 +7,12 @@ export const GeographicAreas: CollectionConfig = {
   labels: {
     singular: 'Zone géographique',
     plural: 'Zones géographiques',
+  },
+  access: {
+    read: GeographicAreaAccessPolicy.read,
+    create: GeographicAreaAccessPolicy.create,
+    update: GeographicAreaAccessPolicy.update,
+    delete: GeographicAreaAccessPolicy.delete,
   },
   admin: {
     useAsTitle: 'name',

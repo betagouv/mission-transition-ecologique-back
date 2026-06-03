@@ -34,7 +34,7 @@ export class ProgramImporter {
 
         const existingId = existingIdBySlug.get(program.id)
         if (existingId !== undefined) {
-          await this.payload.update({ collection: 'programs', id: existingId, data })
+          await this.payload.update({ collection: 'programs', id: existingId, data, draft: true })
           updated++
         } else {
           await this.payload.create({ collection: 'programs', data, draft: true })

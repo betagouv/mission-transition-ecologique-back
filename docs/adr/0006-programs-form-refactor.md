@@ -11,7 +11,7 @@
 
 L'ADR 0001 a fixé le schéma initial de la collection `Programs`, calé sur la structure JSON de `docs/sources/programs.json` héritée du POC. Ce schéma s'est révélé inadapté à l'usage métier :
 
-- Champs alignés sur le format d'export (`temporarilyUnavailable`, `selfActivatable`, `accompanyingCost`, `accompanyingDuration`, `loanDuration`, `objectives`, `eligibilityConditions`, `eligibilityData`) au lieu d'être pensés pour la saisie par un opérateur.
+- Champs alignés sur le format d'export (`accompanyingCost`, `accompanyingDuration`, `loanDuration`, `objectives`, `eligibilityConditions`, `eligibilityData`) au lieu d'être pensés pour la saisie par un opérateur.
 - Pas de séparation visuelle dans le formulaire admin — tous les champs à plat, ce qui rend l'édition de 234 dispositifs difficile.
 - Pas de modèle structuré pour les zones géographiques : ancien `eligibilityConditions.geographicArea` en texte libre, sans cohérence inter-dispositifs.
 - Pas d'aide à la saisie (compteurs, labels de lignes, conditionnels par type d'aide).
@@ -35,12 +35,11 @@ Une nouvelle spec produit (avril 2026) a redéfini le formulaire. Cet ADR docume
 | Projet | `themes` (multi), `linkedProjectsCounter` (UI), `linkedProjects` |
 | Éligibilité | `companySizes` + `companySizeOther`, `geographicAreas` (relation) + `geographicAreaFeedback`, `activitySectors` + `activitySectorOther` + `nafCodeOther`, `otherCriteria[]` |
 | `additionalInfo` (richText) | hors section, juste après Éligibilité |
-| Champs à arbitrer | `temporarilyUnavailable`, `selfActivatable`, `excludeMicroentrepreneur` — collapsible fermé par défaut, en attente de décision PO |
 
 **Justification :**
 - Les sections collapsibles guident l'éditeur dans une saisie séquentielle (header → étapes → contact → projet → éligibilité).
 - Les champs à plat de l'ancien schéma sont conservés à l'identique de leur usage métier réel quand ils restent pertinents (`fundingAmount`, `loanAmount`, etc.) — voir §3.
-- La section "Champs à arbitrer" isole les champs hérités dont l'utilité n'est pas tranchée, sans les supprimer prématurément.
+- Les champs hérités `temporarilyUnavailable`, `selfActivatable` et `excludeMicroentrepreneur` (anciennement regroupés dans une section « Champs à arbitrer ») sont supprimés du schéma — décision PO actée, leur utilité n'a pas été confirmée.
 
 ---
 
@@ -121,7 +120,7 @@ Chaque valeur active des champs de montant/durée spécifiques :
 | `eligibilityData.company.minEmployees` / `maxEmployees` | retiré — couvert par `companySizes` |
 | `eligibilityData.validity.start` / `end` | déplacé dans la section "Mode de contact" comme `validityStart` / `validityEnd` (proches de la saisie de contact) |
 | `eligibilityData.priorityObjectives` | retiré — non utilisé en pratique |
-| `eligibilityData.company.excludeMicroentrepreneur` | déplacé dans la section "Champs à arbitrer" |
+| `eligibilityData.company.excludeMicroentrepreneur` | retiré — décision PO actée |
 
 **Justification :** Le double modèle de l'ADR 0001 supposait deux cycles de vie distincts (texte humain vs. données machine). En pratique, l'éditeur saisissait deux fois la même information avec des risques de désync. Des enums + champs `*Other` conditionnels couvrent les deux usages — l'enum est lisible humainement *et* exploitable programmatiquement.
 
@@ -139,7 +138,7 @@ Mapping legacy `programs.json` → nouveau schéma — perte assumée :
 - Libellés libres `taille de l'entreprise` / `secteur d'activité` matchés via regex sur les nouveaux enums (`COMPANY_SIZE_KEYWORDS` / `ACTIVITY_SECTOR_KEYWORDS` dans `ProgramMapper.ts`), fallback dans `*Other`.
 - `secteur géographique` (texte) reporté dans `geographicAreaFeedback` ; la relation `geographicAreas` reste à recâbler manuellement par l'éditeur.
 - `nombre d'années d'activité` fusionné dans `otherCriteria`.
-- `eligibilityData.company.excludeMicroentrepreneur` → champ `excludeMicroentrepreneur` (section "Champs à arbitrer").
+- `aide temporairement indisponible`, `activable en autonomie`, `eligibilityData.company.excludeMicroentrepreneur` : ignorés (champs retirés du schéma — décision PO).
 - `illustration`, `eligibilityData.company.allowedNafSections / minEmployees / maxEmployees`, `eligibilityData.priorityObjectives`, `publicodes` : ignorés (non couverts par le nouveau schéma).
 - Quelques dispositifs sans `url` source restent en draft (le champ `url` est `required` ; complétion manuelle via l'admin).
 

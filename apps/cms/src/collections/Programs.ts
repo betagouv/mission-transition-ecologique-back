@@ -45,8 +45,8 @@ const AID_TYPE_OPTIONS = [
 export const Programs: CollectionConfig = {
   slug: 'programs',
   labels: {
-    singular: 'Programme',
-    plural: 'Programmes',
+    singular: 'Dispositif',
+    plural: 'Dispositifs',
   },
   admin: {
     useAsTitle: 'title',
@@ -324,19 +324,19 @@ export const Programs: CollectionConfig = {
             description: 'Exemple : https://...',
           },
         },
+        {
+          name: 'validityStart',
+          type: 'date',
+          label: 'Date de début de validité',
+          admin: { date: { pickerAppearance: 'dayOnly' } },
+        },
+        {
+          name: 'validityEnd',
+          type: 'date',
+          label: 'Date de fin de validité',
+          admin: { date: { pickerAppearance: 'dayOnly' } },
+        },
       ],
-    },
-    {
-      name: 'validityStart',
-      type: 'date',
-      label: 'Date de début de validité',
-      admin: { date: { pickerAppearance: 'dayOnly' } },
-    },
-    {
-      name: 'validityEnd',
-      type: 'date',
-      label: 'Date de fin de validité',
-      admin: { date: { pickerAppearance: 'dayOnly' } },
     },
 
     // ===================================================================
@@ -405,7 +405,7 @@ export const Programs: CollectionConfig = {
         {
           name: 'companySizeOther',
           type: 'text',
-          label: 'Eligibilité taille spécifique',
+          label: 'Éligibilité taille spécifique',
           admin: {
             condition: (data) =>
               Array.isArray(data?.companySizes) &&
@@ -488,37 +488,6 @@ export const Programs: CollectionConfig = {
       label: 'Informations complémentaires',
     },
 
-    // ===================================================================
-    // CHAMPS À ARBITRER (legacy — décision PO en attente)
-    // ===================================================================
-    {
-      type: 'collapsible',
-      label: 'Champs à arbitrer',
-      admin: { initCollapsed: true },
-      fields: [
-        {
-          name: 'temporarilyUnavailable',
-          type: 'checkbox',
-          label: 'Temporairement indisponible',
-          defaultValue: false,
-        },
-        {
-          name: 'selfActivatable',
-          type: 'select',
-          label: 'Activable en autonomie',
-          options: [
-            { label: 'Oui', value: 'oui' },
-            { label: 'Non', value: 'non' },
-          ],
-        },
-        {
-          name: 'excludeMicroentrepreneur',
-          type: 'checkbox',
-          label: 'Exclure les micro-entrepreneurs',
-          defaultValue: false,
-        },
-      ],
-    },
     // ===================================================================
     // SIDEBAR
     // ===================================================================
