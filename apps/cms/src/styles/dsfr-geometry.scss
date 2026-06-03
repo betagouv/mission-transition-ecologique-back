@@ -1,47 +1,16 @@
-// Géométrie globale DSFR : angles droits, focus jaune/bleu, transitions douces.
-// Les styles Payload sont dans `@layer payload-default`, donc ces sélecteurs
-// non-layered l'emportent sans avoir besoin de `!important`.
+// Géométrie DSFR : angles droits.
+//
+// L'essentiel est déjà fait par les variables `--style-radius-*` (mises à 0 dans
+// dsfr-payload-overrides), qui aplatissent la majorité des composants Payload
+// (boutons, cartes, inputs…). Il ne reste qu'à neutraliser les rares composants
+// qui codent un `border-radius` en dur.
+//
+// Le focus clavier et les transitions ne sont PAS gérés ici : Payload applique
+// déjà un `:focus-visible { outline: var(--accessibility-outline) }` universel
+// (qu'on surcharge en bleu DSFR via la variable) et anime déjà ses boutons.
 
-// ---- Aplatissement universel des border-radius ----
-.btn,
 .pill,
-.field-type input,
-.field-type textarea,
-.field-type select,
-.popup,
 .banner,
-.card,
-.collapsible__toggle-wrap,
-.tooltip,
-.toast {
+.tooltip {
   border-radius: var(--tee-radius-none);
-}
-
-// ---- Focus DSFR universel ----
-// DSFR définit un focus visible à 2px outline avec offset 2px.
-// On l'applique à tout élément interactif quand il reçoit le focus clavier.
-:where(button, a, input, select, textarea, [tabindex]):focus-visible {
-  outline: 2px solid var(--tee-focus-color);
-  outline-offset: var(--tee-border-width-emphasis);
-  outline-style: solid;
-}
-
-// Sur les éléments à fond foncé (boutons primary, etc.), le focus DSFR est jaune
-.btn--style-primary:focus-visible,
-.pill--style-dark:focus-visible {
-  outline-color: var(--tee-focus-yellow);
-}
-
-// ---- Transitions discrètes ----
-// On adoucit les hover/focus pour éviter la sensation « cassante » de Payload
-.btn,
-.pill,
-.nav__link,
-.field-type input,
-.field-type textarea {
-  transition:
-    background-color var(--tee-transition-fast),
-    border-color var(--tee-transition-fast),
-    color var(--tee-transition-fast),
-    outline-color var(--tee-transition-fast);
 }

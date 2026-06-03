@@ -1,9 +1,7 @@
 import React from 'react'
 
-// Placeholder logo — neutral, no official branding yet.
-// The definitive service logo is undecided, so we render an explicit
-// "logo placeholder" until it is provided. Registered in payload.config.ts
-// via `admin.components.graphics.Logo` (shown in the nav + on the login page).
+// Placeholder logo (the definitive service logo is undecided).
+// Registered via `admin.components.graphics.Logo` — shown in the nav + login page.
 export const Logo: React.FC = () => (
   <svg
     className="tee-logo"

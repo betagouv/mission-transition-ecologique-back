@@ -1,8 +1,7 @@
 import React from 'react'
 
-// Placeholder square icon — neutral, no official branding yet.
-// Registered in payload.config.ts via `admin.components.graphics.Icon`
-// (small icon shown in the admin nav). The browser-tab favicon is set
+// Placeholder square icon (small icon in the admin nav).
+// Registered via `admin.components.graphics.Icon`. The browser-tab favicon is set
 // separately through `admin.meta.icons` (see public/favicon.svg).
 export const Icon: React.FC = () => (
   <svg

@@ -1,16 +1,18 @@
 // Surcharge des variables CSS Payload par les tokens DSFR.
 //
-// Stratégie : on garde la majorité de la cascade Payload intacte
-// (Payload référence ses propres `--theme-elevation-*` partout). On surcharge :
-//   1. le fond de page                    → #F6F6F6 (DSFR grey-50)
-//   2. la couleur du texte principal      → #161616 (DSFR grey-1000)
-//   3. la police                          → Marianne
-//   4. les radius                         → angles droits (DSFR)
-//   5. les couleurs d'accent              → Bleu France / Rouge Marianne
-//   6. les neutres                        → palette grise DSFR (subtil)
+// On laisse la cascade Payload intacte (elle référence ses `--theme-elevation-*`
+// partout) et on ne surcharge que :
+//   - la police de corps       → Marianne (`--font-body`)
+//   - le texte principal        → #161616 (`--theme-text`)
+//   - le fond des inputs + la couleur de bordure
+//   - les radius                → angles droits (`--style-radius-*`)
+//   - les couleurs sémantiques  → success / warning / error DSFR
+//   - le focus clavier          → outline bleu DSFR (`--accessibility-outline`)
 //
-// Toutes ces déclarations sont *non-layered*, donc elles l'emportent sur
-// le `@layer payload-default { :root { … } }` de @payloadcms/ui.
+// On ne touche PAS aux neutres `--color-base-*` : la palette Payload est déjà à
+// <3/255 des gris DSFR (invisible). Pas de fond de page custom non plus (blanc Payload).
+//
+// Déclarations *non-layered* → l'emportent sur le `@layer payload-default` de Payload.
 
 :root {
   // ---- Police principale ----
@@ -19,39 +21,12 @@
   --font-body: var(--tee-font-family-sans), -apple-system, blinkmacsystemfont,
     'Segoe UI', roboto, 'Helvetica Neue', arial, sans-serif;
 
-  // ---- Texte / inputs (on conserve le fond blanc natif de Payload) ----
-  // Pas de surcharge de `--theme-bg` : un fond de page gris obligeait à repasser
-  // chaque surface (cartes, recherche, tables) en blanc pour les détacher — trop
-  // de contrastes parasites pour peu de gain. On garde le blanc Payload.
+  // ---- Texte / inputs ----
   --theme-text: var(--tee-grey-1000);
   --theme-input-bg: var(--tee-white);
 
   // ---- Bordures ----
   --theme-border-color: var(--tee-grey-300);
-
-  // ---- Échelle des neutres (alignement DSFR) ----
-  // On conserve le nombre de paliers Payload mais on les remplace par des gris DSFR
-  --color-base-0: #ffffff;
-  --color-base-50: #f6f6f6;
-  --color-base-100: #eeeeee;
-  --color-base-150: #dddddd;
-  --color-base-200: #cecece;
-  --color-base-250: #c3c3c3;
-  --color-base-300: #b5b5b5;
-  --color-base-350: #a8a8a8;
-  --color-base-400: #9a9a9a;
-  --color-base-450: #929292;
-  --color-base-500: #818181;
-  --color-base-550: #6a6a6a;
-  --color-base-600: #585858;
-  --color-base-650: #484848;
-  --color-base-700: #3a3a3a;
-  --color-base-750: #2f2f2f;
-  --color-base-800: #242424;
-  --color-base-850: #1c1c1c;
-  --color-base-900: #161616;
-  --color-base-950: #0a0a0a;
-  --color-base-1000: #000000;
 
   // ---- Couleurs sémantiques DSFR (success / warning / error) ----
   // On conserve la cascade --theme-success-* / --theme-warning-* / --theme-error-*

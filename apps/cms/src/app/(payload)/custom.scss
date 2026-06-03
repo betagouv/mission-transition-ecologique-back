@@ -1,17 +1,14 @@
-// Rebranding DSFR du backoffice Payload — Phase 1 (Option B).
-// Voir docs/adr/0007-dsfr-rebranding.md (à créer en T22) et local/dsfr_PR/.
+// Thème « DSFR like » du backoffice Payload.
 //
-// L'ordre d'import est significatif :
-//   1. fonts          : déclarations @font-face Marianne
-//   2. tokens         : variables `--tee-*` partagées
-//   3. payload-overrides : surcharge des variables CSS Payload (`--theme-*`,
-//      `--font-body`, `--style-radius-*`)
-//   4. modules visuels : géométrie, boutons, champs, nav, login, badges
+// Ordre d'import significatif :
+//   1. fonts             : @font-face Marianne
+//   2. tokens            : variables `--tee-*` partagées
+//   3. payload-overrides : surcharge des variables CSS Payload
+//   4. modules visuels   : géométrie, boutons, champs, nav, login, badges, logo
 //
-// Tous les modules sont *non-layered*. Payload déclare ses styles dans
-// `@layer payload-default { … }` ; les styles sans @layer l'emportent
-// automatiquement, on évite donc l'usage de `!important` sauf sur les
-// classes react-select (qui cumulent leurs propres styles inline).
+// Styles *non-layered* : Payload déclare les siens dans `@layer payload-default`,
+// donc nos règles l'emportent sans `!important` — sauf sur react-select, qui
+// cumule ses propres styles inline.
 
 @import '../../styles/dsfr-fonts.scss';
 @import '../../styles/dsfr-tokens.scss';

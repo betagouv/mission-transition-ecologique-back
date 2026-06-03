@@ -1,10 +1,9 @@
 // Champs de formulaire — grammaire DSFR.
 // Réf. https://www.systeme-de-design.gouv.fr/composants-et-modeles/composants/champ-de-saisie/
 //
-// Spécificité DSFR : input avec fond gris clair, bordure basse soulignée
-// (look « formulaire impôts »). Label au-dessus, en gras moyen.
-// On override les classes Payload existantes (`.field-type input`,
-// `.field-label`, `.rs__control`).
+// Inputs encadrés (fond blanc, bordure fine, angles droits), label au-dessus en
+// gras moyen. On surcharge les classes Payload (`.field-type input`, `.field-label`,
+// `.rs__control`).
 
 // ---- Label ----
 .field-label,
@@ -108,13 +107,11 @@ label.field-label {
   border: 1px solid var(--tee-grey-300) !important;
   border-radius: 0 !important;
   box-shadow: none !important;
-  // On fixe `height` (et non `min-height`) : Payload pose `min-height: auto !important`
-  // dans son `@layer`, qui battrait notre `!important` non-layered. `height` non-layered,
-  // lui, l'emporte sur le `height: auto` (layered) de Payload → hauteur alignée sur les
-  // inputs. Payload pose déjà `flex-wrap: nowrap`, donc les puces multi restent sur 1 ligne.
+  // `height` et non `min-height` : Payload force `min-height: auto !important` dans son
+  // `@layer` (qu'un `!important` non-layered ne peut pas battre) ; `height` non-layered,
+  // lui, l'emporte. `flex-wrap: nowrap` côté Payload garde les puces multi sur 1 ligne.
   height: var(--tee-input-height);
-  // La hauteur fixe casse le centrage vertical natif de react-select (contenu collé
-  // en bas) : on recentre explicitement et on neutralise le padding vertical.
+  // La hauteur fixe colle le contenu en bas → on recentre.
   align-items: center;
   padding-block: 0;
 
