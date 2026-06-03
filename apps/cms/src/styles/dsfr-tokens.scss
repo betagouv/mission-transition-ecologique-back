@@ -8,9 +8,7 @@
   // ---- Couleurs principales (palette officielle) ----
   --tee-blue-france: #000091;        // Bleu France — couleur identitaire principale
   --tee-blue-france-hover: #1212ff;  // Bleu France hover (sun-113-active)
-  --tee-blue-france-active: #2323ff; // Bleu France pressed
   --tee-red-marianne: #e1000f;       // Rouge Marianne
-  --tee-red-marianne-hover: #ff292f;
   --tee-success: #18753c;            // Vert succès DSFR
   --tee-success-bg: #b8fec9;
   --tee-warning: #b34000;            // Orange avertissement DSFR
@@ -22,7 +20,6 @@
 
   // ---- Neutres ----
   --tee-grey-1000: #161616; // texte principal
-  --tee-grey-900: #3a3a3a;  // gris ardoise DSFR
   --tee-grey-700: #6a6a6a;  // texte secondaire
   --tee-grey-500: #929292;  // bordures/inputs
   --tee-grey-300: #cecece;  // bordures discrètes
@@ -37,22 +34,16 @@
 
   // ---- Typographie ----
   --tee-font-family-sans: 'Marianne', arial, sans-serif;
-  --tee-font-family-mono: 'JetBrains Mono', 'SFMono-Regular', menlo, monospace;
 
   --tee-font-size-xs: 0.75rem;   // 12px — caption, badges
   --tee-font-size-sm: 0.875rem;  // 14px — labels, hint
   --tee-font-size-base: 1rem;    // 16px — corps standard
-  --tee-font-size-lg: 1.125rem;  // 18px — sous-titres
-  --tee-font-size-xl: 1.375rem;  // 22px — titres section
   --tee-font-size-2xl: 1.75rem;  // 28px — titres page
-  --tee-font-size-3xl: 2rem;     // 32px — h1
 
-  --tee-font-weight-regular: 400;
   --tee-font-weight-medium: 500;
   --tee-font-weight-bold: 700;
 
   --tee-line-height-tight: 1.25;
-  --tee-line-height-base: 1.5;
 
   // ---- Espacements (échelle DSFR : 4 / 8 / 12 / 16 / 24 / 32 / 48) ----
   --tee-space-1: 0.25rem; // 4px
@@ -64,13 +55,10 @@
   --tee-space-12: 3rem;   // 48px
 
   // ---- Géométrie ----
-  --tee-radius-none: 0;
-  --tee-radius-sm: 0;     // DSFR : angles droits par défaut
-  --tee-radius-md: 0;
+  --tee-radius-none: 0;   // DSFR : angles droits par défaut
   --tee-radius-lg: 4px;   // exception douce pour quelques cartes
   --tee-button-height: 40px;
   --tee-input-height: 40px;
-  --tee-border-width: 1px;
   --tee-border-width-emphasis: 2px;
   --tee-border-width-accent: 4px; // bordure haute carte / indicateur d'item actif
 

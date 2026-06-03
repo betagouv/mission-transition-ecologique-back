@@ -18,6 +18,9 @@ export default buildConfig({
   admin: {
     user: Users.slug,
     theme: 'light',
+    meta: {
+      icons: [{ rel: 'icon', type: 'image/svg+xml', url: '/favicon.svg' }],
+    },
     components: {
       graphics: {
         Logo: '@/components/admin/Logo#Logo',

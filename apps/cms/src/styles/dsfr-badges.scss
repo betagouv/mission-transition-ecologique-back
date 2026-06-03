@@ -37,14 +37,13 @@
     color: var(--tee-error);
   }
 
-  &--new,
   &--neutral {
     background: var(--tee-grey-100);
     color: var(--tee-grey-1000);
   }
 
   &--purple {
-    // pour les états « final » (remplacé, archivé) — gris foncé DSFR
+    // pour les états « final » (remplacé) — gris foncé DSFR
     background: var(--tee-grey-700);
     color: var(--tee-white);
   }

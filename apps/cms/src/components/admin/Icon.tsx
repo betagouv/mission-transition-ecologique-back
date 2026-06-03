@@ -1,29 +1,38 @@
 import React from 'react'
 
+// Placeholder square icon — neutral, no official branding yet.
+// Registered in payload.config.ts via `admin.components.graphics.Icon`
+// (small icon shown in the admin nav). The browser-tab favicon is set
+// separately through `admin.meta.icons` (see public/favicon.svg).
 export const Icon: React.FC = () => (
   <svg
     className="tee-icon"
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 32 32"
-    width="100%"
-    height="100%"
     role="img"
-    aria-label="Transition Écologique des Entreprises"
+    aria-label="Logo placeholder"
   >
-    <rect width="32" height="32" fill="#ffffff" />
-    <rect x="2" y="2" width="9.33" height="28" fill="#000091" />
-    <rect x="20.67" y="2" width="9.33" height="28" fill="#e1000f" />
+    <rect
+      x="1"
+      y="1"
+      width="30"
+      height="30"
+      fill="#f6f6f6"
+      stroke="#929292"
+      strokeWidth="1"
+      strokeDasharray="3 2"
+    />
     <text
       x="16"
-      y="20"
+      y="21"
       textAnchor="middle"
       fontFamily="Marianne, Arial, sans-serif"
       fontWeight="700"
-      fontSize="11"
-      fill="#161616"
+      fontSize="12"
       letterSpacing="0.5"
+      fill="#3a3a3a"
     >
-      TEE
+      LP
     </text>
   </svg>
 )

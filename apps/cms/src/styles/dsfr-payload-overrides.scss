@@ -14,12 +14,15 @@
 
 :root {
   // ---- Police principale ----
+  // On ne surcharge que la police de corps (Marianne). La police mono de
+  // Payload reste inchangée : aucune police mono custom n'est embarquée.
   --font-body: var(--tee-font-family-sans), -apple-system, blinkmacsystemfont,
     'Segoe UI', roboto, 'Helvetica Neue', arial, sans-serif;
-  --font-mono: var(--tee-font-family-mono);
 
-  // ---- Fond de page ----
-  --theme-bg: #fdfdfd;
+  // ---- Texte / inputs (on conserve le fond blanc natif de Payload) ----
+  // Pas de surcharge de `--theme-bg` : un fond de page gris obligeait à repasser
+  // chaque surface (cartes, recherche, tables) en blanc pour les détacher — trop
+  // de contrastes parasites pour peu de gain. On garde le blanc Payload.
   --theme-text: var(--tee-grey-1000);
   --theme-input-bg: var(--tee-white);
 

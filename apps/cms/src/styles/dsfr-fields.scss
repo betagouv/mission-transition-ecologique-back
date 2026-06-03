@@ -8,7 +8,6 @@
 
 // ---- Label ----
 .field-label,
-.field-type__label,
 label.field-label {
   font-size: var(--tee-font-size-base);
   font-weight: var(--tee-font-weight-medium);
@@ -18,8 +17,7 @@ label.field-label {
 }
 
 // Astérisque champ requis
-.field-label .required,
-.field-required {
+.field-label .required {
   color: var(--tee-red-marianne);
   margin-left: var(--tee-space-1);
 }
@@ -38,9 +36,8 @@ label.field-label {
 .field-type input[type='datetime-local'],
 .field-type input[type='time'],
 .field-type textarea {
-  background: var(--tee-grey-100);
-  border: 0;
-  border-bottom: var(--tee-border-width-emphasis) solid var(--tee-grey-700);
+  background: var(--tee-white);
+  border: 1px solid var(--tee-grey-300);
   border-radius: 0;
   color: var(--tee-grey-1000);
   font-family: var(--tee-font-family-sans);
@@ -55,8 +52,7 @@ label.field-label {
   }
 
   &:hover {
-    background: var(--tee-grey-200);
-    border-bottom-color: var(--tee-grey-1000);
+    border-color: var(--tee-grey-700);
     box-shadow: none;
   }
 
@@ -64,15 +60,14 @@ label.field-label {
   &:focus-visible {
     outline: 2px solid var(--tee-focus-color);
     outline-offset: 2px;
-    border-bottom-color: var(--tee-blue-france);
-    background: var(--tee-grey-50);
+    border-color: var(--tee-blue-france);
   }
 
   &:disabled,
   &[readonly] {
     background: var(--tee-grey-100);
     color: var(--tee-grey-700);
-    border-bottom-color: var(--tee-grey-500);
+    border-color: var(--tee-grey-300);
     cursor: not-allowed;
   }
 }
@@ -87,12 +82,11 @@ label.field-label {
 .field-type.error input,
 .field-type.error textarea,
 .field-type.error .rs__control {
-  border-bottom-color: var(--tee-error);
-  background: var(--tee-error-bg);
+  // `!important` requis car `.rs__control` pose sa bordure en `!important`.
+  border-color: var(--tee-error) !important;
 }
 
-.field-error,
-.field-type__error {
+.field-error {
   color: var(--tee-error);
   font-size: var(--tee-font-size-sm);
   font-weight: var(--tee-font-weight-medium);
@@ -100,8 +94,7 @@ label.field-label {
 }
 
 // ---- Description / hint ----
-.field-description,
-.field-type__description {
+.field-description {
   color: var(--tee-grey-700);
   font-size: var(--tee-font-size-sm);
   margin-top: var(--tee-space-1);
@@ -111,22 +104,28 @@ label.field-label {
 // La structure react-select de Payload est `.rs__control` (wrapper),
 // `.rs__value-container`, `.rs__menu`, etc.
 .rs__control {
-  background: var(--tee-grey-100) !important;
-  border: 0 !important;
-  border-bottom: var(--tee-border-width-emphasis) solid var(--tee-grey-700) !important;
+  background: var(--tee-white) !important;
+  border: 1px solid var(--tee-grey-300) !important;
   border-radius: 0 !important;
   box-shadow: none !important;
-  min-height: var(--tee-input-height);
+  // On fixe `height` (et non `min-height`) : Payload pose `min-height: auto !important`
+  // dans son `@layer`, qui battrait notre `!important` non-layered. `height` non-layered,
+  // lui, l'emporte sur le `height: auto` (layered) de Payload → hauteur alignée sur les
+  // inputs. Payload pose déjà `flex-wrap: nowrap`, donc les puces multi restent sur 1 ligne.
+  height: var(--tee-input-height);
+  // La hauteur fixe casse le centrage vertical natif de react-select (contenu collé
+  // en bas) : on recentre explicitement et on neutralise le padding vertical.
+  align-items: center;
+  padding-block: 0;
 
   &:hover {
-    background: var(--tee-grey-200) !important;
-    border-bottom-color: var(--tee-grey-1000) !important;
+    border-color: var(--tee-grey-700) !important;
   }
 
   &--is-focused {
     outline: 2px solid var(--tee-focus-color) !important;
     outline-offset: 2px;
-    border-bottom-color: var(--tee-blue-france) !important;
+    border-color: var(--tee-blue-france) !important;
   }
 }
 
@@ -150,20 +149,23 @@ label.field-label {
   }
 }
 
+// Puces multi-select : look « tag DSFR » (contour bleu France sur fond blanc).
+// Plus lisible que blanc/noir sur bleu plein, et plus léger visuellement.
 .rs__multi-value {
-  background: var(--tee-blue-france) !important;
+  background: var(--tee-white) !important;
+  border: 1px solid var(--tee-blue-france) !important;
   border-radius: 0 !important;
 
   &__label {
-    color: var(--tee-white) !important;
+    color: var(--tee-blue-france) !important;
   }
 
   &__remove {
-    color: var(--tee-white) !important;
+    color: var(--tee-blue-france) !important;
 
     &:hover {
-      background: var(--tee-blue-france-hover) !important;
-      color: var(--tee-white) !important;
+      background: rgba(0, 0, 145, 0.08) !important;
+      color: var(--tee-blue-france) !important;
     }
   }
 }

@@ -9,7 +9,12 @@
 // dupliquer les règles : c'est l'API d'override la plus stable.
 
 // ---- Hauteur uniformisée ----
+// Payload's `.btn` is `display: inline-block`, so a bare `min-height` leaves the
+// inner `.btn__content` top-aligned. We make the button a centering flex box.
 .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-height: var(--tee-button-height);
   padding-block: 0;
   padding-inline: var(--tee-space-4);
@@ -76,9 +81,30 @@
   --hover-btn-border: 1px solid var(--tee-grey-500);
 }
 
-// ---- Bouton « Save » dans la barre d'action document : couleur d'accent DSFR ----
-.doc-controls__save .btn--style-primary,
-.btn--style-publish {
-  --bg-color: var(--tee-blue-france);
-  --hover-bg: var(--tee-blue-france-hover);
+// ---- Boutons d'action de l'en-tête de liste (à côté du titre) ----
+// « Créer un nouveau » est un `.pill` enveloppé, les actions secondaires des
+// `.btn` : on leur donne à tous la grammaire « secondaire DSFR » (contour bleu
+// France, texte bleu, fond blanc).
+.list-header .btn {
+  --bg-color: var(--tee-white);
+  --color: var(--tee-blue-france);
+  --btn-border: 1px solid var(--tee-blue-france);
+  --hover-bg: rgba(0, 0, 145, 0.05);
+  --hover-color: var(--tee-blue-france);
+  --hover-btn-border: 1px solid var(--tee-blue-france);
+}
+
+.list-header__create-new-button .pill {
+  background: var(--tee-white);
+  border: 1px solid var(--tee-blue-france);
+  border-radius: var(--tee-radius-none);
+  color: var(--tee-blue-france);
+  font-weight: var(--tee-font-weight-medium);
+  padding: var(--tee-space-2) var(--tee-space-3);
+  min-height: var(--tee-button-height);
+}
+
+.list-header__create-new-button:hover .pill {
+  background: rgba(0, 0, 145, 0.05);
+  color: var(--tee-blue-france);
 }

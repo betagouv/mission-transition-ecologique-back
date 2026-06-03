@@ -8,13 +8,13 @@
 //   .nav__link-label              — texte du lien
 //   .app-header                   — topbar
 
-// ---- Sidebar : fond blanc, bordure droite fine ----
+// ---- Sidebar : fond blanc ----
+// Pas de `border-right` ici : Payload en dessine déjà une, on ferait un double trait.
 .nav,
 .template-default__nav,
 .nav__wrap {
   background: var(--tee-white);
   color: var(--tee-grey-1000);
-  border-right: 1px solid var(--tee-grey-200);
 }
 
 // ---- Liens de navigation ----
@@ -44,12 +44,15 @@
   }
 }
 
-// L'indicateur d'item actif : barre verticale Bleu France à gauche
+// L'indicateur d'item actif : barre verticale Bleu France à gauche, pleine hauteur.
+// Payload pose par défaut `height: 16px; inset-inline-start: -20px` — on neutralise
+// la hauteur fixe (`height: auto` + top/bottom) pour occuper toute la hauteur du lien.
 .nav__link-indicator {
   position: absolute;
-  left: 0;
+  inset-inline-start: 0;
   top: 0;
   bottom: 0;
+  height: auto;
   width: var(--tee-border-width-accent);
   background: var(--tee-blue-france);
 }
@@ -59,8 +62,8 @@
 }
 
 // ---- Groupes de nav (ex: « Collections », « Globals ») ----
-.nav-group__toggle,
-.nav-group__label {
+// `margin-top` pour décoller le premier groupe du séparateur du header.
+.nav-group__toggle {
   font-family: var(--tee-font-family-sans);
   font-size: var(--tee-font-size-sm);
   font-weight: var(--tee-font-weight-bold);
@@ -68,6 +71,7 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   padding-inline: var(--tee-space-4);
+  margin-top: var(--tee-space-4);
 }
 
 // ---- Header (topbar) ----
@@ -83,4 +87,22 @@
 .nav__controls {
   border-top: 1px solid var(--tee-grey-200);
   padding: var(--tee-space-3) var(--tee-space-4);
+}
+
+// ---- En-tête de liste : espacement + alignement titre / bouton « Créer un nouveau » ----
+// Petit espace au-dessus de l'en-tête pour le décoller du séparateur du header.
+.list-header {
+  margin-top: var(--tee-space-2);
+}
+
+// Payload aligne la ligne sur `align-items: flex-end` ; Marianne étant plus haute,
+// le bouton se retrouve décalé. On recentre.
+.list-header__title-and-actions {
+  align-items: center;
+}
+
+// Payload ajoute `margin-bottom: 4px` sur le wrapper du bouton, ce qui le décale
+// vers le haut une fois la ligne recentrée. On le retire.
+.list-header__title-actions {
+  margin-bottom: 0;
 }
