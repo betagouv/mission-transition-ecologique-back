@@ -1,0 +1,72 @@
+// Login page — DSFR grammar.
+// Payload structure:
+//   .template-minimal              — full-screen wrapper
+//   .template-minimal__wrap        — centered card
+//   .login__brand                  — logo block (placeholder)
+//   .login__form                   — login form
+//
+// DSFR design: white card centered on a light grey background, with a 4px
+// Bleu France top border that "signs" the card (DSFR card pattern).
+
+.template-minimal {
+  background: var(--tee-grey-50);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--tee-space-6);
+
+  &__wrap {
+    background: var(--tee-white);
+    border-top: var(--tee-border-width-accent) solid var(--tee-blue-france);
+    box-shadow: var(--tee-shadow-md);
+    padding: var(--tee-space-12) var(--tee-space-8);
+    max-width: 480px;
+    width: 100%;
+  }
+
+  // ---- Brand block (logo placeholder) ----
+  .login__brand {
+    margin-bottom: var(--tee-space-8);
+    text-align: center;
+
+    h1,
+    h2,
+    h3 {
+      font-family: var(--tee-font-family-sans);
+      font-weight: var(--tee-font-weight-bold);
+      color: var(--tee-blue-france);
+      font-size: var(--tee-font-size-2xl);
+      letter-spacing: -0.01em;
+    }
+  }
+
+  // ---- Form ----
+  .login__form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--tee-space-4);
+  }
+
+  // Login button: full-width Bleu France color
+  .login__form .form-submit .btn,
+  .login__form button[type='submit'] {
+    width: 100%;
+    --bg-color: var(--tee-blue-france);
+    --color: var(--tee-white);
+    --hover-bg: var(--tee-blue-france-hover);
+    --hover-color: var(--tee-white);
+    margin-top: var(--tee-space-4);
+  }
+
+  // "Forgot password" link
+  a {
+    color: var(--tee-blue-france);
+    font-weight: var(--tee-font-weight-medium);
+    text-underline-offset: 2px;
+
+    &:hover {
+      color: var(--tee-blue-france-hover);
+    }
+  }
+}

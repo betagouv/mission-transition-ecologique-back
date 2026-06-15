@@ -1,40 +1,34 @@
 'use client'
 
 import React from 'react'
-import { Pill } from '@payloadcms/ui'
 import {
   WORKFLOW_STATUS_LABELS,
   type WorkflowStatus,
 } from '@/services/workflow/WorkflowTransitionPolicy'
 
-type PillStyle =
-  | 'always-white'
-  | 'dark'
-  | 'error'
-  | 'light'
-  | 'light-gray'
-  | 'success'
-  | 'warning'
-  | 'white'
+type BadgeVariant = 'info' | 'success' | 'warning' | 'error' | 'neutral' | 'purple'
 
-const WORKFLOW_PILL_STYLES: Record<WorkflowStatus, PillStyle> = {
-  'en-creation': 'light-gray',
+const WORKFLOW_BADGE_VARIANTS: Record<WorkflowStatus, BadgeVariant> = {
+  'en-creation': 'neutral',
   'en-relecture': 'warning',
   'en-cours-publication': 'warning',
   publie: 'success',
-  'en-cours-modification': 'light',
-  importe: 'light',
+  'en-cours-modification': 'info',
+  importe: 'info',
   annule: 'error',
-  archive: 'light-gray',
-  remplace: 'dark',
+  archive: 'neutral',
+  remplace: 'purple',
 }
 
 type Props = {
   status: WorkflowStatus
 }
 
-export const WorkflowStatusPill: React.FC<Props> = ({ status }) => (
-  <Pill pillStyle={WORKFLOW_PILL_STYLES[status] ?? 'light'} size="small" rounded>
-    {WORKFLOW_STATUS_LABELS[status] ?? status}
-  </Pill>
-)
+export const WorkflowStatusPill: React.FC<Props> = ({ status }) => {
+  const variant = WORKFLOW_BADGE_VARIANTS[status] ?? 'neutral'
+  return (
+    <span className={`tee-badge tee-badge--${variant}`}>
+      {WORKFLOW_STATUS_LABELS[status] ?? status}
+    </span>
+  )
+}

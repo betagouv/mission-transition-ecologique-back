@@ -1,0 +1,62 @@
+// Overrides Payload CSS variables with DSFR tokens.
+//
+// The Payload cascade is left intact (it references its `--theme-elevation-*`
+// everywhere) and only the following are overridden:
+//   - body font                → Marianne (`--font-body`)
+//   - primary text             → #161616 (`--theme-text`)
+//   - input background + border color
+//   - radii                    → square corners (`--style-radius-*`)
+//   - semantic colors          → DSFR success / warning / error
+//   - keyboard focus           → DSFR blue outline (`--accessibility-outline`)
+//
+// `--color-base-*` neutrals are NOT touched: the Payload palette is already
+// <3/255 away from DSFR greys (invisible). No custom page background either (Payload white).
+//
+// *Non-layered* declarations → take precedence over Payload's `@layer payload-default`.
+
+:root {
+  // ---- Main font ----
+  // Only the body font (Marianne) is overridden. The Payload monospace font
+  // remains unchanged: no custom monospace font is bundled.
+  --font-body: var(--tee-font-family-sans), -apple-system, blinkmacsystemfont,
+    'Segoe UI', roboto, 'Helvetica Neue', arial, sans-serif;
+
+  // ---- Text / inputs ----
+  --theme-text: var(--tee-grey-1000);
+  --theme-input-bg: var(--tee-white);
+
+  // ---- Borders ----
+  --theme-border-color: var(--tee-grey-300);
+
+  // ---- DSFR semantic colors (success / warning / error) ----
+  // The Payload --theme-success-* / --theme-warning-* / --theme-error-* cascade
+  // is preserved, but the most-used stops are replaced with DSFR values.
+  // Extreme stops remain unchanged (Payload uses them for its own hover/active shadings).
+  --color-success-100: #b8fec9; // DSFR success bg
+  --color-success-500: #18753c; // DSFR success
+  --color-success-700: #18753c;
+
+  --color-warning-100: #fff5e6;
+  --color-warning-500: #b34000;
+  --color-warning-700: #663300;
+
+  --color-error-100: #ffe9e9;
+  --color-error-500: #ce0500;
+  --color-error-700: #b50202;
+
+  // ---- Geometry: DSFR square corners ----
+  --style-radius-s: var(--tee-radius-none);
+  --style-radius-m: var(--tee-radius-none);
+  --style-radius-l: var(--tee-radius-lg);
+
+  // ---- DSFR focus outline ----
+  --accessibility-outline: 2px solid var(--tee-focus-color);
+  --accessibility-outline-offset: 2px;
+}
+
+// Applied to body: enforce the font even if Payload tries to override it
+// elsewhere (cf. app.scss:104).
+html,
+body {
+  font-family: var(--font-body);
+}

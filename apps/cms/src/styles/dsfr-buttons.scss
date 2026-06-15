@@ -1,0 +1,110 @@
+// DSFR buttons:
+//   - primary    : Bleu France background, white text
+//   - secondary  : Bleu France outline, white background, Bleu France text
+//   - tertiary   : no border, Bleu France text (icon-label / pill DSFR)
+// Ref. https://www.systeme-de-design.gouv.fr/composants-et-modeles/composants/bouton/
+//
+// We override Payload's internal button *custom properties* (`--bg-color`,
+// `--color`, `--btn-border`, `--hover-bg`, `--hover-color`) rather than
+// duplicating rules: this is the most stable override API.
+
+// ---- Unified height ----
+// Payload's `.btn` is `display: inline-block`, so a bare `min-height` leaves the
+// inner `.btn__content` top-aligned. We make the button a centering flex box.
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tee-button-height);
+  padding-block: 0;
+  padding-inline: var(--tee-space-4);
+  font-weight: var(--tee-font-weight-medium);
+  letter-spacing: 0.01em;
+}
+
+// ---- Primary: Bleu France background ----
+.btn--style-primary {
+  --bg-color: var(--tee-blue-france);
+  --color: var(--tee-white);
+  --hover-bg: var(--tee-blue-france-hover);
+  --hover-color: var(--tee-white);
+
+  &.btn--disabled {
+    --bg-color: var(--tee-grey-200);
+    --color: var(--tee-grey-700);
+    --hover-bg: var(--tee-grey-200);
+    --hover-color: var(--tee-grey-700);
+  }
+}
+
+// ---- Secondary: Bleu France outline ----
+.btn--style-secondary {
+  --bg-color: var(--tee-white);
+  --color: var(--tee-blue-france);
+  --btn-border: 1px solid var(--tee-blue-france);
+  --hover-bg: rgba(0, 0, 145, 0.05);
+  --hover-color: var(--tee-blue-france);
+  --hover-btn-border: 1px solid var(--tee-blue-france);
+
+  &.btn--disabled {
+    --color: var(--tee-grey-500);
+    --btn-border: 1px solid var(--tee-grey-300);
+    --hover-bg: var(--tee-white);
+    --hover-color: var(--tee-grey-500);
+    --hover-btn-border: 1px solid var(--tee-grey-300);
+  }
+}
+
+// ---- Tertiary / pill / icon-label: no border, Bleu France text ----
+.btn--style-pill,
+.btn--style-icon-label,
+.btn--style-tab {
+  --color: var(--tee-blue-france);
+  --bg-color: transparent;
+  --hover-bg: rgba(0, 0, 145, 0.06);
+  --hover-color: var(--tee-blue-france-hover);
+
+  &.btn--disabled {
+    --color: var(--tee-grey-500);
+    --hover-bg: transparent;
+    --hover-color: var(--tee-grey-500);
+  }
+}
+
+// ---- Subtle: light grey background ----
+.btn--style-subtle {
+  --bg-color: var(--tee-grey-100);
+  --color: var(--tee-grey-1000);
+  --btn-border: 1px solid var(--tee-grey-300);
+  --hover-bg: var(--tee-grey-200);
+  --hover-color: var(--tee-grey-1000);
+  --hover-btn-border: 1px solid var(--tee-grey-500);
+}
+
+// ---- List header action buttons (next to the title) ----
+// "Create new" is a wrapped `.pill`, the secondary actions are
+// `.btn`: we give them all the "DSFR secondary" style (Bleu France
+// outline, blue text, white background).
+.list-header .btn {
+  --bg-color: var(--tee-white);
+  --color: var(--tee-blue-france);
+  --btn-border: 1px solid var(--tee-blue-france);
+  --hover-bg: rgba(0, 0, 145, 0.05);
+  --hover-color: var(--tee-blue-france);
+  --hover-btn-border: 1px solid var(--tee-blue-france);
+}
+
+.list-header__create-new-button .pill {
+  background: var(--tee-white);
+  border: 1px solid var(--tee-blue-france);
+  border-radius: var(--tee-radius-none);
+  color: var(--tee-blue-france);
+  font-weight: var(--tee-font-weight-medium);
+  padding: var(--tee-space-2) var(--tee-space-3);
+  min-height: var(--tee-button-height);
+}
+
+.list-header__create-new-button:hover .pill {
+  background: rgba(0, 0, 145, 0.05);
+  color: var(--tee-blue-france);
+}

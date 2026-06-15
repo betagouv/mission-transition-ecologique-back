@@ -1,0 +1,211 @@
+// Form fields — DSFR style.
+// Ref. https://www.systeme-de-design.gouv.fr/composants-et-modeles/composants/champ-de-saisie/
+//
+// Bordered inputs (white background, thin border, square corners), label above in
+// medium weight. We override Payload classes (`.field-type input`, `.field-label`,
+// `.rs__control`).
+
+// ---- Label ----
+.field-label,
+label.field-label {
+  font-size: var(--tee-font-size-base);
+  font-weight: var(--tee-font-weight-medium);
+  color: var(--tee-grey-1000);
+  margin-bottom: var(--tee-space-1);
+  line-height: var(--tee-line-height-tight);
+}
+
+// Required field asterisk
+.field-label .required {
+  color: var(--tee-red-marianne);
+  margin-left: var(--tee-space-1);
+}
+
+// ---- Native inputs ----
+// We only target fields inside `.field-type` to avoid breaking the
+// internal inputs of popups/menus.
+.field-type input[type='text'],
+.field-type input[type='email'],
+.field-type input[type='password'],
+.field-type input[type='number'],
+.field-type input[type='url'],
+.field-type input[type='tel'],
+.field-type input[type='search'],
+.field-type input[type='date'],
+.field-type input[type='datetime-local'],
+.field-type input[type='time'],
+.field-type textarea {
+  background: var(--tee-white);
+  border: 1px solid var(--tee-grey-300);
+  border-radius: 0;
+  color: var(--tee-grey-1000);
+  font-family: var(--tee-font-family-sans);
+  font-size: var(--tee-font-size-base);
+  padding: var(--tee-space-2) var(--tee-space-3);
+  box-shadow: none;
+  min-height: var(--tee-input-height);
+
+  &::placeholder {
+    color: var(--tee-grey-700);
+    opacity: 0.7;
+  }
+
+  &:hover {
+    border-color: var(--tee-grey-700);
+    box-shadow: none;
+  }
+
+  &:focus,
+  &:focus-visible {
+    outline: 2px solid var(--tee-focus-color);
+    outline-offset: 2px;
+    border-color: var(--tee-blue-france);
+  }
+
+  &:disabled,
+  &[readonly] {
+    background: var(--tee-grey-100);
+    color: var(--tee-grey-700);
+    border-color: var(--tee-grey-300);
+    cursor: not-allowed;
+  }
+}
+
+// ---- Textarea: same look but free height ----
+.field-type textarea {
+  min-height: calc(var(--tee-input-height) * 2);
+  resize: vertical;
+}
+
+// ---- Error states ----
+.field-type.error input,
+.field-type.error textarea,
+.field-type.error .rs__control {
+  // `!important` required because `.rs__control` sets its border with `!important`.
+  border-color: var(--tee-error) !important;
+}
+
+.field-error {
+  color: var(--tee-error);
+  font-size: var(--tee-font-size-sm);
+  font-weight: var(--tee-font-weight-medium);
+  margin-top: var(--tee-space-1);
+}
+
+// ---- Description / hint ----
+.field-description {
+  color: var(--tee-grey-700);
+  font-size: var(--tee-font-size-sm);
+  margin-top: var(--tee-space-1);
+}
+
+// ---- Selects (react-select) ----
+// Payload's react-select structure is `.rs__control` (wrapper),
+// `.rs__value-container`, `.rs__menu`, etc.
+.rs__control {
+  background: var(--tee-white) !important;
+  border: 1px solid var(--tee-grey-300) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  // `height` not `min-height`: Payload forces `min-height: auto !important` in its
+  // `@layer` (which an unlayered `!important` cannot beat); an unlayered `height`,
+  // however, wins. Payload's `flex-wrap: nowrap` keeps multi-value chips on one line.
+  height: var(--tee-input-height);
+  // The fixed height pins content to the bottom → re-center it.
+  align-items: center;
+  padding-block: 0;
+
+  &:hover {
+    border-color: var(--tee-grey-700) !important;
+  }
+
+  &--is-focused {
+    outline: 2px solid var(--tee-focus-color) !important;
+    outline-offset: 2px;
+    border-color: var(--tee-blue-france) !important;
+  }
+}
+
+.rs__menu {
+  background: var(--tee-white) !important;
+  border: 1px solid var(--tee-grey-300) !important;
+  border-radius: 0 !important;
+  box-shadow: var(--tee-shadow-md) !important;
+}
+
+.rs__option {
+  font-family: var(--tee-font-family-sans);
+
+  &--is-focused {
+    background: var(--tee-grey-100) !important;
+  }
+
+  &--is-selected {
+    background: var(--tee-blue-france) !important;
+    color: var(--tee-white) !important;
+  }
+}
+
+// Multi-select chips: "DSFR tag" style (Bleu France outline on white background).
+// More readable than white/black on solid blue, and visually lighter.
+.rs__multi-value {
+  background: var(--tee-white) !important;
+  border: 1px solid var(--tee-blue-france) !important;
+  border-radius: 0 !important;
+
+  &__label {
+    color: var(--tee-blue-france) !important;
+  }
+
+  &__remove {
+    color: var(--tee-blue-france) !important;
+
+    &:hover {
+      background: rgba(0, 0, 145, 0.08) !important;
+      color: var(--tee-blue-france) !important;
+    }
+  }
+}
+
+// ---- Checkbox / radio: DSFR accent color ----
+.field-type input[type='checkbox'],
+.field-type input[type='radio'] {
+  accent-color: var(--tee-blue-france);
+}
+
+// Payload custom checkbox (.checkbox-input)
+.checkbox-input__icon,
+.checkbox-input__input:checked + .checkbox-input__icon {
+  border-color: var(--tee-blue-france);
+}
+
+.checkbox-input__input:checked ~ .checkbox-input__icon {
+  background: var(--tee-blue-france);
+}
+
+// ---- Date picker ----
+// react-datepicker (used by Payload): we only override colors
+// to avoid breaking the calendar's complex internal layout.
+.react-datepicker {
+  border: 1px solid var(--tee-grey-300) !important;
+  border-radius: 0 !important;
+  font-family: var(--tee-font-family-sans) !important;
+  box-shadow: var(--tee-shadow-md);
+
+  &__header {
+    background: var(--tee-grey-50) !important;
+    border-bottom: 1px solid var(--tee-grey-200) !important;
+  }
+
+  &__day--selected,
+  &__day--keyboard-selected {
+    background: var(--tee-blue-france) !important;
+    color: var(--tee-white) !important;
+    border-radius: 0 !important;
+  }
+
+  &__day:hover {
+    background: var(--tee-grey-100) !important;
+    border-radius: 0 !important;
+  }
+}

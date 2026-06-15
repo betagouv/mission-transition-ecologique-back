@@ -1,0 +1,16 @@
+// DSFR geometry: sharp corners.
+//
+// The bulk of the work is already done by the `--style-radius-*` variables (set to 0 in
+// dsfr-payload-overrides), which flatten most Payload components
+// (buttons, cards, inputs…). All that remains is to neutralise the rare components
+// that hardcode a `border-radius`.
+//
+// Keyboard focus and transitions are NOT handled here: Payload already applies
+// a universal `:focus-visible { outline: var(--accessibility-outline) }`
+// (which we override to DSFR blue via the variable) and already animates its buttons.
+
+.pill,
+.banner,
+.tooltip {
+  border-radius: var(--tee-radius-none);
+}

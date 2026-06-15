@@ -1,0 +1,108 @@
+// Navigation sidebar and topbar — DSFR grammar.
+// Payload structure:
+//   .template-default__nav        — sidebar wrapper
+//   nav.nav                       — inner wrapper
+//   .nav__wrap                    — link list
+//   .nav__link                    — each link (hover/active)
+//   .nav__link-indicator          — vertical bar visible when item is active
+//   .nav__link-label              — link text
+//   .app-header                   — topbar
+
+// ---- Sidebar: white background ----
+// No `border-right` here: Payload already draws one, adding another would create a double border.
+.nav,
+.template-default__nav,
+.nav__wrap {
+  background: var(--tee-white);
+  color: var(--tee-grey-1000);
+}
+
+// ---- Navigation links ----
+.nav__link {
+  display: flex;
+  align-items: center;
+  gap: var(--tee-space-3);
+  padding: var(--tee-space-3) var(--tee-space-4);
+  color: var(--tee-grey-1000);
+  font-family: var(--tee-font-family-sans);
+  font-size: var(--tee-font-size-base);
+  text-decoration: none;
+  border: 0;
+  border-radius: 0;
+  position: relative;
+
+  &:hover {
+    background: var(--tee-grey-100);
+    color: var(--tee-blue-france);
+  }
+
+  // Active item: Bleu France color + left bar indicator
+  &:has(.nav__link-indicator) {
+    background: var(--tee-grey-50);
+    color: var(--tee-blue-france);
+    font-weight: var(--tee-font-weight-medium);
+  }
+}
+
+// Active item indicator: full-height Bleu France vertical bar on the left.
+// Payload defaults to `height: 16px; inset-inline-start: -20px` — we override
+// the fixed height (`height: auto` + top/bottom) to span the full link height.
+.nav__link-indicator {
+  position: absolute;
+  inset-inline-start: 0;
+  top: 0;
+  bottom: 0;
+  height: auto;
+  width: var(--tee-border-width-accent);
+  background: var(--tee-blue-france);
+}
+
+.nav__link-label {
+  font-weight: inherit;
+}
+
+// ---- Nav groups (e.g. "Collections", "Globals") ----
+// `margin-top` to separate the first group from the header divider.
+.nav-group__toggle {
+  font-family: var(--tee-font-family-sans);
+  font-size: var(--tee-font-size-sm);
+  font-weight: var(--tee-font-weight-bold);
+  color: var(--tee-grey-700);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding-inline: var(--tee-space-4);
+  margin-top: var(--tee-space-4);
+}
+
+// ---- Header (topbar) ----
+.app-header,
+.nav__header {
+  background: var(--tee-white);
+  border-bottom: 1px solid var(--tee-grey-200);
+  box-shadow: var(--tee-shadow-sm);
+  color: var(--tee-grey-1000);
+}
+
+// ---- "Controls" section at the bottom of the sidebar (settings + logout) ----
+.nav__controls {
+  border-top: 1px solid var(--tee-grey-200);
+  padding: var(--tee-space-3) var(--tee-space-4);
+}
+
+// ---- List header: spacing + alignment of title / "Create new" button ----
+// Small space above the header to separate it from the header divider.
+.list-header {
+  margin-top: var(--tee-space-2);
+}
+
+// Payload aligns the row with `align-items: flex-end`; since Marianne is taller,
+// the button ends up misaligned. We re-center it.
+.list-header__title-and-actions {
+  align-items: center;
+}
+
+// Payload adds `margin-bottom: 4px` on the button wrapper, which shifts it upward
+// once the row is re-centered. We remove it.
+.list-header__title-actions {
+  margin-bottom: 0;
+}
