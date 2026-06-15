@@ -1,0 +1,33 @@
+{
+  "name": "@tee-backoffice/canonical",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/canonical/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/libs/canonical",
+        "main": "libs/canonical/src/index.ts",
+        "tsConfig": "libs/canonical/tsconfig.lib.json",
+        "assets": ["libs/canonical/*.md"]
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsc --noEmit -p tsconfig.lib.json",
+        "cwd": "{projectRoot}"
+      }
+    },
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vitest run --config vitest.config.mts",
+        "cwd": "{projectRoot}"
+      }
+    }
+  }
+}

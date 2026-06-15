@@ -70,3 +70,5 @@ test-output
 memory/MEMORY.local.md
 local/**
 docs/sources/exports/**
+
+vitest.config.*.timestamp*
