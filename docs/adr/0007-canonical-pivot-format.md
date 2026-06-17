@@ -47,7 +47,7 @@ Les identifiants métier sont des types nominaux (zod `.brand()`) : `Cuid2`, `Sl
 
 ### 7. Clés ouvertes préservées
 
-`autres_donnees` (section 6) et `variante.autres_champs` acceptent des clés libres (`.passthrough()` / `z.record`). Les clés inconnues **survivent** à la validation (round-trip sans perte). Les clés inconnues de **premier niveau** sont au contraire **supprimées** (objet strict).
+`autres_donnees` (section 6) et `variante.autres_champs` acceptent des clés libres (`.passthrough()` / `z.record`). Les clés inconnues **survivent** à la validation (round-trip sans perte). Les clés inconnues de **premier niveau** sont au contraire **supprimées** silencieusement (comportement `strip` par défaut de zod — à ne pas confondre avec `.strict()`, qui *rejetterait* l'objet).
 
 ### 8. Éligibilité — forme « refacto »
 

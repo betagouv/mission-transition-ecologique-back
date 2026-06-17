@@ -26,8 +26,8 @@ import { statutSchema, typeAideSchema, type Statut, type TypeAide } from '../enu
 export const contactQuestionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('ADEME') }).strict(),
   z.object({ type: z.literal('CE') }).strict(),
-  z.object({ type: z.literal('email'), valeur: z.string().email() }),
-  z.object({ type: z.literal('url'), valeur: urlSchema }),
+  z.object({ type: z.literal('email'), valeur: z.string().email() }).strict(),
+  z.object({ type: z.literal('url'), valeur: urlSchema }).strict(),
 ])
 export type ContactQuestion = z.infer<typeof contactQuestionSchema>
 

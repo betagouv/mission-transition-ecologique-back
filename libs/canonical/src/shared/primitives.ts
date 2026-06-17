@@ -56,7 +56,7 @@ export type CogCode = z.infer<typeof cogCodeSchema>
 export const regionCogCodeSchema = z
   .string()
   .regex(/^REG-[0-9A-Z]+$/, 'code région COG attendu (ex: REG-53)')
-  .brand<'CogCode'>()
+  .brand<'RegionCogCode'>()
 export type RegionCogCode = z.infer<typeof regionCogCodeSchema>
 
 /**
