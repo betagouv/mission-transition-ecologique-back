@@ -2,6 +2,7 @@ import type { CollectionConfig, FieldAccess } from 'payload'
 import { ProgramAccessPolicy } from '@/services/access/ProgramAccessPolicy'
 import { beforeChangeWorkflow } from '@/hooks/programs/beforeChangeWorkflow'
 import { assignCreatorOnCreate } from '@/hooks/programs/assignCreatorOnCreate'
+import { trackLastModifiedBy } from '@/hooks/programs/trackLastModifiedBy'
 import { THEMES_OPTIONS } from '@/constants/themesOptions'
 import { UserRole, type UserRoleValue } from '@/utils/user/UserRole'
 
@@ -63,10 +64,25 @@ export const Programs: CollectionConfig = {
           '@/components/programs/WorkflowActionBar#WorkflowActionBar',
         Status: '@/components/programs/WorkflowStatusBadge#WorkflowStatusBadge',
       },
+      views: {
+        edit: {
+          // Custom versions list: same native experience (rows link to the
+          // native version diff view) augmented with workflow columns
+          // (Qui / Statut depuis / Statut vers).
+          versions: {
+            Component:
+              '@/components/programs/versions/ProgramVersionsView#ProgramVersionsView',
+          },
+        },
+      },
     },
   },
   hooks: {
-    beforeChange: [assignCreatorOnCreate, beforeChangeWorkflow],
+    beforeChange: [
+      assignCreatorOnCreate,
+      trackLastModifiedBy,
+      beforeChangeWorkflow,
+    ],
   },
   access: {
     read: ProgramAccessPolicy.read,
@@ -328,13 +344,17 @@ export const Programs: CollectionConfig = {
           name: 'validityStart',
           type: 'date',
           label: 'Date de début de validité',
-          admin: { date: { pickerAppearance: 'dayOnly' } },
+          admin: {
+            date: { pickerAppearance: 'dayOnly', displayFormat: 'dd/MM/yyyy' },
+          },
         },
         {
           name: 'validityEnd',
           type: 'date',
           label: 'Date de fin de validité',
-          admin: { date: { pickerAppearance: 'dayOnly' } },
+          admin: {
+            date: { pickerAppearance: 'dayOnly', displayFormat: 'dd/MM/yyyy' },
+          },
         },
       ],
     },
@@ -545,11 +565,27 @@ export const Programs: CollectionConfig = {
       }),
     },
     {
+      name: 'lastModifiedBy',
+      type: 'relationship',
+      label: 'Dernière modification par',
+      relationTo: 'users',
+      hasMany: false,
+      admin: {
+        // Captured into each version snapshot to feed the "Qui" column of the
+        // custom versions view. Not shown in the form.
+        hidden: true,
+        readOnly: true,
+      },
+    },
+    {
       name: 'workflowHistory',
       type: 'array',
       label: 'Historique des transitions',
       admin: {
-        position: 'sidebar',
+        // Removed from the sidebar (ticket #6, point 10). The data is still
+        // written by `beforeChangeWorkflow` and stays available in the API and
+        // version snapshots.
+        hidden: true,
         readOnly: true,
         description: 'Historique automatique des changements de statut.',
       },

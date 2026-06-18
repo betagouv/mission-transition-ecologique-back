@@ -18,6 +18,10 @@ export default buildConfig({
   admin: {
     user: Users.slug,
     theme: 'light',
+    // French date/time format (date-fns pattern) used as the admin-wide default,
+    // e.g. for the document versions list. Day-only fields override it with
+    // their own `admin.date.displayFormat`.
+    dateFormat: 'dd/MM/yyyy HH:mm',
     meta: {
       icons: [{ rel: 'icon', type: 'image/svg+xml', url: '/favicon.svg' }],
     },
