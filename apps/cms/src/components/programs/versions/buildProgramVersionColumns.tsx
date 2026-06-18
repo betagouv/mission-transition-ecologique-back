@@ -1,7 +1,12 @@
 import React from 'react'
+import type { Column } from 'payload'
 import type { WorkflowStatus } from '@/services/workflow/WorkflowTransitionPolicy'
 import { WorkflowStatusPill } from '@/components/programs/WorkflowStatusPill'
 import { CreatedAtCell } from './CreatedAtCell'
+
+/** Minimal `ClientField` placeholder: the Table only uses it for sort metadata. */
+const minimalField = (type: string): Column['field'] =>
+  ({ name: '', type }) as unknown as Column['field']
 
 type Author = { email?: string; name?: string } | number | string | null | undefined
 
@@ -13,14 +18,6 @@ export type ProgramVersionDoc = {
     workflowStatus?: string
     lastModifiedBy?: Author
   }
-}
-
-type Column = {
-  accessor: string
-  active: boolean
-  field: { name: string; type: string }
-  Heading: React.ReactNode
-  renderedCells: React.ReactNode[]
 }
 
 /** Best-effort display label for the "Qui" column from a (possibly populated) relationship. */
@@ -57,7 +54,7 @@ export const buildProgramVersionColumns = ({
   {
     accessor: 'updatedAt',
     active: true,
-    field: { name: '', type: 'date' },
+    field: minimalField('date'),
     Heading: <span>Date</span>,
     renderedCells: docs.map((doc, i) => (
       <CreatedAtCell
@@ -71,7 +68,7 @@ export const buildProgramVersionColumns = ({
   {
     accessor: 'lastModifiedBy',
     active: true,
-    field: { name: '', type: 'text' },
+    field: minimalField('text'),
     Heading: <span>Qui</span>,
     renderedCells: docs.map((doc, i) => (
       <span key={i}>{resolveAuthorLabel(doc.version?.lastModifiedBy)}</span>
@@ -80,7 +77,7 @@ export const buildProgramVersionColumns = ({
   {
     accessor: 'statusFrom',
     active: true,
-    field: { name: '', type: 'text' },
+    field: minimalField('text'),
     Heading: <span>Statut depuis</span>,
     renderedCells: docs.map((doc, i) => (
       <React.Fragment key={i}>
@@ -91,7 +88,7 @@ export const buildProgramVersionColumns = ({
   {
     accessor: 'statusTo',
     active: true,
-    field: { name: '', type: 'text' },
+    field: minimalField('text'),
     Heading: <span>Statut vers</span>,
     renderedCells: docs.map((doc, i) => (
       <React.Fragment key={i}>
@@ -102,7 +99,7 @@ export const buildProgramVersionColumns = ({
   {
     accessor: 'id',
     active: true,
-    field: { name: '', type: 'text' },
+    field: minimalField('text'),
     Heading: <span>Identifiant</span>,
     renderedCells: docs.map((doc, i) => <span key={i}>{doc.id}</span>),
   },
