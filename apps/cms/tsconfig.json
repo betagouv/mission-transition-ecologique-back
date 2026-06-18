@@ -18,7 +18,8 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
-      "@payload-config": ["./payload.config.ts"]
+      "@payload-config": ["./payload.config.ts"],
+      "@tee-backoffice/canonical": ["../../libs/canonical/src/index.ts"]
     }
   },
   "include": [
