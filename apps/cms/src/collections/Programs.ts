@@ -452,6 +452,7 @@ export const Programs: CollectionConfig = {
             update: adminOnlyFieldAccess,
           },
           admin: {
+            className: 'field--geographic-areas',
             condition: (data) =>
               data?.geographicCoverage === 'regional' ||
               data?.geographicCoverage === 'departemental',
