@@ -1,18 +1,11 @@
-import type { CollectionConfig, FieldAccess } from 'payload'
+import type { CollectionConfig } from 'payload'
 import { ProgramAccessPolicy } from '@/services/access/ProgramAccessPolicy'
 import { beforeChangeWorkflow } from '@/hooks/programs/beforeChangeWorkflow'
 import { assignCreatorOnCreate } from '@/hooks/programs/assignCreatorOnCreate'
 import { normalizeGeographicCoverage } from '@/hooks/programs/normalizeGeographicCoverage'
 import { THEMES_OPTIONS } from '@/constants/themesOptions'
 import { UserRole, type UserRoleValue } from '@/utils/user/UserRole'
-
-/**
- * Field-level access reserved to admins (and above). Used to lock fields that
- * creators must not edit, such as the geographic coverage and zones (managed
- * centrally to avoid label drift).
- */
-const adminOnlyFieldAccess: FieldAccess = ({ req: { user } }) =>
-  UserRole.isAdmin(user)
+import { ProgramFieldAccessPolicy } from '@/services/access/ProgramFieldAccessPolicy'
 
 const COMPANY_SIZE_OPTIONS = [
   { label: '0 à 9 salariés', value: '0-9' },
@@ -437,8 +430,8 @@ export const Programs: CollectionConfig = {
               "National : l'aide couvre tout le territoire, aucune zone à préciser. Régional / Départemental : sélectionnez les zones concernées ci-dessous.",
           },
           access: {
-            create: adminOnlyFieldAccess,
-            update: adminOnlyFieldAccess,
+            create: ProgramFieldAccessPolicy.adminOnly,
+            update: ProgramFieldAccessPolicy.adminOnly,
           },
         },
         {
@@ -448,8 +441,8 @@ export const Programs: CollectionConfig = {
           relationTo: 'geographic-areas',
           hasMany: true,
           access: {
-            create: adminOnlyFieldAccess,
-            update: adminOnlyFieldAccess,
+            create: ProgramFieldAccessPolicy.adminOnly,
+            update: ProgramFieldAccessPolicy.adminOnly,
           },
           admin: {
             className: 'field--geographic-areas',
@@ -636,10 +629,7 @@ export const Programs: CollectionConfig = {
       ],
       admin: { position: 'sidebar' },
       access: {
-        update: (({ req: { user } }) => {
-          if (!user) return false;
-          return UserRole.isAdmin(user);
-        }) satisfies FieldAccess,
+        update: ProgramFieldAccessPolicy.adminOnly,
       },
     },
     {
@@ -653,8 +643,7 @@ export const Programs: CollectionConfig = {
         description: 'Contributeurs autorisés à éditer ce dispositif.',
       },
       access: {
-        update: (({ req: { user } }) =>
-          UserRole.isAdmin(user)) satisfies FieldAccess,
+        update: ProgramFieldAccessPolicy.adminOnly,
       },
     },
 
