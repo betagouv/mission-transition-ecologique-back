@@ -127,10 +127,10 @@ export class ProgramMapper {
       url: trimmedUrl,
       ...amounts,
       steps: (program.objectifs ?? []).map((obj) => ({
-        description: obj.description,
+        description: this.toRichText(obj.description),
         links: (obj.liens ?? []).map((lien) => ({
-          url: lien.lien,
           linkLabel: lien.texte ?? '',
+          url: lien.lien,
         })),
       })),
       contactMethods: contact.contactMethods,

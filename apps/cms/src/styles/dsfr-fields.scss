@@ -183,6 +183,17 @@ label.field-label {
   background: var(--tee-blue-france);
 }
 
+// ---- Rich text (Lexical) ----
+// Payload's Lexical editor renders its editable area with its own typeface.
+// We force Marianne so the rich text matches the other DSFR fields.
+.rich-text-lexical,
+.rich-text-lexical [data-lexical-editor],
+.rich-text-lexical .ContentEditable__root {
+  font-family: var(--tee-font-family-sans);
+  font-size: var(--tee-font-size-base);
+  color: var(--tee-grey-1000);
+}
+
 // ---- Date picker ----
 // react-datepicker (used by Payload): we only override colors
 // to avoid breaking the calendar's complex internal layout.

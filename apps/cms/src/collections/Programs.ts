@@ -243,12 +243,12 @@ export const Programs: CollectionConfig = {
           fields: [
             {
               name: 'description',
-              type: 'text',
+              type: 'richText',
               label: "Description de l'étape",
               required: true,
               admin: {
                 description:
-                  "Une étape courte et actionnable, dans l'ordre chronologique. Ex. étape 1 : « Consultez le document pour vérifier l'éligibilité de votre projet » — étape 2 : « Déposez votre demande de financement via le formulaire » — étape 3 : « Recevez votre aide financière et réalisez vos travaux ».",
+                  "Une étape courte et actionnable, dans l'ordre chronologique. Ex. étape 1 : « Consultez le document pour vérifier l'éligibilité de votre projet », étape 2 : « Déposez votre demande de financement via le formulaire », étape 3 : « Recevez votre aide financière et réalisez vos travaux ».",
               },
             },
             {
@@ -266,19 +266,19 @@ export const Programs: CollectionConfig = {
               },
               fields: [
                 {
-                  name: 'url',
-                  type: 'text',
-                  label: 'URL',
-                  admin: {
-                    description: 'Lien de votre document au format https://...',
-                  },
-                },
-                {
                   name: 'linkLabel',
                   type: 'text',
                   label: 'Titre du lien',
                   admin: {
                     description: 'Exemple : Document, Formulaire.',
+                  },
+                },
+                {
+                  name: 'url',
+                  type: 'text',
+                  label: 'URL',
+                  admin: {
+                    description: 'Lien de votre document au format https://...',
                   },
                 },
               ],
@@ -328,13 +328,17 @@ export const Programs: CollectionConfig = {
           name: 'validityStart',
           type: 'date',
           label: 'Date de début de validité',
-          admin: { date: { pickerAppearance: 'dayOnly' } },
+          admin: {
+            date: { pickerAppearance: 'dayOnly', displayFormat: 'dd/MM/yyyy' },
+          },
         },
         {
           name: 'validityEnd',
           type: 'date',
           label: 'Date de fin de validité',
-          admin: { date: { pickerAppearance: 'dayOnly' } },
+          admin: {
+            date: { pickerAppearance: 'dayOnly', displayFormat: 'dd/MM/yyyy' },
+          },
         },
       ],
     },
@@ -354,7 +358,8 @@ export const Programs: CollectionConfig = {
           hasMany: true,
           options: THEMES_OPTIONS,
           admin: {
-            description: 'Sert à filtrer les projets associables ci-dessous.',
+            description:
+              'Thématiques du dispositif. Indicatif pour le rapprochement avec les projets.',
           },
         },
         {
@@ -374,6 +379,14 @@ export const Programs: CollectionConfig = {
           label: 'Projet(s) lié(s) au dispositif',
           relationTo: 'projects',
           hasMany: true,
+          admin: {
+            // Tous les projets sont proposés, triés par titre (ordre
+            // alphabétique) et sans filtrage par thématique.
+            sortOptions: 'title',
+            // La création d'un projet depuis le formulaire dispositif est
+            // désactivée : le workflow projet reste séparé.
+            allowCreate: false,
+          },
         },
       ],
     },
@@ -615,13 +628,23 @@ export const Programs: CollectionConfig = {
       name: 'metaTitle',
       type: 'text',
       label: 'Titre SEO',
-      admin: { position: 'sidebar' },
+      admin: {
+        position: 'sidebar',
+        // Masqué pour le créateur : réservé aux administrateurs.
+        condition: (_data, _siblingData, { user }) =>
+          UserRole.isAdmin(user as { role: UserRoleValue } | null | undefined),
+      },
     },
     {
       name: 'metaDescription',
       type: 'textarea',
       label: 'Description SEO',
-      admin: { position: 'sidebar' },
+      admin: {
+        position: 'sidebar',
+        // Masqué pour le créateur : réservé aux administrateurs.
+        condition: (_data, _siblingData, { user }) =>
+          UserRole.isAdmin(user as { role: UserRoleValue } | null | undefined),
+      },
     },
   ],
 };

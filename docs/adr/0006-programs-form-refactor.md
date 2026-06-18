@@ -146,6 +146,17 @@ Le seed reste idempotent (upsert par `slug`) — relancer `pnpm seed` après une
 
 Les outils one-shot d'export/restore depuis l'ancienne base (utilisés pendant la phase de migration) restent dans `local/PR-program-refacto/scripts/` (gitignored). Voir `local/PR-program-refacto/README.md`.
 
+### 7. Ajustements UX/UI (ticket #6, PR 1)
+
+**Décision :** Affiner la saisie du formulaire suite aux retours produit de la semaine du 15 juin.
+
+- **Dates de validité** (`validityStart` / `validityEnd`) : `displayFormat: 'dd/MM/yyyy'` ajouté pour afficher l'année au format JJ/MM/AAAA.
+- **Étapes** : `steps[].description` passe de `text` à `richText` (saisie multiligne et enrichie). Le seed convertit la source via `convertMarkdownToLexical` (`ProgramMapper.toRichText`).
+- **Étapes, liens** : ordre des sous-champs inversé, `linkLabel` (Titre du lien) avant `url`.
+- **Projets liés** (`linkedProjects`) : `admin.sortOptions: 'title'` (liste alphabétique de tous les projets, sans filtrage par thématique) et `admin.allowCreate: false` (le workflow projet reste séparé du workflow dispositif).
+- **SEO** (`metaTitle` / `metaDescription`) : `admin.condition` réservant l'affichage aux administrateurs (masqué pour le rôle `creator`).
+- **Typographie richText** : règle CSS dans `dsfr-fields.scss` forçant Marianne (`--tee-font-family-sans`) sur l'éditeur Lexical, pour l'aligner sur les autres champs.
+
 ---
 
 ## Conséquences
