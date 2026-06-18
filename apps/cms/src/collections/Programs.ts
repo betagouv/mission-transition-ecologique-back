@@ -4,6 +4,7 @@ import { beforeChangeWorkflow } from '@/hooks/programs/beforeChangeWorkflow'
 import { assignCreatorOnCreate } from '@/hooks/programs/assignCreatorOnCreate'
 import { THEMES_OPTIONS } from '@/constants/themesOptions'
 import { UserRole, type UserRoleValue } from '@/utils/user/UserRole'
+import { UrlValidator } from '@/utils/UrlValidator'
 
 const COMPANY_SIZE_OPTIONS = [
   { label: '0 à 9 salariés', value: '0-9' },
@@ -277,6 +278,7 @@ export const Programs: CollectionConfig = {
                   name: 'url',
                   type: 'text',
                   label: 'URL',
+                  validate: UrlValidator.validate,
                   admin: {
                     description: 'Lien de votre document au format https://...',
                   },
