@@ -2,8 +2,17 @@ import type { CollectionConfig, FieldAccess } from 'payload'
 import { ProgramAccessPolicy } from '@/services/access/ProgramAccessPolicy'
 import { beforeChangeWorkflow } from '@/hooks/programs/beforeChangeWorkflow'
 import { assignCreatorOnCreate } from '@/hooks/programs/assignCreatorOnCreate'
+import { normalizeGeographicCoverage } from '@/hooks/programs/normalizeGeographicCoverage'
 import { THEMES_OPTIONS } from '@/constants/themesOptions'
 import { UserRole, type UserRoleValue } from '@/utils/user/UserRole'
+
+/**
+ * Field-level access reserved to admins (and above). Used to lock fields that
+ * creators must not edit, such as the geographic coverage and zones (managed
+ * centrally to avoid label drift).
+ */
+const adminOnlyFieldAccess: FieldAccess = ({ req: { user } }) =>
+  UserRole.isAdmin(user)
 
 const COMPANY_SIZE_OPTIONS = [
   { label: '0 à 9 salariés', value: '0-9' },
@@ -66,6 +75,7 @@ export const Programs: CollectionConfig = {
     },
   },
   hooks: {
+    beforeValidate: [normalizeGeographicCoverage],
     beforeChange: [assignCreatorOnCreate, beforeChangeWorkflow],
   },
   access: {
@@ -414,19 +424,58 @@ export const Programs: CollectionConfig = {
           },
         },
         {
+          name: 'geographicCoverage',
+          type: 'select',
+          label: 'Couverture géographique',
+          options: [
+            { label: 'National', value: 'national' },
+            { label: 'Régional', value: 'regional' },
+            { label: 'Départemental', value: 'departemental' },
+          ],
+          admin: {
+            description:
+              "National : l'aide couvre tout le territoire, aucune zone à préciser. Régional / Départemental : sélectionnez les zones concernées ci-dessous.",
+          },
+          access: {
+            create: adminOnlyFieldAccess,
+            update: adminOnlyFieldAccess,
+          },
+        },
+        {
           name: 'geographicAreas',
           type: 'relationship',
-          label: "Zone géographique couverte par l'aide",
+          label: "Zones géographiques couvertes par l'aide",
           relationTo: 'geographic-areas',
           hasMany: true,
+          access: {
+            create: adminOnlyFieldAccess,
+            update: adminOnlyFieldAccess,
+          },
+          admin: {
+            condition: (data) =>
+              data?.geographicCoverage === 'regional' ||
+              data?.geographicCoverage === 'departemental',
+          },
+          filterOptions: ({ data }) => {
+            const coverage = (data as { geographicCoverage?: string })
+              ?.geographicCoverage
+            if (coverage === 'regional')
+              return { coverageType: { equals: 'region' } }
+            if (coverage === 'departemental')
+              return { coverageType: { equals: 'departement' } }
+            return false
+          },
         },
         {
           name: 'geographicAreaFeedback',
           type: 'text',
           label: 'Vous ne trouvez pas de zone géographique appropriée ?',
           admin: {
+            condition: (data) =>
+              data?.geographicCoverage === 'regional' ||
+              data?.geographicCoverage === 'departemental',
             description:
-              'Décrivez librement la zone manquante — un administrateur pourra ensuite la créer.',
+              'Décrivez librement la zone manquante, un administrateur pourra ensuite la créer.',
           },
         },
         {

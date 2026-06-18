@@ -24,6 +24,14 @@ export const REGIONS: GeographicAreaFixture[] = [
   { inseeCode: '03', name: 'Guyane', coverageType: 'region' },
   { inseeCode: '04', name: 'La Réunion', coverageType: 'region' },
   { inseeCode: '06', name: 'Mayotte', coverageType: 'region' },
+  // Overseas collectivities (COM), modelled as regions to match source data.
+  { inseeCode: '975', name: 'Saint-Pierre-Et-Miquelon', coverageType: 'region' },
+  { inseeCode: '977', name: 'Saint-Barthélemy', coverageType: 'region' },
+  { inseeCode: '978', name: 'Saint-Martin', coverageType: 'region' },
+  { inseeCode: '984', name: 'Terres australes et antarctiques françaises', coverageType: 'region' },
+  { inseeCode: '986', name: 'Wallis et Futuna', coverageType: 'region' },
+  { inseeCode: '987', name: 'Polynésie française', coverageType: 'region' },
+  { inseeCode: '988', name: 'Nouvelle-Calédonie', coverageType: 'region' },
 ]
 
 export const DEPARTEMENTS: GeographicAreaFixture[] = [

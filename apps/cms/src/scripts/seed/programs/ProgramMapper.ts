@@ -1,6 +1,7 @@
 import type { editorConfigFactory } from '@payloadcms/richtext-lexical'
 import { convertMarkdownToLexical } from '@payloadcms/richtext-lexical'
 import type { SourceProgram } from './types'
+import type { GeographicAreaResolver } from './GeographicAreaResolver'
 import { FrenchDateParser } from '@/utils/FrenchDateParser'
 
 type AidType =
@@ -80,7 +81,10 @@ const ACTIVITY_SECTOR_KEYWORDS: { value: ActivitySector; matchers: RegExp[] }[] 
 ]
 
 export class ProgramMapper {
-  constructor(private readonly editorConfig: EditorConfig) {}
+  constructor(
+    private readonly editorConfig: EditorConfig,
+    private readonly geographicAreaResolver: GeographicAreaResolver,
+  ) {}
 
   map(program: SourceProgram, operatorIdByName: Map<string, number>) {
     const operatorId = operatorIdByName.get(program['opérateur de contact'])
@@ -98,9 +102,9 @@ export class ProgramMapper {
     const { sectors, sectorOther } = this.mapActivitySectors(
       eligibilityCondition?.["secteur d'activité"] ?? [],
     )
-    const geographicAreaFeedback = (eligibilityCondition?.['secteur géographique'] ?? [])
-      .filter(Boolean)
-      .join(' — ')
+    const geographic = this.geographicAreaResolver.resolve(
+      eligibilityCondition?.['secteur géographique'],
+    )
     const otherCriteria = [
       ...(eligibilityCondition?.["nombre d'années d'activité"] ?? []),
       ...(eligibilityCondition?.["autres critères d'éligibilité"] ?? []),
@@ -140,7 +144,10 @@ export class ProgramMapper {
       validityEnd: FrenchDateParser.parse(program['fin de validité']),
       companySizes: sizes,
       companySizeOther: sizeOther,
-      geographicAreaFeedback: geographicAreaFeedback || undefined,
+      geographicCoverage: geographic.geographicCoverage ?? null,
+      geographicAreas: geographic.geographicAreas ?? [],
+      // Pass null (not undefined) so a stale feedback is actually cleared on update.
+      geographicAreaFeedback: geographic.geographicAreaFeedback ?? null,
       activitySectors: sectors,
       activitySectorOther: sectorOther,
       otherCriteria,
