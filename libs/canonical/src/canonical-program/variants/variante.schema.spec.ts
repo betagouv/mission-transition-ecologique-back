@@ -27,9 +27,10 @@ describe('varianteSchema', () => {
     expect(result.success).toBe(false)
   })
 
-  it('accepts any COG level in conditions.regions (not just regions)', () => {
+  it('accepts any COG level in conditions.regions, including irregular codes', () => {
     const result = varianteSchema.safeParse({
-      conditions: { regions: ['DEP-53', 'DEP-2A', 'COM-988'] },
+      // région, Corse, CTCD Lyon (suffixe lettre), outre-mer, EPCI/SIREN
+      conditions: { regions: ['DEP-53', 'DEP-2A', 'DEP-69M', 'OM-988', 'EPCI-200046977'] },
       modifications: { montant: { type: 'montant du financement', valeur: '5 400 € HT' } },
     })
     expect(result.success).toBe(true)

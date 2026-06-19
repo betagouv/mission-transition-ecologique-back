@@ -95,7 +95,7 @@ Les fichiers seed vivent dans `apps/cms/src/scripts/seed/` :
 
 Format **pivot** interne (Canonical Data Model) : TypeScript pur + zod, sans dépendance framework. Source de vérité = zod, types inférés (`z.infer`), clés en français `snake_case` (= format wire). Voir ADR 0007.
 
-- `src/shared/` — `primitives.ts` (primitifs brandés : `Cuid2`, `Siren`, `CogCode`, `NafCode`, dates ISO, `Intervalle`…), `operateur.schema.ts`
+- `src/shared/` — `primitives.ts` (primitifs brandés : `Cuid2`, `Siren`, `NafCode`, dates ISO, `Intervalle`…), `cog.ts` (dictionnaire unique des niveaux COG `COG_NIVEAUX` + `cogCodeSchema`/`CogCode`, garde de forme souple), `operateur.schema.ts`
 - `src/canonical-program/` — `enums.ts`, `canonical-program.schema.ts` (racine, `merge` + `superRefine`), `canonical-program.types.ts` (`CanonicalProgramData`), `CanonicalProgram` (value object), `CanonicalProgramValidator` (point d'entrée de validation), `fields/` (identite, contenu, aide, eligibilite), `variants/`, `additional-data/`
 - `src/__fixtures__/` — golden fixtures (`valid-minimal`, `valid-full`)
 

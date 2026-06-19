@@ -1,9 +1,6 @@
 import { z } from 'zod'
-import {
-  cogCodeSchema,
-  intervalleSchema,
-  urlSchema,
-} from '../../shared/primitives'
+import { cogCodeSchema } from '../../shared/cog'
+import { intervalleSchema, urlSchema } from '../../shared/primitives'
 import { operateursSchema } from '../../shared/operateur.schema'
 import { dureeSchema, montantSchema } from '../fields/aide.schema'
 import { eligibiliteSchema } from '../fields/eligibilite.schema'

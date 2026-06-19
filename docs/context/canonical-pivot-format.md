@@ -72,7 +72,22 @@ Référence consolidée du format **pivot interne** implémenté dans `libs/cano
 | `anciennete` | `string[]` | — |
 | `autres_criteres` | `string[]` | — |
 
-Sémantique : exclusions prioritaires sur inclusions. Codes COG préfixés par niveau (`PAYS-`, `REG-`, `DEP-`, `COM-`, `EPCI-`). La partie code est numérique **sauf la Corse** (`DEP-2A`, `COM-2B033`). Le préfixe lève l'ambiguïté entre niveaux (`53` = région Bretagne **ou** département Mayenne). La regex ne valide que la forme ; l'existence d'un code se vérifie contre le référentiel INSEE (hors paquet canonical).
+Sémantique : exclusions prioritaires sur inclusions. Codes COG **préfixés par niveau** : tout le monde dans le projet utilise les mêmes préfixes — dictionnaire unique `COG_NIVEAUX` (`libs/canonical/src/shared/cog.ts`), jamais redéfini ailleurs. Le préfixe est le discriminateur : il lève l'ambiguïté entre niveaux (`53` = région Bretagne **ou** département Mayenne), car le code seul n'est pas une clé — c'est le couple `(niveau, code)`, comme dans les fichiers INSEE et geo.api.gouv.fr.
+
+| Préfixe | Niveau | Comment mapper | Exemple |
+|---|---|---|---|
+| `PAYS-` | Pays / territoire étranger | code INSEE `99xxx` | `PAYS-99100` (France) |
+| `REG-` | Région | 2 chiffres (DROM 01–06) | `REG-53` (Bretagne) |
+| `DEP-` | Département | métropole `01`–`95`, Corse `2A`/`2B`, DROM `971`–`976`, CTCD `69M`/`69D` | `DEP-2A` |
+| `ARR-` | Arrondissement départemental | département + 1 chiffre | `ARR-382` |
+| `CAN-` | Canton | département + 2 chiffres | `CAN-7601` |
+| `COM-` | **Commune** | code à **5 caractères** | `COM-75056` (Paris) |
+| `OM-` | **Collectivité d'outre-mer** | `975`, `977`, `978`, `984`, `986`–`989` | `OM-988` (Nouvelle-Calédonie) |
+| `EPCI-` | EPCI / intercommunalité (et collectivités à SIREN) | SIREN 9 chiffres | `EPCI-200046977` (Métropole de Lyon) |
+
+Catalogue complet des cas particuliers (Corse, DROM, COM, statuts particuliers, arrondissements, cantons…) : voir `COG_CONVENTION.md` (convention partagée). `ARR-` (arrondissement départemental) ≠ arrondissement municipal de Paris/Lyon/Marseille, qui sont des codes commune `COM-`.
+
+⚠️ Ne pas confondre `COM` (commune) et `OM` (outre-mer) — c'est le piège historique. La regex `cogCodeSchema` est une **garde de forme volontairement souple** (préfixe connu + corps alphanumérique) : elle accepte les cas irréguliers (`2A`, `69M`, SIREN…) et ne valide **pas** l'existence réelle. L'existence se vérifie contre le référentiel INSEE / `GeographicAreas`, keyé par `(niveau, code)` (hors paquet canonical).
 
 `categorie_legale.structure` porte deux listes optionnelles `autorise` / `interdit`. Chaque entrée est soit une valeur du vocabulaire fermé `CategorieLegale` (V0 : `micro_entrepreneur` — les autres valeurs seront ajoutées plus tard), soit un texte libre.
 

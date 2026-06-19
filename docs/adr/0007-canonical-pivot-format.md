@@ -43,7 +43,7 @@ Le périmètre actuel se limite **au format canonical** (pas encore de projectio
 
 ### 6. Primitifs brandés
 
-Les identifiants métier sont des types nominaux (zod `.brand()`) : `Cuid2`, `Slug`, `Siren`, `CogCode` (tout niveau : `PAYS-`/`REG-`/`DEP-`/`COM-`/`EPCI-`, partie code numérique sauf Corse `2A`/`2B`), `NafCode`. Un `Siren` n'est pas assignable là où un `CogCode` est attendu. Le brand est produit **par le parsing** — les consommateurs obtiennent des valeurs brandées en sortie du validateur, ils ne les construisent pas à la main.
+Les identifiants métier sont des types nominaux (zod `.brand()`) : `Cuid2`, `Slug`, `Siren`, `CogCode`, `NafCode`. Le `CogCode` est préfixé par niveau via le dictionnaire unique `COG_NIVEAUX` (`shared/cog.ts`) — `PAYS-`/`REG-`/`DEP-`/`ARR-`/`CAN-`/`COM-`(commune)/`OM-`(outre-mer)/`EPCI-` — qui sert de discriminateur (le couple `(niveau, code)` est la vraie clé, le code seul collisionne). Sa regex est une **garde de forme souple** (préfixe connu + corps alphanumérique) : l'existence réelle se valide contre le référentiel INSEE, hors paquet canonical. Un `Siren` n'est pas assignable là où un `CogCode` est attendu. Le brand est produit **par le parsing** — les consommateurs obtiennent des valeurs brandées en sortie du validateur, ils ne les construisent pas à la main.
 
 ### 7. Clés ouvertes préservées
 

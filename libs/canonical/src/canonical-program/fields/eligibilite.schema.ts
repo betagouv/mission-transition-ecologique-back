@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { categorieLegaleSchema } from '../enums'
+import { cogCodeSchema } from '../../shared/cog'
 import {
-  cogCodeSchema,
   intervalleSchema,
   nafCodeSchema,
   nonEmptyStringSchema,

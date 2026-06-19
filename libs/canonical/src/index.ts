@@ -5,6 +5,7 @@
 
 // Shared building blocks
 export * from './shared/primitives'
+export * from './shared/cog'
 export * from './shared/operateur.schema'
 
 // Enums (closed vocabularies)
