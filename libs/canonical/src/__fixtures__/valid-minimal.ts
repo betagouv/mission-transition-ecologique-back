@@ -9,7 +9,8 @@ export const validMinimal: unknown = {
   date_mise_a_jour: '2026-06-15T10:00:00+02:00',
   titre: 'Aide à la décarbonation',
   description: 'Une **aide** pour réduire vos émissions.',
-  statut: 'actif',
+  statut_edition: 'pret_prod',
+  statut_dispositif: 'valide',
   types_aides: ['financement'],
   operateurs: { contact: { nom: 'ADEME' } },
 }

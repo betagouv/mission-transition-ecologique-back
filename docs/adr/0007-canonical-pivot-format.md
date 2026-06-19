@@ -36,14 +36,14 @@ Le périmètre actuel se limite **au format canonical** (pas encore de projectio
 
 ### 5. Règles inter-champs « au plus près »
 
-- Les règles purement locales (qui ne voient qu'un seul objet) sont exprimées dans le schéma de cet objet : `contact_question` est une **union discriminée** (`email`/`url` → valeur requise et validée ; `ADEME`/`CE` → pas de valeur).
+- Les règles purement locales (qui ne voient qu'un seul objet) sont exprimées dans le schéma de cet objet : `contact_question` est une **union discriminée** (`email`/`url` → valeur requise et validée ; `ADEME`/`conseiller_entreprise` → pas de valeur).
 - Les deux règles qui touchent des champs frères de premier niveau sont des `superRefine` appliqués au schéma racine, **mais leur logique vit dans le module du champ** (`fields/aide.schema.ts`) :
   - `duree` requise si `types_aides` contient `etude` ou `formation` ;
-  - `remplace_par` obligatoire si `statut === 'remplace'`.
+  - `remplace_par` obligatoire si `statut_dispositif === 'remplace'`.
 
 ### 6. Primitifs brandés
 
-Les identifiants métier sont des types nominaux (zod `.brand()`) : `Cuid2`, `Slug`, `Siren`, `CogCode` (+ `RegionCogCode`, restreint au niveau région pour les conditions de variante), `NafCode`. Un `Siren` n'est pas assignable là où un `CogCode` est attendu. Le brand est produit **par le parsing** — les consommateurs obtiennent des valeurs brandées en sortie du validateur, ils ne les construisent pas à la main.
+Les identifiants métier sont des types nominaux (zod `.brand()`) : `Cuid2`, `Slug`, `Siren`, `CogCode` (tout niveau : `PAYS-`/`REG-`/`DEP-`/`COM-`/`EPCI-`, partie code numérique sauf Corse `2A`/`2B`), `NafCode`. Un `Siren` n'est pas assignable là où un `CogCode` est attendu. Le brand est produit **par le parsing** — les consommateurs obtiennent des valeurs brandées en sortie du validateur, ils ne les construisent pas à la main.
 
 ### 7. Clés ouvertes préservées
 
@@ -55,14 +55,14 @@ Abandon des deux blocs parallèles (`eligibilite_textes` + `eligibilite`) au pro
 
 | Critère | `texte` | `structure` |
 |---|---|---|
-| `effectif` | ✔ | `{ intervalles: Intervalle[] }` |
-| `categorie_legale` | ✔ | `{ microentrepreneur_exclu: boolean }` |
+| `effectif` | ✔ | `Intervalle` (`{ min?, max? }`, au moins une borne) |
+| `categorie_legale` | ✔ | `{ autorise?: (CategorieLegale \| string)[], interdit?: (CategorieLegale \| string)[] }` |
 | `secteur_activite` | ✔ | `{ inclusions: NafCode[], exclusions?: NafCode[] }` |
 | `secteur_geographique` | ✔ | `{ inclusions: CogCode[], exclusions?: CogCode[] }` |
 | `anciennete` | ✔ | — |
 | `autres_criteres` | ✔ | — |
 
-L'exclusion micro-entrepreneur vit dans `categorie_legale` (et non dans `effectif`).
+La catégorie légale vit dans `categorie_legale` (et non dans `effectif`) : deux listes `autorise` / `interdit`, chaque entrée étant une valeur du vocabulaire fermé `CategorieLegale` (V0 : `micro_entrepreneur` ; les autres valeurs viendront plus tard) ou un texte libre.
 
 ### 9. API publique
 
@@ -81,7 +81,7 @@ L'exclusion micro-entrepreneur vit dans `categorie_legale` (et non dans `effecti
 ## Décisions ouvertes / TODO
 
 - `source` : valeur `SCHEMA` (données importées via le schéma de données) — libellé à confirmer.
-- `statut` : 7 valeurs initiales (`en_creation`, `en_reecriture`, `pret_prod`, `actif`, `temporairement_indisponible`, `archive`, `remplace`) — à compléter ultérieurement.
+- `statut` scindé en deux axes orthogonaux : `statut_edition` (`inconnu`, `en_creation`, `en_reecriture`, `pret_prod`, `archive`, `abandonne`) et `statut_dispositif` (`inconnu`, `valide`, `temporairement_indisponible`, `remplace`, `archive`) — valeurs à compléter ultérieurement.
 - `nafCodeSchema` : regex volontairement permissive — à resserrer quand la granularité NAF retenue se précise.
 - `themes` : V0 = taxonomie interne en libellés français — arbitrage thèmes ADEME / schéma à venir.
 
@@ -94,7 +94,7 @@ libs/canonical/src/
     primitives.ts                            Cuid2, Slug, dates ISO, Siren, CogCode, NafCode, Url, Intervalle…
     operateur.schema.ts                      Operateur, Operateurs
   canonical-program/
-    enums.ts                                 source, statut, types_aides, themes, contact_question type
+    enums.ts                                 source, statut_edition, statut_dispositif, types_aides, themes, contact_question type, categorie_legale
     canonical-program.schema.ts              schéma racine (merge + superRefine)
     canonical-program.types.ts               CanonicalProgramData (z.infer)
     CanonicalProgram.ts                      value object

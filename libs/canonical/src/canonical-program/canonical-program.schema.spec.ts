@@ -14,20 +14,15 @@ describe('canonicalProgramSchema', () => {
     expect(canonicalProgramSchema.safeParse(validFull).success).toBe(true)
   })
 
-  it('applies defaults (activable_en_autonomie)', () => {
-    const parsed = canonicalProgramSchema.parse(validMinimal)
-    expect(parsed.activable_en_autonomie).toBe(false)
-  })
-
   it('rejects a missing required field (titre)', () => {
     const input = cloneMinimal()
     delete input['titre']
     expect(canonicalProgramSchema.safeParse(input).success).toBe(false)
   })
 
-  it('rejects an unknown enum value (statut)', () => {
+  it('rejects an unknown enum value (statut_dispositif)', () => {
     const input = cloneMinimal()
-    input['statut'] = 'pas_un_statut'
+    input['statut_dispositif'] = 'pas_un_statut'
     expect(canonicalProgramSchema.safeParse(input).success).toBe(false)
   })
 
@@ -47,7 +42,7 @@ describe('canonicalProgramSchema', () => {
     it('accepts formation with duree', () => {
       const input = cloneMinimal()
       input['types_aides'] = ['formation']
-      input['duree'] = '5 jours'
+      input['duree'] = { type: 'durée de l’accompagnement', valeur: '5 jours' }
       expect(canonicalProgramSchema.safeParse(input).success).toBe(true)
     })
 
@@ -56,16 +51,16 @@ describe('canonicalProgramSchema', () => {
     })
   })
 
-  describe('cross-field: remplace_par required when statut = remplace', () => {
+  describe('cross-field: remplace_par required when statut_dispositif = remplace', () => {
     it('rejects remplace without remplace_par', () => {
       const input = cloneMinimal()
-      input['statut'] = 'remplace'
+      input['statut_dispositif'] = 'remplace'
       expect(canonicalProgramSchema.safeParse(input).success).toBe(false)
     })
 
     it('accepts remplace with a valid remplace_par', () => {
       const input = cloneMinimal()
-      input['statut'] = 'remplace'
+      input['statut_dispositif'] = 'remplace'
       input['remplace_par'] = 'b1b2c3d4e5f6g7h8i9j0klmn'
       expect(canonicalProgramSchema.safeParse(input).success).toBe(true)
     })
@@ -141,7 +136,7 @@ describe('canonicalProgramSchema', () => {
 
     it('rejects an interval with no bound', () => {
       const input = cloneMinimal()
-      input['eligibilite'] = { effectif: { structure: { intervalles: [{}] } } }
+      input['eligibilite'] = { effectif: { structure: {} } }
       expect(canonicalProgramSchema.safeParse(input).success).toBe(false)
     })
 

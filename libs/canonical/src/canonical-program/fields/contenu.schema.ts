@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { markdownSchema, nonEmptyStringSchema } from '../../shared/primitives'
+import { markdownSchema, nonEmptyStringSchema, urlSchema } from '../../shared/primitives'
 
 /** SEO — affiché dans l'onglet navigateur / résultats de recherche. */
 export const metaSchema = z.object({
@@ -7,6 +7,18 @@ export const metaSchema = z.object({
   description: nonEmptyStringSchema,
 })
 export type Meta = z.infer<typeof metaSchema>
+
+/**
+ * Illustration du dispositif.
+ * `alt` (texte alternatif) est optionnel : à défaut, le front dérive un libellé
+ * depuis le titre — la dérivation est une préoccupation d'affichage, pas une
+ * donnée du pivot.
+ */
+export const illustrationSchema = z.object({
+  url: urlSchema,
+  alt: nonEmptyStringSchema.optional(),
+})
+export type Illustration = z.infer<typeof illustrationSchema>
 
 /** Section 2 — Contenu éditorial. */
 export const contenuSchema = z.object({
@@ -18,5 +30,7 @@ export const contenuSchema = z.object({
   description: markdownSchema.min(1).max(5000),
   /** Complément facultatif, Markdown. */
   description_longue: markdownSchema.min(1).optional(),
+  /** Illustration du dispositif (URL + texte alternatif optionnel). */
+  illustration: illustrationSchema.optional(),
   meta: metaSchema.optional(),
 })

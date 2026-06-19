@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { categorieLegaleSchema } from '../enums'
 import {
   cogCodeSchema,
   intervalleSchema,
@@ -34,20 +35,35 @@ const cogCiblageSchema = z.object({
   exclusions: z.array(cogCodeSchema).optional(),
 })
 
+/**
+ * Une catégorie légale : soit une valeur du vocabulaire fermé
+ * (`categorieLegaleSchema`), soit un texte libre (valeurs pas encore
+ * intégrées à l'enum).
+ */
+const categorieLegaleItemSchema = z.union([categorieLegaleSchema, nonEmptyStringSchema])
+
 export const eligibiliteSchema = z.object({
-  /** Effectif salarié — union d'intervalles (bornes incluses). */
+  /** Effectif salarié — un seul intervalle `{ min?, max? }` (bornes incluses). */
   effectif: z
     .object({
       texte: texteSchema.optional(),
-      structure: z.object({ intervalles: z.array(intervalleSchema) }).optional(),
+      structure: intervalleSchema.optional(),
     })
     .optional(),
 
-  /** Catégorie légale (porte l'exclusion micro-entrepreneur). */
+  /**
+   * Catégorie légale — listes des catégories autorisées / interdites.
+   * Chaque entrée est une valeur du vocabulaire fermé ou un texte libre.
+   */
   categorie_legale: z
     .object({
       texte: texteSchema.optional(),
-      structure: z.object({ microentrepreneur_exclu: z.boolean().default(false) }).optional(),
+      structure: z
+        .object({
+          autorise: z.array(categorieLegaleItemSchema).optional(),
+          interdit: z.array(categorieLegaleItemSchema).optional(),
+        })
+        .optional(),
     })
     .optional(),
 

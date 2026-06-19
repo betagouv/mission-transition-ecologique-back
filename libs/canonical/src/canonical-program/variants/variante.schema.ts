@@ -1,11 +1,11 @@
 import { z } from 'zod'
 import {
+  cogCodeSchema,
   intervalleSchema,
-  nonEmptyStringSchema,
-  regionCogCodeSchema,
   urlSchema,
 } from '../../shared/primitives'
 import { operateursSchema } from '../../shared/operateur.schema'
+import { dureeSchema, montantSchema } from '../fields/aide.schema'
 import { eligibiliteSchema } from '../fields/eligibilite.schema'
 
 /**
@@ -15,11 +15,16 @@ import { eligibiliteSchema } from '../fields/eligibilite.schema'
  * surchargent les champs du cas général (remplacement clé par clé).
  */
 
-/** Conjonction (ET) d'un intervalle d'effectif et/ou d'une liste de régions (OU). */
+/**
+ * Conjonction (ET) d'un intervalle d'effectif et/ou d'une liste de zones
+ * géographiques (OU). Les zones acceptent **tout niveau COG** (région,
+ * département, collectivité d'outre-mer, commune…) : rien n'impose qu'une
+ * variante soit cantonnée au niveau région.
+ */
 export const varianteConditionsSchema = z
   .object({
     effectif: intervalleSchema.optional(),
-    regions: z.array(regionCogCodeSchema).min(1).optional(),
+    regions: z.array(cogCodeSchema).min(1).optional(),
   })
   .refine((c) => c.effectif !== undefined || c.regions !== undefined, {
     message: 'une variante doit porter au moins une condition (effectif ou regions)',
@@ -28,8 +33,8 @@ export const varianteConditionsSchema = z
 /** Sous-ensemble des champs du cas général que la variante peut surcharger. */
 export const varianteModificationsSchema = z
   .object({
-    montant: nonEmptyStringSchema,
-    duree: nonEmptyStringSchema,
+    montant: montantSchema,
+    duree: dureeSchema,
     url_source: urlSchema,
     operateurs: operateursSchema,
     eligibilite: eligibiliteSchema,

@@ -5,7 +5,7 @@ describe('varianteSchema', () => {
   it('accepts a variant with conditions and at least one modification', () => {
     const result = varianteSchema.safeParse({
       conditions: { effectif: { min: 0, max: 49 }, regions: ['REG-53'] },
-      modifications: { montant: '5 400 € HT' },
+      modifications: { montant: { type: 'montant du financement', valeur: '5 400 € HT' } },
       autres_champs: { titre_historique: 'Ancien intitulé' },
     })
     expect(result.success).toBe(true)
@@ -14,7 +14,7 @@ describe('varianteSchema', () => {
   it('rejects a variant with no condition', () => {
     const result = varianteSchema.safeParse({
       conditions: {},
-      modifications: { montant: '5 400 € HT' },
+      modifications: { montant: { type: 'montant du financement', valeur: '5 400 € HT' } },
     })
     expect(result.success).toBe(false)
   })
@@ -27,10 +27,18 @@ describe('varianteSchema', () => {
     expect(result.success).toBe(false)
   })
 
-  it('rejects a non-region COG code in conditions.regions', () => {
+  it('accepts any COG level in conditions.regions (not just regions)', () => {
     const result = varianteSchema.safeParse({
-      conditions: { regions: ['DEP-53'] },
-      modifications: { montant: '5 400 € HT' },
+      conditions: { regions: ['DEP-53', 'DEP-2A', 'COM-988'] },
+      modifications: { montant: { type: 'montant du financement', valeur: '5 400 € HT' } },
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects a malformed COG code in conditions.regions', () => {
+    const result = varianteSchema.safeParse({
+      conditions: { regions: ['53'] },
+      modifications: { montant: { type: 'montant du financement', valeur: '5 400 € HT' } },
     })
     expect(result.success).toBe(false)
   })
@@ -38,7 +46,7 @@ describe('varianteSchema', () => {
   it('preserves unknown keys in autres_champs', () => {
     const result = varianteSchema.parse({
       conditions: { regions: ['REG-53'] },
-      modifications: { duree: '5 jours' },
+      modifications: { duree: { type: 'durée de l’accompagnement', valeur: '5 jours' } },
       autres_champs: { libre: 'valeur' },
     })
     expect(result.autres_champs?.['libre']).toBe('valeur')

@@ -35,8 +35,12 @@ export class CanonicalProgram {
     return this.data.slug;
   }
 
-  get statut(): CanonicalProgramData['statut'] {
-    return this.data.statut;
+  get statutEdition(): CanonicalProgramData['statut_edition'] {
+    return this.data.statut_edition;
+  }
+
+  get statutDispositif(): CanonicalProgramData['statut_dispositif'] {
+    return this.data.statut_dispositif;
   }
 
   get remplacePar(): CanonicalProgramData['remplace_par'] {
@@ -48,11 +52,11 @@ export class CanonicalProgram {
   }
 
   isReplaced(): boolean {
-    return this.data.statut === 'remplace';
+    return this.data.statut_dispositif === 'remplace';
   }
 
   isActive(): boolean {
-    return this.data.statut === 'actif';
+    return this.data.statut_dispositif === 'valide';
   }
 
   /**

@@ -22,12 +22,13 @@ const rawProgram: CanonicalProgramInput = {
   titre: 'Diagnostic énergie PME',
   promesse: 'Réduisez votre facture énergétique',
   description: 'Un diagnostic financé pour les PME industrielles.',
-  statut: 'actif',
+  statut_edition: 'pret_prod',
+  statut_dispositif: 'valide',
   date_ouverture: '2026-01-01',
   date_cloture: '2026-12-31',
   types_aides: ['financement', 'formation'],
-  montant: 'Jusqu’à 70 % des dépenses',
-  duree: '8 jours de formation',
+  montant: { type: 'montant du financement', valeur: 'Jusqu’à 70 % des dépenses' },
+  duree: { type: 'durée de l’accompagnement', valeur: '8 jours de formation' },
   operateurs: {
     contact: { nom: 'Bpifrance', nom_normalise: 'BPIFRANCE', siren: '320252489' },
     autres: [{ nom: 'Région Bretagne' }],
@@ -35,7 +36,7 @@ const rawProgram: CanonicalProgramInput = {
   contact_question: { type: 'email', valeur: 'contact@ademe.fr' },
   url_source: 'https://entreprises.ademe.fr/diagnostic',
   eligibilite: {
-    effectif: { texte: ['Jusqu’à 250 salariés'], structure: { intervalles: [{ min: 0, max: 249 }] } },
+    effectif: { texte: ['Jusqu’à 250 salariés'], structure: { min: 0, max: 249 } },
     secteur_activite: { texte: ['Industrie'], structure: { inclusions: ['C'], exclusions: ['33.20'] } },
   },
   themes: ['energie', 'batiment'],
@@ -95,8 +96,9 @@ export default function CanonicalDemoPage() {
     <section style={styles.page}>
       <article style={styles.card}>
         <div style={styles.badgeRow}>
-          <span style={styles.badge}>{program.statut}</span>
-          {program.isActive() && <span style={styles.badgeOk}>actif</span>}
+          <span style={styles.badge}>{program.statutEdition}</span>
+          <span style={styles.badge}>{program.statutDispositif}</span>
+          {program.isActive() && <span style={styles.badgeOk}>valide</span>}
           {Object.isFrozen(program.data) && <span style={styles.badgeFrozen}>🔒 gelé</span>}
         </div>
         <h1 style={styles.title}>{program.data.titre}</h1>

@@ -7,7 +7,13 @@ import {
   urlSchema,
 } from '../../shared/primitives'
 import { operateursSchema } from '../../shared/operateur.schema'
-import { statutSchema, typeAideSchema, type Statut, type TypeAide } from '../enums'
+import {
+  statutDispositifSchema,
+  statutEditionSchema,
+  typeAideSchema,
+  type StatutDispositif,
+  type TypeAide,
+} from '../enums'
 
 /**
  * Section 3 — Faits structurés sur l'aide (cycle de vie, nature, acteurs).
@@ -15,28 +21,51 @@ import { statutSchema, typeAideSchema, type Statut, type TypeAide } from '../enu
  * Les règles inter-champs vraiment locales (qui ne voient que des sous-clés du
  * même objet) sont exprimées ici même : `contact_question` est une union
  * discriminée. Les deux règles qui touchent des champs frères de premier niveau
- * (`duree`/`types_aides`, `remplace_par`/`statut`) sont exportées comme refines
+ * (`duree`/`types_aides`, `remplace_par`/`statut_dispositif`) sont exportées comme refines
  * et appliquées par le schéma racine — la logique reste dans ce module.
  */
 
 /**
  * Question de contact : la valeur dépend du type.
- * `email`/`url` → valeur requise et validée ; `ADEME`/`CE` → pas de valeur.
+ * `email`/`url` → valeur requise et validée ; `ADEME`/`conseiller_entreprise` → pas de valeur.
  */
 export const contactQuestionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('ADEME') }).strict(),
-  z.object({ type: z.literal('CE') }).strict(),
+  z.object({ type: z.literal('conseiller_entreprise') }).strict(),
   z.object({ type: z.literal('email'), valeur: z.string().email() }).strict(),
   z.object({ type: z.literal('url'), valeur: urlSchema }).strict(),
 ])
 export type ContactQuestion = z.infer<typeof contactQuestionSchema>
 
-/** Lien d'une étape : lien externe `{ texte, url }` ou renvoi vers le formulaire. */
+/** Lien d'une étape : lien externe `{ texte, url }` ou renvoi vers Conseiller-Entreprise. */
 export const lienSchema = z.union([
   z.object({ texte: nonEmptyStringSchema, url: urlSchema }),
-  z.object({ formulaire: z.literal(true) }),
+  z.object({ conseiller_entreprise: z.literal(true) }),
 ])
 export type Lien = z.infer<typeof lienSchema>
+
+/**
+ * Montant auto-décrit : `type` porte le libellé d'affichage qui dépend de la
+ * nature de l'aide (« montant du financement », « coût de l'accompagnement »,
+ * « montant du prêt », « montant de l'avantage fiscal »…) et `valeur` la chaîne
+ * affichée. Le libellé voyage avec la donnée : pas de mapping type d'aide →
+ * libellé à reconstruire côté front.
+ */
+export const montantSchema = z.object({
+  type: nonEmptyStringSchema,
+  valeur: nonEmptyStringSchema,
+})
+export type Montant = z.infer<typeof montantSchema>
+
+/**
+ * Durée auto-décrite : même principe que `montant`. `type` = libellé
+ * (« durée de l'accompagnement », « durée du prêt »…), `valeur` = affichage.
+ */
+export const dureeSchema = z.object({
+  type: nonEmptyStringSchema,
+  valeur: nonEmptyStringSchema,
+})
+export type Duree = z.infer<typeof dureeSchema>
 
 /** Étape d'activation (ancien `objectifs` / `étape1…6` Baserow). */
 export const etapeActivationSchema = z.object({
@@ -47,19 +76,21 @@ export type EtapeActivation = z.infer<typeof etapeActivationSchema>
 
 export const aideSchema = z.object({
   // Cycle de vie
-  statut: statutSchema,
+  /** Où en est la rédaction du contenu. */
+  statut_edition: statutEditionSchema,
+  /** Validité réelle du dispositif. */
+  statut_dispositif: statutDispositifSchema,
   date_ouverture: isoDateSchema.optional(),
   date_cloture: isoDateOrDateTimeSchema.optional(),
-  /** CUID du dispositif remplaçant — requis si `statut === 'remplace'`. */
+  /** CUID du dispositif remplaçant — requis si `statut_dispositif === 'remplace'`. */
   remplace_par: cuid2Schema.optional(),
 
   // Nature de l'aide
   types_aides: z.array(typeAideSchema).min(1),
-  /** Montant ou coût restant à charge, champ d'affichage. */
-  montant: nonEmptyStringSchema.optional(),
-  /** Durée d'affichage — requise si `types_aides` contient `etude`/`formation`. */
-  duree: nonEmptyStringSchema.optional(),
-  activable_en_autonomie: z.boolean().default(false),
+  /** Montant auto-décrit (`{ type, valeur }`), champ d'affichage. */
+  montant: montantSchema.optional(),
+  /** Durée auto-décrite (`{ type, valeur }`) — requise si `types_aides` contient `etude`/`formation`. */
+  duree: dureeSchema.optional(),
 
   // Acteurs et contact
   operateurs: operateursSchema,
@@ -70,8 +101,8 @@ export const aideSchema = z.object({
 
 // --- Règles inter-champs de la section (appliquées par le schéma racine) ---
 
-type NatureAideCrossFields = { types_aides?: TypeAide[]; duree?: string }
-type CycleVieCrossFields = { statut?: Statut; remplace_par?: string }
+type NatureAideCrossFields = { types_aides?: TypeAide[]; duree?: Duree }
+type CycleVieCrossFields = { statut_dispositif?: StatutDispositif; remplace_par?: string }
 
 /**
  * `duree` est requise dès que l'aide est une étude ou une formation.
@@ -94,11 +125,11 @@ export const refineDuree = (data: NatureAideCrossFields, ctx: z.RefinementCtx): 
 
 /** `remplace_par` est obligatoire quand le dispositif est remplacé. */
 export const refineRemplacePar = (data: CycleVieCrossFields, ctx: z.RefinementCtx): void => {
-  if (data.statut === 'remplace' && !data.remplace_par) {
+  if (data.statut_dispositif === 'remplace' && !data.remplace_par) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['remplace_par'],
-      message: 'remplace_par obligatoire si statut = remplace',
+      message: 'remplace_par obligatoire si statut_dispositif = remplace',
     })
   }
 }

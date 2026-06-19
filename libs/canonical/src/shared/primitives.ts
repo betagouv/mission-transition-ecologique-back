@@ -44,20 +44,23 @@ export type Siren = z.infer<typeof sirenSchema>
 
 /**
  * Code COG (Code Officiel Géographique) préfixé par son niveau :
- * `PAYS-99100`, `REG-53`, `DEP-04`, `COM-988`, `EPCI-200000172`.
+ * `PAYS-99100`, `REG-53`, `DEP-04`, `DEP-2A`, `COM-988`, `COM-2A004`,
+ * `EPCI-200000172`.
+ *
+ * La partie code est numérique, **sauf la Corse** : les codes département et
+ * commune corses commencent par `2A`/`2B` (`DEP-2A`, `COM-2B033`). L'ancien
+ * motif `[0-9A-Z]+` acceptait n'importe quelles lettres ; on le resserre aux
+ * seuls cas réels (chiffres, ou `2A`/`2B` suivis de chiffres). Volontairement
+ * souple sur la longueur : le COG couvre régions, départements, collectivités
+ * d'outre-mer, communes et EPCI, et le millésime évolue chaque année. La regex
+ * ne garantit que la **forme** ; l'existence réelle d'un code se valide contre
+ * le référentiel INSEE (hors périmètre du paquet canonical).
  */
 export const cogCodeSchema = z
   .string()
-  .regex(/^(PAYS|REG|DEP|COM|EPCI)-[0-9A-Z]+$/, 'code COG invalide (ex: REG-53)')
+  .regex(/^(PAYS|REG|DEP|COM|EPCI)-(2[AB]\d*|\d+)$/, 'code COG invalide (ex: REG-53, DEP-2A)')
   .brand<'CogCode'>()
 export type CogCode = z.infer<typeof cogCodeSchema>
-
-/** Code COG restreint au niveau région (`REG-53`) — utilisé par les conditions de variante. */
-export const regionCogCodeSchema = z
-  .string()
-  .regex(/^REG-[0-9A-Z]+$/, 'code région COG attendu (ex: REG-53)')
-  .brand<'RegionCogCode'>()
-export type RegionCogCode = z.infer<typeof regionCogCodeSchema>
 
 /**
  * Code NAF/APE. Accepte une section (`A`), une division (`01`), un groupe

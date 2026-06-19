@@ -14,18 +14,29 @@ export const validFull: unknown = {
   promesse: 'Réduisez votre facture énergétique',
   description: 'Un diagnostic financé pour les PME industrielles.',
   description_longue: 'Détail complet du dispositif et des conditions.',
-  meta: { titre: 'Diagnostic énergie', description: 'Aide au diagnostic énergétique' },
+  illustration: {
+    url: 'https://entreprises.ademe.fr/img/diagnostic-energie.jpg',
+    alt: 'Audit énergétique en usine',
+  },
+  meta: {
+    titre: 'Diagnostic énergie',
+    description: 'Aide au diagnostic énergétique',
+  },
 
   // 3. Faits structurés
-  statut: 'actif',
+  statut_edition: 'pret_prod',
+  statut_dispositif: 'valide',
   date_ouverture: '2026-01-01',
   date_cloture: '2026-12-31',
   types_aides: ['financement', 'formation'],
-  montant: 'Jusqu’à 70 % des dépenses',
-  duree: '8 jours de formation',
-  activable_en_autonomie: false,
+  montant: { type: 'montant du financement', valeur: 'Jusqu’à 70 % des dépenses' },
+  duree: { type: 'durée de l’accompagnement', valeur: '8 jours de formation' },
   operateurs: {
-    contact: { nom: 'Bpifrance', nom_normalise: 'BPIFRANCE', siren: '320252489' },
+    contact: {
+      nom: 'Bpifrance',
+      nom_normalise: 'BPIFRANCE',
+      siren: '320252489',
+    },
     autres: [{ nom: 'Région Bretagne' }],
   },
   contact_question: { type: 'email', valeur: 'contact@ademe.fr' },
@@ -33,15 +44,27 @@ export const validFull: unknown = {
   etapes_activation: [
     {
       description: 'Complétez le formulaire de candidature.',
-      liens: [{ texte: 'Inscription', url: 'https://example.org/inscription' }, { formulaire: true }],
+      liens: [
+        { texte: 'Inscription', url: 'https://example.org/inscription' },
+        { conseiller_entreprise: true },
+      ],
     },
   ],
 
   // 4. Éligibilité & ciblage
   eligibilite: {
-    effectif: { texte: ['Jusqu’à 250 salariés'], structure: { intervalles: [{ min: 0, max: 249 }] } },
-    categorie_legale: { texte: ['Hors micro-entrepreneurs'], structure: { microentrepreneur_exclu: true } },
-    secteur_activite: { texte: ['Industrie'], structure: { inclusions: ['C'], exclusions: ['33.20'] } },
+    effectif: {
+      texte: ['Jusqu’à 250 salariés'],
+      structure: { min: 0, max: 249 },
+    },
+    categorie_legale: {
+      texte: ['Hors micro_entrepreneur'],
+      structure: { interdit: ['micro_entrepreneur'] },
+    },
+    secteur_activite: {
+      texte: ['Industrie'],
+      structure: { inclusions: ['C'], exclusions: ['33.20'] },
+    },
     secteur_geographique: {
       texte: ['France métropolitaine'],
       structure: { inclusions: ['PAYS-99100'], exclusions: ['REG-94'] },
@@ -56,7 +79,7 @@ export const validFull: unknown = {
     {
       conditions: { effectif: { min: 0, max: 49 }, regions: ['REG-53'] },
       modifications: {
-        montant: '5 400 € HT après subvention de 70 %',
+        montant: { type: 'montant du financement', valeur: '5 400 € HT après subvention de 70 %' },
         eligibilite: { autres_criteres: { texte: ['CA < 10 M€'] } },
       },
       autres_champs: { titre_historique: 'Ancien intitulé du dispositif' },
@@ -64,5 +87,8 @@ export const validFull: unknown = {
   ],
 
   // 6. Autres données
-  autres_donnees: { ademe_id_dsp: 'DSP-000123', operateur_ref_interne: 'XYZ-42' },
-}
+  autres_donnees: {
+    ademe_id_dsp: 'DSP-000123',
+    operateur_ref_interne: 'XYZ-42',
+  },
+};
