@@ -63,6 +63,22 @@ describe('ProgramsSeed', () => {
     expect(hasStructuredNodes).toBe(true)
   })
 
+  it('step descriptions are valid lexical editor states (not flat text)', async () => {
+    const result = await payload.find({ collection: 'programs', limit: FIXTURE_PROGRAMS })
+    const programWithSteps = result.docs.find(
+      (program) => Array.isArray(program.steps) && program.steps.length > 0,
+    )
+    expect(programWithSteps).toBeDefined()
+    for (const step of programWithSteps?.steps ?? []) {
+      expect(step.description).toMatchObject({
+        root: expect.objectContaining({
+          type: 'root',
+          children: expect.any(Array),
+        }),
+      })
+    }
+  })
+
   it('covers all 5 aid types', async () => {
     const result = await payload.find({ collection: 'programs', limit: FIXTURE_PROGRAMS })
     const aidTypes = new Set(result.docs.map((p) => p.aidType))

@@ -10,11 +10,12 @@ export class UrlValidator {
   static readonly ALLOWED_PROTOCOLS = ['http:', 'https:'] as const
 
   static readonly validate: TextFieldSingleValidation = (value) => {
-    if (value == null || value === '') return true
+    const trimmed = value?.trim()
+    if (trimmed == null || trimmed === '') return true
 
     let parsed: URL
     try {
-      parsed = new URL(value)
+      parsed = new URL(trimmed)
     } catch {
       return 'URL invalide. Exemple attendu : https://...'
     }

@@ -1,0 +1,47 @@
+import { describe, it, expect } from 'vitest'
+import { UrlValidator } from '@/utils/UrlValidator'
+
+// The Payload validator signature passes several runtime arguments we don't use
+// here; an empty options object is enough to exercise the validation logic.
+const validate = (value: string | null | undefined) =>
+  UrlValidator.validate(value, {} as never)
+
+describe('UrlValidator', () => {
+  describe('empty values are accepted (field stays optional)', () => {
+    it('accepts null, undefined and empty string', () => {
+      expect(validate(null)).toBe(true)
+      expect(validate(undefined)).toBe(true)
+      expect(validate('')).toBe(true)
+    })
+
+    it('accepts whitespace-only values', () => {
+      expect(validate('   ')).toBe(true)
+    })
+  })
+
+  describe('well-formed http(s) URLs are accepted', () => {
+    it('accepts http and https URLs', () => {
+      expect(validate('http://example.org')).toBe(true)
+      expect(validate('https://example.org/path?query=1')).toBe(true)
+    })
+
+    it('accepts URLs with leading/trailing whitespace (trimmed before parsing)', () => {
+      expect(validate('  https://example.org  ')).toBe(true)
+    })
+  })
+
+  describe('invalid URLs are rejected', () => {
+    it('rejects strings that are not URLs', () => {
+      expect(validate('not a url')).toBe('URL invalide. Exemple attendu : https://...')
+    })
+  })
+
+  describe('non-http(s) protocols are rejected', () => {
+    it('rejects ftp, mailto and javascript URLs', () => {
+      const message = 'L’URL doit commencer par http:// ou https://.'
+      expect(validate('ftp://example.org')).toBe(message)
+      expect(validate('mailto:test@example.org')).toBe(message)
+      expect(validate('javascript:alert(1)')).toBe(message)
+    })
+  })
+})
