@@ -12,7 +12,7 @@ import { ProgramsSeed } from '@/scripts/seed/programs'
 const fixturesDir = fileURLToPath(new URL('../fixtures', import.meta.url))
 const programsFixture = resolve(fixturesDir, 'programs.json')
 
-const FIXTURE_PROGRAMS = 22
+const FIXTURE_PROGRAMS = 23
 const FIXTURE_OPERATORS = 8
 const EXPECTED_GEOGRAPHIC_AREAS = REGIONS.length + DEPARTEMENTS.length
 
@@ -77,6 +77,18 @@ describe('ProgramsSeed', () => {
         }),
       })
     }
+  })
+
+  it('keeps a program with an invalid step link in draft', async () => {
+    const result = await payload.find({
+      collection: 'programs',
+      where: { slug: { equals: 'fixture-broken-step-link' } },
+      limit: 1,
+    })
+    const program = result.docs[0]
+    expect(program).toBeDefined()
+    expect(program?._status).toBe('draft')
+    expect(program?.workflowStatus).toBe('en-creation')
   })
 
   it('covers all 5 aid types', async () => {

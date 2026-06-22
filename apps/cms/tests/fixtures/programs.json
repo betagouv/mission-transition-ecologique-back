@@ -4855,5 +4855,29 @@
     },
     "id": "certification-agriculture-biologique",
     "type": "tee"
+  },
+  {
+    "titre": "Programme test lien cassé",
+    "promesse": "Vérifier le passage en brouillon",
+    "description": "Programme de fixture : un lien d'étape invalide doit forcer le brouillon.",
+    "opérateur de contact": "Banque Publique d'Investissement France",
+    "contact question": "mailto:contact@example.org",
+    "url": "https://www.example.org/dispositif",
+    "nature de l'aide": "étude",
+    "début de validité": "01/01/2024",
+    "fin de validité": "31/12/2026",
+    "objectifs": [
+      {
+        "description": "Téléchargez le règlement.",
+        "liens": [
+          {
+            "lien": "https://file:///Users/test/Downloads/reglement.pdf",
+            "texte": "Règlement"
+          }
+        ]
+      }
+    ],
+    "id": "fixture-broken-step-link",
+    "type": "tee"
   }
 ]
