@@ -19,10 +19,14 @@ describe('UrlValidator', () => {
     })
   })
 
-  describe('well-formed http(s) URLs are accepted', () => {
+  describe('well-formed http(s) and mailto URLs are accepted', () => {
     it('accepts http and https URLs', () => {
       expect(validate('http://example.org')).toBe(true)
       expect(validate('https://example.org/path?query=1')).toBe(true)
+    })
+
+    it('accepts mailto links', () => {
+      expect(validate('mailto:test@example.org')).toBe(true)
     })
 
     it('accepts URLs with leading/trailing whitespace (trimmed before parsing)', () => {
@@ -34,13 +38,18 @@ describe('UrlValidator', () => {
     it('rejects strings that are not URLs', () => {
       expect(validate('not a url')).toBe('URL invalide. Exemple attendu : https://...')
     })
+
+    it('rejects http(s) URLs with a malformed host', () => {
+      expect(validate('https://- <https://example.org>')).toBe(
+        'URL invalide. Exemple attendu : https://...',
+      )
+    })
   })
 
-  describe('non-http(s) protocols are rejected', () => {
-    it('rejects ftp, mailto and javascript URLs', () => {
-      const message = 'L’URL doit commencer par http:// ou https://.'
+  describe('disallowed protocols are rejected', () => {
+    it('rejects ftp and javascript URLs', () => {
+      const message = 'L’URL doit commencer par http://, https:// ou mailto:.'
       expect(validate('ftp://example.org')).toBe(message)
-      expect(validate('mailto:test@example.org')).toBe(message)
       expect(validate('javascript:alert(1)')).toBe(message)
     })
   })
