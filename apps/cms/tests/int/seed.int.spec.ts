@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url'
 import { GeographicAreasSeed } from '@/scripts/seed/geographic-areas'
 import { DEPARTEMENTS, REGIONS } from '@/scripts/seed/geographic-areas/fixtures'
 import { ProgramsSeed } from '@/scripts/seed/programs'
+import { GeographicAreaResolver } from '@/scripts/seed/programs/GeographicAreaResolver'
 
 const fixturesDir = fileURLToPath(new URL('../fixtures', import.meta.url))
 const programsFixture = resolve(fixturesDir, 'programs.json')
@@ -135,4 +136,47 @@ describe('GeographicAreasSeed', () => {
     const after = await payload.find({ collection: 'geographic-areas', limit: 0 })
     expect(after.totalDocs).toBe(before.totalDocs)
   }, 60_000)
+})
+
+describe('GeographicAreaResolver', () => {
+  let resolver: GeographicAreaResolver
+
+  beforeAll(async () => {
+    const payloadConfig = await config
+    payload = await getPayload({ config: payloadConfig })
+
+    await new GeographicAreasSeed(payload).run()
+    resolver = await GeographicAreaResolver.fromPayload(payload)
+  }, 60_000)
+
+  it('maps the national sentinel to national coverage with no zones', () => {
+    const result = resolver.resolve(["France et territoires d'outre-mer"])
+    expect(result.geographicCoverage).toBe('national')
+    expect(result.geographicAreas).toEqual([])
+    expect(result.geographicAreaFeedback).toBeUndefined()
+  })
+
+  it('maps a region name to regional coverage with the matching area id', () => {
+    const result = resolver.resolve(['Bretagne'])
+    expect(result.geographicCoverage).toBe('regional')
+    expect(result.geographicAreas).toHaveLength(1)
+    expect(result.geographicAreaFeedback).toBeUndefined()
+  })
+
+  it('maps a department-only name to departemental coverage with the matching area id', () => {
+    const result = resolver.resolve(['Ain'])
+    expect(result.geographicCoverage).toBe('departemental')
+    expect(result.geographicAreas).toHaveLength(1)
+    expect(result.geographicAreaFeedback).toBeUndefined()
+  })
+
+  it('reports unmatched names in the feedback field', () => {
+    const result = resolver.resolve(['Pays Imaginaire'])
+    expect(result.geographicAreaFeedback).toContain('Pays Imaginaire')
+    expect(result.geographicAreas).toEqual([])
+  })
+
+  it('returns an empty result for undefined input', () => {
+    expect(resolver.resolve(undefined)).toEqual({})
+  })
 })

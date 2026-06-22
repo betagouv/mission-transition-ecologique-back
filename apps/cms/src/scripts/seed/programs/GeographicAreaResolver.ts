@@ -35,7 +35,7 @@ export class GeographicAreaResolver {
   static async fromPayload(payload: Payload): Promise<GeographicAreaResolver> {
     const result = await payload.find({
       collection: 'geographic-areas',
-      limit: 1000,
+      limit: 0,
       depth: 0,
     })
 

@@ -12,13 +12,19 @@ import type { CollectionBeforeValidateHook } from 'payload'
  * Note: switching between `regional` and `departemental` can leave stale areas
  * of the wrong `coverageType`; resolving that requires loading each area and is
  * left as a follow-up. The editor is expected to re-pick zones after switching.
+ *
+ * On partial updates the payload may omit `geographicCoverage`, so we fall back
+ * to `originalDoc` to avoid wiping existing areas on unrelated edits.
  */
 export const normalizeGeographicCoverage: CollectionBeforeValidateHook = ({
   data,
+  originalDoc,
 }) => {
   if (!data) return data
 
-  if (data.geographicCoverage !== 'regional' && data.geographicCoverage !== 'departemental') {
+  const coverage = data.geographicCoverage ?? originalDoc?.geographicCoverage
+
+  if (coverage !== 'regional' && coverage !== 'departemental') {
     data.geographicAreas = []
   }
 
