@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   checks:
-    name: Lint & Typecheck
+    name: Lint, Typecheck & Tests
     runs-on: ubuntu-latest
     env:
       PAYLOAD_SECRET: ci-secret
@@ -37,3 +37,15 @@ jobs:
 
       - name: Typecheck
         run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test:unit
+
+      - name: Integration tests
+        run: pnpm test
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: E2E tests
+        run: pnpm e2e
