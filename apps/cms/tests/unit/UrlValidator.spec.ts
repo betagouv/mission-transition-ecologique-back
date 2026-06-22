@@ -44,6 +44,18 @@ describe('UrlValidator', () => {
         'URL invalide. Exemple attendu : https://...',
       )
     })
+
+    it('rejects a file:/// path pasted behind https://', () => {
+      expect(validate('https://file:///Users/me/Downloads/doc.pdf')).toBe(
+        'URL invalide. Exemple attendu : https://...',
+      )
+    })
+
+    it('rejects http(s) URLs whose host has no dot', () => {
+      expect(validate('https://intranet')).toBe(
+        'URL invalide. Exemple attendu : https://...',
+      )
+    })
   })
 
   describe('disallowed protocols are rejected', () => {
