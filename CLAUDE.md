@@ -140,6 +140,12 @@ Exemples : `feat(cms): add User collection` — `fix(cms): resolve SQLite index 
 
 Les classes utilitaires partagées vont dans `src/utils/`.
 
+## Règles d'équipe
+
+Ces règles versionnées s'appliquent à toute contribution sur ce dépôt :
+
+@.claude/rules/code-comments.md
+
 ## Règles importantes
 
 - Ne jamais modifier les fichiers dans `docs/sources/`

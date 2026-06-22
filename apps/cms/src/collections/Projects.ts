@@ -77,7 +77,7 @@ export const Projects: CollectionConfig = {
       label: 'Description complémentaire',
     },
 
-    // --- Thématiques ---
+    // --- Themes ---
     {
       name: 'mainTheme',
       type: 'select',
