@@ -9,6 +9,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Jobs only check out the repo and run tests; no write access is needed.
+permissions:
+  contents: read
+
 env:
   PAYLOAD_SECRET: ci-secret
   DATABASE_URI: file:./tee-poc.db
