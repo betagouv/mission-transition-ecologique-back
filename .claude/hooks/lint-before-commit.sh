@@ -4,7 +4,18 @@
 set -uo pipefail
 
 input=$(cat)
-cmd=$(printf '%s' "$input" | jq -r '.tool_input.command // empty')
+
+# Fail closed: if jq is missing or the tool input can't be parsed, block rather
+# than silently skipping the lint guard.
+if ! command -v jq >/dev/null 2>&1; then
+  echo "Commit guard failed: 'jq' is not available to parse the tool input." >&2
+  exit 2
+fi
+
+if ! cmd=$(printf '%s' "$input" | jq -er '.tool_input.command // ""'); then
+  echo "Commit guard failed: could not parse the tool input as JSON." >&2
+  exit 2
+fi
 
 # Only intercept real commits (ignore `git log --commit`, messages mentioning commit, etc.)
 if ! printf '%s' "$cmd" | grep -qE '(^|[^[:alnum:]_])git[[:space:]]+commit([[:space:]]|$)'; then

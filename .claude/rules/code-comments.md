@@ -29,15 +29,15 @@ ne peut pas se suffire à lui-même.
 Exemples :
 
 ```ts
-// ❌ Paraphrase inutile
+// ❌ Useless paraphrase
 // increment the counter
 counter++
 
-// ❌ Commentaire sur du code déjà clair
+// ❌ Comment on already-clear code
 // get the user by id
 const user = await getUserById(id)
 
-// ✅ Explique une contrainte non évidente
+// ✅ Explains a non-obvious constraint
 // Payload re-runs beforeChange on publish, so skip the sync when status is unchanged
 if (previousStatus === nextStatus) return
 ```
