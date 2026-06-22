@@ -86,7 +86,7 @@ Les fichiers seed vivent dans `apps/cms/src/scripts/seed/` :
 - `src/app/(payload)/api/[...slug]/` — routes REST API PayloadCMS
 - `payload-types.ts` — généré automatiquement par Payload, **ne pas modifier à la main**
 - `src/utils/user/UserRole.ts` — classe `UserRole` (constantes, hiérarchie, méthodes `isSuperAdmin` / `isAdmin` / `isCreator`) + type `UserRoleValue`
-- `src/constants/` — options de select réutilisables (`themesOptions.ts`, `nafSectionsOptions.ts`)
+- `src/constants/` — options de select réutilisables, un fichier par jeu d'options (`themesOptions.ts`, `nafSectionsOptions.ts`, `aidTypeOptions.ts`, `companySizeOptions.ts`, `activitySectorOptions.ts`, `contactMethodOptions.ts`)
 - `src/services/workflow/` — `WorkflowTransitionPolicy` (logique de transitions, partagée client/serveur), `WorkflowAutomation` (point d'extension phase automatisée)
 - `src/hooks/programs/` — `beforeChangeWorkflow` (validation, sync `workflowStatus` ↔ `_status`, intégration `WorkflowAutomation`)
 - `src/components/programs/` — `WorkflowActionBar` (bouton contextuel), `WorkflowStatusBadge` (statut sidebar), `WorkflowStatusCell` (badge liste), `NumberedRowLabel` (label d'array auto-numéroté, `singular` passé via `clientProps`), `LinkedProjectsCounter` (champ `type: 'ui'` qui affiche en live le nombre de projets matchant les thèmes sélectionnés)

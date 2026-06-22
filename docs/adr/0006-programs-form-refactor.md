@@ -153,8 +153,9 @@ Les outils one-shot d'export/restore depuis l'ancienne base (utilisés pendant l
 - **Dates de validité** (`validityStart` / `validityEnd`) : `displayFormat: 'dd/MM/yyyy'` ajouté pour afficher l'année au format JJ/MM/AAAA.
 - **Étapes** : `steps[].description` passe de `text` à `richText` (saisie multiligne et enrichie). Le seed convertit la source via `convertMarkdownToLexical` (`ProgramMapper.toRichText`).
 - **Étapes, liens** : ordre des sous-champs inversé, `linkLabel` (Titre du lien) avant `url`.
+- **Validation des URL** : `UrlValidator.validate` (`src/utils/UrlValidator.ts`) appliqué au lien principal `url` et aux liens d'étapes `steps[].links[].url` (URL absolue http(s) attendue, valeur vide tolérée, espaces de bord ignorés via `trim`).
 - **Projets liés** (`linkedProjects`) : `admin.sortOptions: 'title'` (liste alphabétique de tous les projets, sans filtrage par thématique) et `admin.allowCreate: false` (le workflow projet reste séparé du workflow dispositif).
-- **SEO** (`metaTitle` / `metaDescription`) : `admin.condition` réservant l'affichage aux administrateurs (masqué pour le rôle `creator`).
+- **SEO** (`metaTitle` / `metaDescription`) : réservé aux administrateurs sur deux niveaux complémentaires : `admin.condition` masque les champs en UI pour le rôle `creator`, et `access.create` / `access.update` (`UserRole.isAdmin`) verrouillent l'écriture côté API, la condition ne protégeant que l'affichage. Même pattern que `assignedContributors` et `_status`.
 - **Typographie richText** : règle CSS dans `dsfr-fields.scss` forçant Marianne (`--tee-font-family-sans`) sur l'éditeur Lexical, pour l'aligner sur les autres champs.
 
 ---
