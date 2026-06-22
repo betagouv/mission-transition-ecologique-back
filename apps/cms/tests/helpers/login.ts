@@ -26,6 +26,8 @@ export async function login({
 
   await page.waitForURL(`${serverURL}/admin`)
 
-  const dashboardArtifact = page.locator('span[title="Dashboard"]')
+  // Locale-independent dashboard marker: the admin UI runs in French, so match
+  // the step-nav home link by class rather than its translated title.
+  const dashboardArtifact = page.locator('a.step-nav__home')
   await expect(dashboardArtifact).toBeVisible()
 }
