@@ -589,6 +589,13 @@ export const Programs: CollectionConfig = {
         condition: (_data, _siblingData, { user }) =>
           UserRole.isAdmin(user as { role: UserRoleValue } | null | undefined),
       },
+      // La condition ne masque qu'en UI ; access verrouille l'écriture API.
+      access: {
+        create: (({ req: { user } }) =>
+          UserRole.isAdmin(user)) satisfies FieldAccess,
+        update: (({ req: { user } }) =>
+          UserRole.isAdmin(user)) satisfies FieldAccess,
+      },
     },
     {
       name: 'metaDescription',
@@ -599,6 +606,13 @@ export const Programs: CollectionConfig = {
         // Masqué pour le créateur : réservé aux administrateurs.
         condition: (_data, _siblingData, { user }) =>
           UserRole.isAdmin(user as { role: UserRoleValue } | null | undefined),
+      },
+      // La condition ne masque qu'en UI ; access verrouille l'écriture API.
+      access: {
+        create: (({ req: { user } }) =>
+          UserRole.isAdmin(user)) satisfies FieldAccess,
+        update: (({ req: { user } }) =>
+          UserRole.isAdmin(user)) satisfies FieldAccess,
       },
     },
   ],
