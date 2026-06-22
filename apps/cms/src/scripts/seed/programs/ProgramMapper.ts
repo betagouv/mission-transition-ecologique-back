@@ -2,6 +2,7 @@ import type { editorConfigFactory } from '@payloadcms/richtext-lexical'
 import { convertMarkdownToLexical } from '@payloadcms/richtext-lexical'
 import type { SourceProgram } from './types'
 import { FrenchDateParser } from '@/utils/FrenchDateParser'
+import { UrlValidator } from '@/utils/UrlValidator'
 
 type AidType =
   | 'financement'
@@ -111,7 +112,20 @@ export class ProgramMapper {
     const contact = this.mapContact(program['contact question'])
     const amounts = this.mapAmountFields(aidType, program)
     const trimmedUrl = program.url?.trim()
-    const hasValidUrl = Boolean(trimmedUrl)
+    const steps = (program.objectifs ?? []).map((obj) => ({
+      description: this.toRichText(obj.description),
+      links: (obj.liens ?? []).map((lien) => ({
+        linkLabel: lien.texte ?? '',
+        url: lien.lien,
+      })),
+    }))
+
+    // Publish only when the main url and every step link are valid; otherwise
+    // keep the program in draft (en-creation) so editors can spot and fix it.
+    const canPublish =
+      Boolean(trimmedUrl) &&
+      UrlValidator.isValid(trimmedUrl) &&
+      steps.every((step) => step.links.every((link) => UrlValidator.isValid(link.url)))
 
     return {
       slug: program.id,
@@ -126,13 +140,7 @@ export class ProgramMapper {
       otherOperators: otherOperatorIds.length > 0 ? otherOperatorIds : undefined,
       url: trimmedUrl,
       ...amounts,
-      steps: (program.objectifs ?? []).map((obj) => ({
-        description: this.toRichText(obj.description),
-        links: (obj.liens ?? []).map((lien) => ({
-          linkLabel: lien.texte ?? '',
-          url: lien.lien,
-        })),
-      })),
+      steps,
       contactMethods: contact.contactMethods,
       contactEmail: contact.contactEmail,
       contactPageUrl: contact.contactPageUrl,
@@ -144,8 +152,8 @@ export class ProgramMapper {
       activitySectors: sectors,
       activitySectorOther: sectorOther,
       otherCriteria,
-      workflowStatus: hasValidUrl ? ('publie' as const) : ('en-creation' as const),
-      _status: hasValidUrl ? ('published' as const) : ('draft' as const),
+      workflowStatus: canPublish ? ('publie' as const) : ('en-creation' as const),
+      _status: canPublish ? ('published' as const) : ('draft' as const),
       metaTitle: program.metaTitre,
       metaDescription: program.metaDescription,
     }

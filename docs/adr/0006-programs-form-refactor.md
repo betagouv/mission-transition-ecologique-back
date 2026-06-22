@@ -140,7 +140,7 @@ Mapping legacy `programs.json` → nouveau schéma — perte assumée :
 - `nombre d'années d'activité` fusionné dans `otherCriteria`.
 - `aide temporairement indisponible`, `activable en autonomie`, `eligibilityData.company.excludeMicroentrepreneur` : ignorés (champs retirés du schéma — décision PO).
 - `illustration`, `eligibilityData.company.allowedNafSections / minEmployees / maxEmployees`, `eligibilityData.priorityObjectives`, `publicodes` : ignorés (non couverts par le nouveau schéma).
-- Quelques dispositifs sans `url` source restent en draft (le champ `url` est `required` ; complétion manuelle via l'admin).
+- Le seed ne publie un dispositif (`_status: published`, `workflowStatus: publie`) que si son `url` principal **et** tous ses liens d'étapes sont valides (`UrlValidator.isValid`, appelé dans `ProgramMapper`) ; sinon il reste en draft / `en-creation`. Cela rend visibles à l'éditeur les dispositifs sans `url` source comme ceux dont un lien est cassé (ex : `file:///` ou URL imbriquée dans la source), pour complétion manuelle via l'admin. Le seed écrit en `draft: true`, donc la validation des champs n'est pas levée à l'import : c'est ce calcul de statut qui assure la visibilité.
 
 Le seed reste idempotent (upsert par `slug`) — relancer `pnpm seed` après une mise à jour des sources ne crée pas de doublons.
 

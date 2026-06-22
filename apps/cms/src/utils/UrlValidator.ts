@@ -53,4 +53,11 @@ export class UrlValidator {
       ? true
       : (result.error.issues[0]?.message ?? UrlValidator.INVALID_MESSAGE)
   }
+
+  /** True when the value is empty (optional field) or a well-formed allowed URL. */
+  static isValid(value: string | null | undefined): boolean {
+    const trimmed = value?.trim()
+    if (trimmed == null || trimmed === '') return true
+    return UrlValidator.schema.safeParse(trimmed).success
+  }
 }
