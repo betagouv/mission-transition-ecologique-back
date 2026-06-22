@@ -12,6 +12,9 @@ class InMemoryRepository implements CanonicalProgramRepository {
   async findBySlug(slug: string): Promise<CanonicalProgram | null> {
     return this.saved.get(slug) ?? null
   }
+  async findAll(): Promise<CanonicalProgram[]> {
+    return [...this.saved.values()]
+  }
 }
 
 const validInput: CanonicalProgramInput = {
@@ -42,5 +45,14 @@ describe('CanonicalProgramService', () => {
 
     expect(result.status).toBe('invalid')
     expect(repository.saved.size).toBe(0)
+  })
+
+  it('getAll returns every stored program', async () => {
+    const service = new CanonicalProgramService(new InMemoryRepository())
+    await service.save(validInput)
+    await service.save({ ...validInput, id: 'b1b2c3d4e5f6g7h8i9j0klmn', slug: 'autre-dispositif' })
+
+    const slugs = (await service.getAll()).map((program) => program.slug).sort()
+    expect(slugs).toEqual(['autre-dispositif', 'diagnostic-energie-pme'])
   })
 })

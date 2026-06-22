@@ -11,4 +11,6 @@ export interface CanonicalProgramRepository {
   save(program: CanonicalProgram): Promise<void>
   /** Returns the stored program for a slug, or null when absent. */
   findBySlug(slug: string): Promise<CanonicalProgram | null>
+  /** Returns every stored program. */
+  findAll(): Promise<CanonicalProgram[]>
 }

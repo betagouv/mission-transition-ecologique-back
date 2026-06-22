@@ -51,4 +51,15 @@ export class DrizzleCanonicalProgramRepository implements CanonicalProgramReposi
     const result = this.validator.validate(JSON.parse(row.data))
     return result.success ? result.program : null
   }
+
+  async findAll(): Promise<CanonicalProgram[]> {
+    const rows = await this.db.select().from(canonicalPrograms)
+
+    const programs: CanonicalProgram[] = []
+    for (const row of rows) {
+      const result = this.validator.validate(JSON.parse(row.data))
+      if (result.success) programs.push(result.program)
+    }
+    return programs
+  }
 }

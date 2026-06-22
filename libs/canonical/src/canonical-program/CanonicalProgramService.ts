@@ -1,4 +1,5 @@
 import { CanonicalProgramValidator, type ValidationResult } from './CanonicalProgramValidator'
+import type { CanonicalProgram } from './CanonicalProgram'
 import type { CanonicalProgramRepository } from './CanonicalProgramRepository'
 import type { CanonicalProgramInput } from './canonical-program.types'
 
@@ -12,7 +13,7 @@ export type CanonicalSaveResult =
  * Domain service for canonical programs. Orchestrates the use cases over the
  * repository port, independent of any source (CMS, external feed) or storage
  * technology. The concrete repository is injected by the caller. Grows with the
- * needs (save today, get/getAll next).
+ * needs (save and getAll today, get next).
  */
 export class CanonicalProgramService {
   private readonly validator = new CanonicalProgramValidator()
@@ -31,5 +32,9 @@ export class CanonicalProgramService {
 
     await this.repository.save(result.program)
     return { status: 'saved', slug: result.program.slug }
+  }
+
+  async getAll(): Promise<CanonicalProgram[]> {
+    return this.repository.findAll()
   }
 }

@@ -37,4 +37,12 @@ describe('DrizzleCanonicalProgramRepository', () => {
     const repo = await DrizzleCanonicalProgramRepository.create(':memory:')
     expect(await repo.findBySlug('inconnu')).toBeNull()
   })
+
+  it('findAll returns every saved program', async () => {
+    const repo = await DrizzleCanonicalProgramRepository.create(':memory:')
+    expect(await repo.findAll()).toEqual([])
+    await repo.save(program)
+    const all = await repo.findAll()
+    expect(all.map((p) => p.slug)).toEqual(['diagnostic-energie-pme'])
+  })
 })
