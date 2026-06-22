@@ -82,6 +82,7 @@ export const Programs: CollectionConfig = {
       type: 'text',
       label: 'Lien du dispositif',
       required: true,
+      validate: UrlValidator.validate,
       admin: {
         description: 'Exemple : https://...',
       },
