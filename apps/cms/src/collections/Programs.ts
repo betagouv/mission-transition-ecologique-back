@@ -237,9 +237,9 @@ export const Programs: CollectionConfig = {
             },
           },
           defaultValue: [
-            { description: '', links: [{ url: '', linkLabel: '' }] },
-            { description: '', links: [{ url: '', linkLabel: '' }] },
-            { description: '' },
+            { description: null, links: [{ url: '', linkLabel: '' }] },
+            { description: null, links: [{ url: '', linkLabel: '' }] },
+            { description: null },
           ],
           fields: [
             {
