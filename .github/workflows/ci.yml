@@ -9,43 +9,72 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Jobs only check out the repo and run tests; no write access is needed.
+permissions:
+  contents: read
+
+env:
+  PAYLOAD_SECRET: ci-secret
+  DATABASE_URI: file:./tee-poc.db
+  NEXT_TELEMETRY_DISABLED: '1'
+  NX_DAEMON: 'false'
+
 jobs:
-  checks:
-    name: Lint, Typecheck & Tests
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
-    env:
-      PAYLOAD_SECRET: ci-secret
-      DATABASE_URI: file:./tee-poc.db
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
+      - uses: ./.github/actions/setup-workspace
       - name: Generate Payload types & import map
         run: pnpm generate
-
       - name: Lint
         run: pnpm lint
 
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-workspace
+      - name: Generate Payload types & import map
+        run: pnpm generate
       - name: Typecheck
         run: pnpm typecheck
 
+  test:
+    name: Unit & integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-workspace
+      - name: Generate Payload types & import map
+        run: pnpm generate
       - name: Unit tests
         run: pnpm test:unit
-
       - name: Integration tests
         run: pnpm test
 
-      - name: Install Playwright browser
-        run: pnpm exec playwright install --with-deps chromium
+  e2e:
+    name: E2E tests
+    needs: [lint, typecheck, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # The official Playwright image ships the browser and all system deps, so we
+    # skip the slow and flaky `playwright install --with-deps` (apt) at runtime.
+    # Pin the tag to the @playwright/test version in the lockfile.
+    container:
+      image: mcr.microsoft.com/playwright:v1.58.2-noble
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-workspace
+
+      # `pnpm build` runs `pnpm generate` first, so no separate generate step.
+      - name: Build
+        run: pnpm build
 
       - name: E2E tests
         run: pnpm e2e
