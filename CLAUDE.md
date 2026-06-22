@@ -140,6 +140,10 @@ Exemples : `feat(cms): add User collection` — `fix(cms): resolve SQLite index 
 
 Les classes utilitaires partagées vont dans `src/utils/`.
 
+## Règles d'équipe
+
+> Conventions de commentaires : voir `.claude/rules/code-comments.md` (rule auto-appliquée sur tout fichier `.ts`/`.tsx`).
+
 ## Règles importantes
 
 - Ne jamais modifier les fichiers dans `docs/sources/`
