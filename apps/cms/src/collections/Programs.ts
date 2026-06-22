@@ -3,45 +3,12 @@ import { ProgramAccessPolicy } from '@/services/access/ProgramAccessPolicy'
 import { beforeChangeWorkflow } from '@/hooks/programs/beforeChangeWorkflow'
 import { assignCreatorOnCreate } from '@/hooks/programs/assignCreatorOnCreate'
 import { THEMES_OPTIONS } from '@/constants/themesOptions'
+import { COMPANY_SIZE_OPTIONS } from '@/constants/companySizeOptions'
+import { ACTIVITY_SECTOR_OPTIONS } from '@/constants/activitySectorOptions'
+import { CONTACT_METHOD_OPTIONS } from '@/constants/contactMethodOptions'
+import { AID_TYPE_OPTIONS } from '@/constants/aidTypeOptions'
 import { UserRole, type UserRoleValue } from '@/utils/user/UserRole'
 import { UrlValidator } from '@/utils/UrlValidator'
-
-const COMPANY_SIZE_OPTIONS = [
-  { label: '0 à 9 salariés', value: '0-9' },
-  { label: '10 à 19 salariés', value: '10-19' },
-  { label: '20 à 49 salariés', value: '20-49' },
-  { label: '50 à 249 salariés', value: '50-249' },
-  { label: '250 à 499 salariés', value: '250-499' },
-  { label: '500 à 4999 salariés', value: '500-4999' },
-  { label: '+ 5000 salariés', value: '5000+' },
-  { label: 'Autre taille spécifique', value: 'other' },
-] as const
-
-const ACTIVITY_SECTOR_OPTIONS = [
-  { label: "Tous secteurs d'activité", value: 'all' },
-  { label: 'Agriculture', value: 'agriculture' },
-  { label: 'Industrie', value: 'industrie' },
-  { label: 'Tertiaire', value: 'tertiaire' },
-  { label: 'Commerce', value: 'commerce' },
-  { label: 'Artisanat', value: 'artisanat' },
-  { label: 'Tourisme', value: 'tourisme' },
-  { label: 'Autre secteur spécifique', value: 'other' },
-  { label: 'Code NAF spécifique associé', value: 'naf-code' },
-] as const
-
-const CONTACT_METHOD_OPTIONS = [
-  { label: 'Avec Conseillers-Entreprises (rappel téléphonique)', value: 'advisor' },
-  { label: 'Par mail', value: 'email' },
-  { label: 'Par lien vers une page contact', value: 'url' },
-] as const
-
-const AID_TYPE_OPTIONS = [
-  { label: 'Financement', value: 'financement' },
-  { label: 'Prêt', value: 'pret' },
-  { label: 'Avantage fiscal', value: 'avantage-fiscal' },
-  { label: 'Formation', value: 'formation' },
-  { label: 'Diagnostic ou étude', value: 'diagnostic-etude' },
-] as const
 
 export const Programs: CollectionConfig = {
   slug: 'programs',
