@@ -142,9 +142,7 @@ Les classes utilitaires partagées vont dans `src/utils/`.
 
 ## Règles d'équipe
 
-Ces règles versionnées s'appliquent à toute contribution sur ce dépôt :
-
-@.claude/rules/code-comments.md
+> Conventions de commentaires : voir `.claude/rules/code-comments.md` (rule auto-appliquée sur tout fichier `.ts`/`.tsx`).
 
 ## Règles importantes
 
