@@ -45,7 +45,7 @@ pnpm seed                                  # seed complet : operators + programs
 
 ## Seed
 
-**`pnpm seed`** — seed complet idempotent (upsert) : `GeographicAreasSeed` (18 régions + 101 départements) → `ProgramsSeed` (operators + programs depuis `docs/sources/programs.json`) → `ProjectsSeed` (depuis `docs/sources/projects.json`) → `UsersSeed` (utilisateurs de dev).
+**`pnpm seed`** — seed complet idempotent (upsert) : `GeographicAreasSeed` (18 régions + 101 départements) → `ProgramsSeed` (operators + programs depuis `docs/sources/programs.json`) → `CanonicalSeed` (sync des programmes `publie` vers le store canonical) → `ProjectsSeed` (depuis `docs/sources/projects.json`) → `UsersSeed` (utilisateurs de dev).
 
 ### Utilisateurs de dev (`pnpm seed`)
 
@@ -59,6 +59,7 @@ Les fichiers seed vivent dans `apps/cms/src/scripts/seed/` :
 - `run.ts` — entrypoint `pnpm seed` (initialisation Payload + orchestration).
 - `geographic-areas/` — `GeographicAreasSeed` (régions + départements, fixtures dans `fixtures.ts`).
 - `programs/` — `ProgramsSeed`, `OperatorImporter`, `ProgramMapper`, `ProgramImporter`.
+- `canonical/` : `CanonicalSeed` (sélectionne les programmes `workflowStatus === 'publie'`, mappe et persiste dans le store canonical via `CanonicalProgramService`).
 - `projects/` — `ProjectsSeed`, `ProjectMapper`, `ProjectImporter`, `LinkedProjectsUpdater`.
 - `users/` — `UsersSeed`.
 
@@ -88,16 +89,27 @@ Les fichiers seed vivent dans `apps/cms/src/scripts/seed/` :
 - `src/utils/user/UserRole.ts` — classe `UserRole` (constantes, hiérarchie, méthodes `isSuperAdmin` / `isAdmin` / `isCreator`) + type `UserRoleValue`
 - `src/constants/` — options de select réutilisables (`themesOptions.ts`, `nafSectionsOptions.ts`)
 - `src/services/workflow/` — `WorkflowTransitionPolicy` (logique de transitions, partagée client/serveur), `WorkflowAutomation` (point d'extension phase automatisée)
-- `src/hooks/programs/` — `beforeChangeWorkflow` (validation, sync `workflowStatus` ↔ `_status`, intégration `WorkflowAutomation`)
+- `src/services/canonical/` : adaptateur CMS et composition root vers le format pivot. `ProgramCanonicalMapper` (Payload `Program` vers `CanonicalProgramInput`, relations peuplées), `rich-text/` (port `RichTextToMarkdown` + impl Payload `PayloadRichTextToMarkdown`), `canonicalRepository.ts` et `canonicalProgramService.ts` (singletons mémoïsés qui injectent l'impl libSQL du store dans le service domaine `CanonicalProgramService`). Voir ADR 0008
+- `src/hooks/programs/` : `assignCreatorOnCreate`, `assignCanonicalId` (cuid2 immuable porté dans le pivot), `beforeChangeWorkflow` (validation, sync `workflowStatus` ↔ `_status`, `WorkflowAutomation`), `syncCanonicalOnPublish` (afterChange : sync d'un dispositif publié vers le store canonical)
 - `src/components/programs/` — `WorkflowActionBar` (bouton contextuel), `WorkflowStatusBadge` (statut sidebar), `WorkflowStatusCell` (badge liste), `NumberedRowLabel` (label d'array auto-numéroté, `singular` passé via `clientProps`), `LinkedProjectsCounter` (champ `type: 'ui'` qui affiche en live le nombre de projets matchant les thèmes sélectionnés)
 
 ### `libs/canonical` — `@tee-backoffice/canonical`
 
 Format **pivot** interne (Canonical Data Model) : TypeScript pur + zod, sans dépendance framework. Source de vérité = zod, types inférés (`z.infer`), clés en français `snake_case` (= format wire). Voir ADR 0007.
 
+**Architecture DDD / hexagonale** (voir ADR 0008 et `libs/canonical/CLAUDE.md`) : ce package est le **domaine**. Il définit le **port** `CanonicalProgramRepository` et le **service** `CanonicalProgramService` (valide puis upsert via le port). Les implémentations concrètes (store libSQL, mapper CMS, converter markdown) sont **injectées depuis `apps/cms`** (composition root). Les dépendances pointent toujours vers le domaine, jamais l'inverse. Interdit ici : Payload, drivers DB.
+
 - `src/shared/` — `primitives.ts` (primitifs brandés : `Cuid2`, `Siren`, `NafCode`, dates ISO, `Intervalle`…), `cog.ts` (dictionnaire unique des niveaux COG `COG_NIVEAUX` + `CogNiveau`/`COG_PREFIXES`), `schema/` (`cog.ts` : `cogCodeSchema`/`CogCode`, garde de forme souple ; `operator.ts` : `operateurSchema`/`operateursSchema`)
-- `src/canonical-program/` — `enums.ts`, `canonical-program.schema.ts` (racine, `merge` + `superRefine`), `canonical-program.types.ts` (`CanonicalProgramData`), `CanonicalProgram` (value object), `CanonicalProgramValidator` (point d'entrée de validation), `fields/` (identite, contenu, aide, eligibilite), `variants/`, `additional-data/`
+- `src/canonical-program/` — `enums.ts`, `canonical-program.schema.ts` (racine, `merge` + `superRefine`), `canonical-program.types.ts` (`CanonicalProgramData`), `CanonicalProgram` (value object), `CanonicalProgramValidator` (point d'entrée de validation), `CanonicalProgramRepository` (port de persistance), `CanonicalProgramService` (service domaine : valide puis upsert via le port injecté), `fields/` (identite, contenu, aide, eligibilite), `variants/`, `additional-data/`
 - `tests/` — `unit/` (specs `*.spec.ts`) et `fixtures/` (golden fixtures `valid-minimal`, `valid-full`)
+- `package.json` minimal avec `"type": "module"` : requis pour que node/`tsx` (le seed) traite les `.ts` du package comme de l'ESM. Ne pas le retirer.
+
+### `libs/canonical-store` : `@tee-backoffice/canonical-store`
+
+**Adaptateur infra** (libSQL/Drizzle) du port `CanonicalProgramRepository`. Base **dédiée et indépendante de Payload** (`canonical.db`, var `CANONICAL_DATABASE_URI`, défaut `file:./canonical.db`), pour que la donnée canonique survive à un changement de CMS. Ne dépend que de `libs/canonical` + un driver SQL, **jamais du CMS**.
+
+- `src/schema.ts` (table Drizzle `canonical_programs`), `src/db.ts` (connexion `@libsql/client` + `CREATE TABLE IF NOT EXISTS`), `DrizzleCanonicalProgramRepository` (`.create(url)` async, upsert `onConflictDoUpdate`). Colonne `data` en TEXT JSON pour rester portable : migration Postgres future = changer `schema.ts` (dialecte) + `db.ts` (driver) uniquement, zéro impact domaine/CMS.
+- Même convention que `libs/canonical` : `package.json` `"type": "module"`, résolution par `paths` de `tsconfig.base.json`.
 
 ## Documentation de référence
 
@@ -118,6 +130,7 @@ Ne lire un ADR que s'il est pertinent pour la tâche en cours.
 | `docs/adr/0005-programs-workflow-extended.md` | Workflow éditorial des programmes — 9 états, 3 rôles, `WorkflowTransitionPolicy`, `WorkflowAutomation`, `replacedBy` |
 | `docs/adr/0006-programs-form-refactor.md` | Refonte du formulaire `Programs` — sections collapsibles, conditionnels par `aidType`, suppression du double modèle d'éligibilité, collection `GeographicAreas`, composants admin custom |
 | `docs/adr/0007-canonical-pivot-format.md` | Format pivot interne (`libs/canonical`) — Canonical Data Model, zod source de vérité, clés `snake_case`, primitifs brandés, éligibilité refacto (`texte`/`structure` par critère), `CanonicalProgram` + `CanonicalProgramValidator`. Référence champs : `docs/context/canonical-pivot-format.md` |
+| `docs/adr/0008-canonical-persistence-ddd.md` | Persistance du canonical + architecture DDD/DI : canonical = source de vérité durable (anti-lock-in), store libSQL/Drizzle indépendant de Payload (`libs/canonical-store`), port `CanonicalProgramRepository` + service domaine `CanonicalProgramService`, composition root et injection dans `apps/cms`, sync au publish + seed, migration Postgres future |
 
 ## Commits
 
