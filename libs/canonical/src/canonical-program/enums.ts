@@ -1,32 +1,24 @@
 import { z } from 'zod'
 
-/**
- * Closed vocabularies of the canonical (pivot) format.
- * Single source of truth — every schema and projection reads from here.
- */
+// Closed vocabularies of the canonical (pivot) format. Single source of truth —
+// every schema and projection reads from here.
 
-/** Provenance du dispositif. */
+/** Source of the program. */
 export const sourceSchema = z.enum(['ADEME', 'INTERNE', 'SCHEMA'])
 export type Source = z.infer<typeof sourceSchema>
 
-/**
- * Statut d'édition — où en est la rédaction du contenu.
- * Axe orthogonal à `statutDispositifSchema`.
- */
+/** Editorial status — content authoring progress. Orthogonal to `statutDispositifSchema`. */
 export const statutEditionSchema = z.enum([
   'inconnu',
   'en_creation',
   'en_reecriture',
   'pret_prod',
   'archive',
-  'abandonne', // abandonné avant publication
+  'abandonne', // abandoned before publication
 ])
 export type StatutEdition = z.infer<typeof statutEditionSchema>
 
-/**
- * Statut du dispositif — validité réelle de l'aide.
- * `remplace` impose `remplace_par` (voir refine du cas général).
- */
+/** Program status — real validity of the aid. `remplace` requires `remplace_par`. */
 export const statutDispositifSchema = z.enum([
   'inconnu',
   'valide',
@@ -36,10 +28,7 @@ export const statutDispositifSchema = z.enum([
 ])
 export type StatutDispositif = z.infer<typeof statutDispositifSchema>
 
-/**
- * Nature de l'aide — les 8 types du schéma de données interministériel,
- * qui couvrent les 5 types d'aides actuels du projet.
- */
+/** Aid nature — the 8 types of the interministerial data schema. */
 export const typeAideSchema = z.enum([
   'assistance',
   'avantage_fiscal',
@@ -52,7 +41,7 @@ export const typeAideSchema = z.enum([
 ])
 export type TypeAide = z.infer<typeof typeAideSchema>
 
-/** Ciblage thématique — taxonomie interne (V0, libellés français). */
+/** Thematic targeting — internal taxonomy (V0, French labels). */
 export const themeSchema = z.enum([
   'batiment',
   'mobilite',
@@ -66,14 +55,10 @@ export const themeSchema = z.enum([
 ])
 export type Theme = z.infer<typeof themeSchema>
 
-/** Canal de contact pour les questions. */
+/** Contact channel for questions. */
 export const contactQuestionTypeSchema = z.enum(['ADEME', 'conseiller_entreprise', 'email', 'url'])
 export type ContactQuestionType = z.infer<typeof contactQuestionTypeSchema>
 
-/**
- * Catégorie légale d'entreprise — vocabulaire fermé (V0).
- * Une seule valeur pour l'instant ; les autres seront ajoutées plus tard.
- * Utilisée par `eligibilite.categorie_legale` (autorisé / interdit).
- */
-export const categorieLegaleSchema = z.enum(['micro_entrepreneur']);
+/** Legal company category — closed vocabulary (V0). Used by `eligibilite.categorie_legale`. */
+export const categorieLegaleSchema = z.enum(['micro_entrepreneur'])
 export type CategorieLegale = z.infer<typeof categorieLegaleSchema>

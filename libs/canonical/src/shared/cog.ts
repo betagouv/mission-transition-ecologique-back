@@ -1,21 +1,12 @@
-import { z } from 'zod'
-
-/**
- * Dictionnaire **unique** des niveaux COG (Code Officiel Géographique) du projet.
- * Source de vérité partagée : tout le monde dans le projet préfixe ses codes
- * géographiques avec un de ces niveaux, jamais un code « nu ».
- *
- * Pourquoi un préfixe ? Le code seul n'est pas une clé : `53` = région Bretagne
- * **OU** département Mayenne. Le préfixe est le discriminateur de niveau — il
- * lève la collision et reflète la structure officielle INSEE / geo.api.gouv.fr,
- * où la clé est toujours le couple `(niveau, code)`, jamais le code seul.
- *
- * ⚠️ Pièges de nommage à connaître :
- * - `COM` = **Commune** (code à 5 caractères). Les collectivités d'outre-mer
- *   ont leur **propre** niveau `OM` — ne pas réutiliser `COM` pour elles.
- * - `EPCI` sert aussi pour les collectivités à statut particulier qui portent un
- *   SIREN (ex. Métropole de Lyon `EPCI-200046977`).
- */
+// Single dictionary of COG (Code Officiel Géographique) levels. Every geographic
+// code is prefixed with one of these levels, never bare: a bare code is ambiguous
+// (`53` = région Bretagne OR département Mayenne). The prefix is the level
+// discriminator, matching INSEE / geo.api.gouv.fr where the key is the
+// (level, code) pair.
+//
+// Naming traps:
+// - `COM` = Commune (5-char code); overseas collectivities use their own `OM` level.
+// - `EPCI` also covers special-status collectivities carrying a SIREN (e.g. Métropole de Lyon).
 export const COG_NIVEAUX = {
   PAYS: {
     label: 'Pays',
@@ -60,28 +51,8 @@ export const COG_NIVEAUX = {
   },
 } as const
 
-/** Niveau COG — clé du dictionnaire `COG_NIVEAUX`. */
+/** COG level — key of `COG_NIVEAUX`. */
 export type CogNiveau = keyof typeof COG_NIVEAUX
 
-/** Préfixes autorisés — dérivés du dictionnaire, jamais redéclarés ailleurs. */
+/** Allowed prefixes, derived from the dictionary. */
 export const COG_PREFIXES = Object.keys(COG_NIVEAUX) as CogNiveau[]
-
-/**
- * Code COG = `NIVEAU-code`. Garde de forme **volontairement souple** : un
- * préfixe connu + un corps alphanumérique non vide. Elle accepte sans broncher
- * les cas irréguliers (Corse `DEP-2A`, Métropole de Lyon `DEP-69M`, SIREN
- * `EPCI-200046977`, codes outre-mer…) — c'est voulu.
- *
- * Ce qu'elle **ne fait pas** : valider l'existence réelle d'un code, ni le
- * format exact par niveau. Le COG est trop irrégulier (lettres, codes réutilisés,
- * nouveaux millésimes chaque année) pour qu'une regex fasse autorité.
- * L'existence se vérifie contre le référentiel INSEE / `GeographicAreas`
- * (hors périmètre du paquet canonical), keyé par le couple `(niveau, code)`.
- */
-const cogCodePattern = new RegExp(`^(${COG_PREFIXES.join('|')})-[0-9A-Z]+$`)
-
-export const cogCodeSchema = z
-  .string()
-  .regex(cogCodePattern, 'code COG invalide (ex: REG-53, DEP-2A, OM-988)')
-  .brand<'CogCode'>()
-export type CogCode = z.infer<typeof cogCodeSchema>

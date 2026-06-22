@@ -2,14 +2,12 @@ import { z } from 'zod'
 import { nonEmptyStringSchema } from '../../shared/primitives'
 
 /**
- * Section 6 — Autres données spécifiques à un opérateur.
- *
- * Quelques clés connues + clés libres. `.passthrough()` garantit que les clés
- * inconnues survivent à la validation (round-trip sans perte).
+ * Section 6 — Operator-specific extra data. A few known keys plus free keys;
+ * `.passthrough()` keeps unknown keys through validation (lossless round-trip).
  */
 export const additionalDataSchema = z
   .object({
-    /** Identifiant DSP du catalogue ADEME. */
+    /** DSP id in the ADEME catalog. */
     ademe_id_dsp: nonEmptyStringSchema.optional(),
   })
   .passthrough()

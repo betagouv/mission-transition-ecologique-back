@@ -88,19 +88,25 @@ La catégorie légale vit dans `categorie_legale` (et non dans `effectif`) : deu
 ## Structure du paquet
 
 ```
-libs/canonical/src/
-  index.ts                                   barrel (API publique)
-  shared/
-    primitives.ts                            Cuid2, Slug, dates ISO, Siren, CogCode, NafCode, Url, Intervalle…
-    operateur.schema.ts                      Operateur, Operateurs
-  canonical-program/
-    enums.ts                                 source, statut_edition, statut_dispositif, types_aides, themes, contact_question type, categorie_legale
-    canonical-program.schema.ts              schéma racine (merge + superRefine)
-    canonical-program.types.ts               CanonicalProgramData (z.infer)
-    CanonicalProgram.ts                      value object
-    CanonicalProgramValidator.ts             validateur
-    fields/                                  identite, contenu, aide (+ refines), eligibilite
-    variants/                                variante (conditions + modifications + autres_champs)
-    additional-data/                         autres_donnees (clés connues + ouvertes)
-  __fixtures__/                              valid-minimal, valid-full
+libs/canonical/
+  src/
+    index.ts                                 barrel (API publique)
+    shared/
+      primitives.ts                          Cuid2, Slug, dates ISO, Siren, NafCode, Url, Intervalle…
+      cog.ts                                 COG_NIVEAUX (dictionnaire des niveaux), CogNiveau, COG_PREFIXES
+      schema/
+        cog.ts                               cogCodeSchema, CogCode
+        operator.ts                          Operateur, Operateurs
+    canonical-program/
+      enums.ts                               source, statut_edition, statut_dispositif, types_aides, themes, contact_question type, categorie_legale
+      canonical-program.schema.ts            schéma racine (merge + superRefine)
+      canonical-program.types.ts             CanonicalProgramData (z.infer)
+      CanonicalProgram.ts                    value object
+      CanonicalProgramValidator.ts           validateur
+      fields/                                identite, contenu, aide (+ refines), eligibilite
+      variants/                              variante (conditions + modifications + autres_champs)
+      additional-data/                       autres_donnees (clés connues + ouvertes)
+  tests/
+    unit/                                    specs *.spec.ts
+    fixtures/                                valid-minimal, valid-full
 ```

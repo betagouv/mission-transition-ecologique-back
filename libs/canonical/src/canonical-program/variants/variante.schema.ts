@@ -1,22 +1,18 @@
 import { z } from 'zod'
-import { cogCodeSchema } from '../../shared/cog'
+import { cogCodeSchema } from '../../shared/schema/cog'
 import { intervalleSchema, urlSchema } from '../../shared/primitives'
-import { operateursSchema } from '../../shared/operateur.schema'
+import { operateursSchema } from '../../shared/schema/operator'
 import { dureeSchema, montantSchema } from '../fields/aide.schema'
 import { eligibiliteSchema } from '../fields/eligibilite.schema'
 
 /**
- * Section 5 — Variantes (ex « champs conditionnels »).
- *
- * Chaque variante porte une condition structurée et des modifications qui
- * surchargent les champs du cas général (remplacement clé par clé).
+ * Section 5 — Variants (former "conditional fields"). Each variant has a
+ * structured condition and modifications that override the base fields key by key.
  */
 
 /**
- * Conjonction (ET) d'un intervalle d'effectif et/ou d'une liste de zones
- * géographiques (OU). Les zones acceptent **tout niveau COG** (région,
- * département, collectivité d'outre-mer, commune…) : rien n'impose qu'une
- * variante soit cantonnée au niveau région.
+ * AND of a headcount interval and/or a list of geographic areas (OR). Areas
+ * accept any COG level — variants are not limited to the région level.
  */
 export const varianteConditionsSchema = z
   .object({
@@ -27,7 +23,7 @@ export const varianteConditionsSchema = z
     message: 'une variante doit porter au moins une condition (effectif ou regions)',
   })
 
-/** Sous-ensemble des champs du cas général que la variante peut surcharger. */
+/** Subset of base fields a variant may override. */
 export const varianteModificationsSchema = z
   .object({
     montant: montantSchema,
@@ -44,7 +40,7 @@ export const varianteModificationsSchema = z
 export const varianteSchema = z.object({
   conditions: varianteConditionsSchema,
   modifications: varianteModificationsSchema,
-  /** Champs libres propres à la variante (ex. `titre_historique`). */
+  /** Free-form fields specific to the variant (e.g. `titre_historique`). */
   autres_champs: z.record(z.unknown()).optional(),
 })
 export type Variante = z.infer<typeof varianteSchema>

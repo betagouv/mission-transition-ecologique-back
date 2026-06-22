@@ -1,5 +1,6 @@
 'use client'
 
+import type { CSSProperties } from 'react'
 import { CanonicalProgramValidator } from '@tee-backoffice/canonical'
 import type { CanonicalProgramData, CanonicalProgramInput } from '@tee-backoffice/canonical'
 
@@ -154,7 +155,7 @@ export default function CanonicalDemoPage() {
   )
 }
 
-const styles: Record<string, React.CSSProperties> = {
+const styles: Record<string, CSSProperties> = {
   page: { maxWidth: 720, margin: '3rem auto', padding: '0 1rem', fontFamily: 'system-ui, sans-serif' },
   card: {
     border: '1px solid #e2e8f0',

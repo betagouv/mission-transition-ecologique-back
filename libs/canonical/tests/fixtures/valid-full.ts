@@ -3,13 +3,13 @@
  * a `formation` type (which requires `duree`), variants, and open-key blocks.
  */
 export const validFull: unknown = {
-  // 1. Identité
+  // 1. Identity
   id: 'a1b2c3d4e5f6g7h8i9j0klmn',
   slug: 'diagnostic-energie-pme',
   source: 'ADEME',
   date_mise_a_jour: '2026-03-19T17:00:00+01:00',
 
-  // 2. Contenu éditorial
+  // 2. Editorial content
   titre: 'Diagnostic énergie PME',
   promesse: 'Réduisez votre facture énergétique',
   description: 'Un diagnostic financé pour les PME industrielles.',
@@ -23,7 +23,7 @@ export const validFull: unknown = {
     description: 'Aide au diagnostic énergétique',
   },
 
-  // 3. Faits structurés
+  // 3. Structured facts
   statut_edition: 'pret_prod',
   statut_dispositif: 'valide',
   date_ouverture: '2026-01-01',
@@ -51,7 +51,7 @@ export const validFull: unknown = {
     },
   ],
 
-  // 4. Éligibilité & ciblage
+  // 4. Eligibility & targeting
   eligibilite: {
     effectif: {
       texte: ['Jusqu’à 250 salariés'],
@@ -74,7 +74,7 @@ export const validFull: unknown = {
   },
   themes: ['energie', 'batiment'],
 
-  // 5. Variantes
+  // 5. Variants
   variantes: [
     {
       conditions: { effectif: { min: 0, max: 49 }, regions: ['REG-53'] },
@@ -86,7 +86,7 @@ export const validFull: unknown = {
     },
   ],
 
-  // 6. Autres données
+  // 6. Other data
   autres_donnees: {
     ademe_id_dsp: 'DSP-000123',
     operateur_ref_interne: 'XYZ-42',

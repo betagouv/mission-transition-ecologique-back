@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { varianteSchema } from './variante.schema'
+import { varianteSchema } from '../../src/canonical-program/variants/variante.schema'
 
 describe('varianteSchema', () => {
   it('accepts a variant with conditions and at least one modification', () => {

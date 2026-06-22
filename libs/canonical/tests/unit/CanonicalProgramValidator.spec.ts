@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { CanonicalProgramValidator } from './CanonicalProgramValidator'
-import { CanonicalProgram } from './CanonicalProgram'
-import { validFull } from '../__fixtures__/valid-full'
-import { validMinimal } from '../__fixtures__/valid-minimal'
+import { CanonicalProgramValidator } from '../../src/canonical-program/CanonicalProgramValidator'
+import { CanonicalProgram } from '../../src/canonical-program/CanonicalProgram'
+import { validFull } from '../fixtures/valid-full'
+import { validMinimal } from '../fixtures/valid-minimal'
 
 describe('CanonicalProgramValidator', () => {
   const validator = new CanonicalProgramValidator()

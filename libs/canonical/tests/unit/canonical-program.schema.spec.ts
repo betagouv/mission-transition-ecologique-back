@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { canonicalProgramSchema } from './canonical-program.schema'
-import { validMinimal } from '../__fixtures__/valid-minimal'
-import { validFull } from '../__fixtures__/valid-full'
+import { canonicalProgramSchema } from '../../src/canonical-program/canonical-program.schema'
+import { validMinimal } from '../fixtures/valid-minimal'
+import { validFull } from '../fixtures/valid-full'
 
 const cloneMinimal = (): Record<string, unknown> => structuredClone(validMinimal) as Record<string, unknown>
 

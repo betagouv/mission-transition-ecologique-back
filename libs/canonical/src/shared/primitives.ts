@@ -1,18 +1,15 @@
 import { z } from 'zod'
 
 /**
- * Shared, reusable building blocks for the canonical (pivot) format.
- *
- * Branded primitives give nominal typing: a `Siren` cannot be passed where a
- * `CogCode` is expected, even though both are strings at runtime. Branding is
- * produced by parsing — consumers obtain branded values out of the validator,
- * they never construct them by hand.
+ * Shared building blocks for the canonical (pivot) format. Branded primitives
+ * give nominal typing (a `Siren` is not a `CogCode`, though both are strings).
+ * Brands are produced by parsing — consumers never construct them by hand.
  */
 
 /** Non-empty, trimmed string. */
 export const nonEmptyStringSchema = z.string().trim().min(1)
 
-/** Markdown content. Free text; length constraints are applied per field. */
+/** Markdown content. Free text; length constraints applied per field. */
 export const markdownSchema = z.string()
 
 /** CUID2 identifier — generated upstream, only validated here. */
@@ -26,16 +23,16 @@ export const slugSchema = z
   .brand<'Slug'>()
 export type Slug = z.infer<typeof slugSchema>
 
-/** Date seule ISO 8601 (`2025-12-31`). */
+/** ISO 8601 date (`2025-12-31`). */
 export const isoDateSchema = z.string().date()
 
-/** Date-heure ISO 8601 avec offset (`2026-03-19T17:00:00+01:00`). */
+/** ISO 8601 date-time with offset (`2026-03-19T17:00:00+01:00`). */
 export const isoDateTimeSchema = z.string().datetime({ offset: true })
 
-/** Date seule OU date-heure (utilisé par `date_cloture`). */
+/** Date or date-time (used by `date_cloture`). */
 export const isoDateOrDateTimeSchema = z.union([isoDateSchema, isoDateTimeSchema])
 
-/** SIREN — 9 chiffres. */
+/** SIREN — 9 digits. */
 export const sirenSchema = z
   .string()
   .regex(/^\d{9}$/, 'SIREN invalide (9 chiffres attendus)')
@@ -43,9 +40,9 @@ export const sirenSchema = z
 export type Siren = z.infer<typeof sirenSchema>
 
 /**
- * Code NAF/APE. Accepte une section (`A`), une division (`01`), un groupe
- * (`01.1`) ou une classe/sous-classe (`01.11Z`). Volontairement permissif —
- * à resserrer si la granularité retenue se précise.
+ * NAF/APE code. Accepts a section (`A`), division (`01`), group (`01.1`) or
+ * class/subclass (`01.11Z`). Deliberately permissive — tighten if the chosen
+ * granularity firms up.
  */
 export const nafCodeSchema = z
   .string()
@@ -53,12 +50,12 @@ export const nafCodeSchema = z
   .brand<'NafCode'>()
 export type NafCode = z.infer<typeof nafCodeSchema>
 
-/** URL absolue. */
+/** Absolute URL. */
 export const urlSchema = z.string().url()
 
 /**
- * Intervalle numérique à bornes incluses (effectif salarié). Bornes
- * optionnelles : `{ min: 3 }` = « à partir de 3 », `{ max: 49 }` = « jusqu'à 49 ».
+ * Numeric interval, bounds included (headcount). Bounds optional: `{ min: 3 }`
+ * = "from 3", `{ max: 49 }` = "up to 49".
  */
 export const intervalleSchema = z
   .object({

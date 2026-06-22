@@ -8,13 +8,10 @@ import { varianteSchema } from './variants/variante.schema'
 import { additionalDataSchema } from './additional-data/additional-data.schema'
 
 /**
- * Root zod schema for the canonical (pivot) program format — the single source
- * of truth from which the TypeScript type is inferred.
- *
- * Sections 1–3 are flat top-level keys (merged from their section schemas);
- * sections 4–6 are nested objects. Cross-field rules that span sibling
- * top-level keys are applied here via `superRefine`, but their logic lives in
- * the relevant field module.
+ * Root zod schema for the canonical (pivot) program — the single source of truth
+ * from which the TypeScript type is inferred. Sections 1–3 are flat top-level
+ * keys; sections 4–6 are nested. Cross-field rules are applied here via
+ * `superRefine`, with their logic kept in the relevant field module.
  */
 const baseCanonicalProgramSchema = identiteSchema
   .merge(contenuSchema)

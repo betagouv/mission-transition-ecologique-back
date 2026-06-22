@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { categorieLegaleSchema } from '../enums'
-import { cogCodeSchema } from '../../shared/cog'
+import { cogCodeSchema } from '../../shared/schema/cog'
 import {
   intervalleSchema,
   nafCodeSchema,
@@ -8,23 +8,17 @@ import {
 } from '../../shared/primitives'
 
 /**
- * Section 4 — Éligibilité (forme refacto).
- *
- * Un seul objet `eligibilite`, un sous-objet par critère. Chaque critère porte
- * sa version éditoriale `texte` (puces affichées) et, quand elle existe, sa
- * version `structure` (source de vérité pour le calcul d'éligibilité).
- * Les critères purement rédactionnels (`anciennete`, `autres_criteres`) n'ont
- * pas de version structurée.
- *
- * Tout est optionnel au niveau canonical : un dispositif en création peut ne
- * pas encore porter son éligibilité. Les contraintes plus strictes seront
- * portées par les projections (hors périmètre du paquet canonical).
+ * Section 4 — Eligibility. One `eligibilite` object, one sub-object per
+ * criterion. Each carries an editorial `texte` (displayed bullets) and, when it
+ * exists, a `structure` version (source of truth for eligibility computation).
+ * Purely editorial criteria (`anciennete`, `autres_criteres`) have no structure.
+ * Everything is optional here; stricter constraints live in the projections.
  */
 
-/** Conditions d'éligibilité rédigées (une puce par item). */
+/** Editorial eligibility conditions (one bullet per item). */
 const texteSchema = z.array(nonEmptyStringSchema)
 
-/** `{ inclusions, exclusions? }` — exclusions prioritaires sur inclusions. */
+/** `{ inclusions, exclusions? }` — exclusions take precedence over inclusions. */
 const nafCiblageSchema = z.object({
   inclusions: z.array(nafCodeSchema),
   exclusions: z.array(nafCodeSchema).optional(),
@@ -35,15 +29,11 @@ const cogCiblageSchema = z.object({
   exclusions: z.array(cogCodeSchema).optional(),
 })
 
-/**
- * Une catégorie légale : soit une valeur du vocabulaire fermé
- * (`categorieLegaleSchema`), soit un texte libre (valeurs pas encore
- * intégrées à l'enum).
- */
+/** A legal category: a closed-vocabulary value or free text (not yet in the enum). */
 const categorieLegaleItemSchema = z.union([categorieLegaleSchema, nonEmptyStringSchema])
 
 export const eligibiliteSchema = z.object({
-  /** Effectif salarié — un seul intervalle `{ min?, max? }` (bornes incluses). */
+  /** Headcount — a single interval `{ min?, max? }` (bounds included). */
   effectif: z
     .object({
       texte: texteSchema.optional(),
@@ -51,10 +41,7 @@ export const eligibiliteSchema = z.object({
     })
     .optional(),
 
-  /**
-   * Catégorie légale — listes des catégories autorisées / interdites.
-   * Chaque entrée est une valeur du vocabulaire fermé ou un texte libre.
-   */
+  /** Legal category — allowed / forbidden lists (closed-vocabulary value or free text). */
   categorie_legale: z
     .object({
       texte: texteSchema.optional(),
@@ -67,7 +54,7 @@ export const eligibiliteSchema = z.object({
     })
     .optional(),
 
-  /** Secteur d'activité — codes NAF. */
+  /** Business sector — NAF codes. */
   secteur_activite: z
     .object({
       texte: texteSchema.optional(),
@@ -75,7 +62,7 @@ export const eligibiliteSchema = z.object({
     })
     .optional(),
 
-  /** Secteur géographique — codes COG. */
+  /** Geographic area — COG codes. */
   secteur_geographique: z
     .object({
       texte: texteSchema.optional(),
@@ -83,10 +70,10 @@ export const eligibiliteSchema = z.object({
     })
     .optional(),
 
-  /** Ancienneté — rédactionnel uniquement. */
+  /** Seniority — editorial only. */
   anciennete: z.object({ texte: texteSchema.optional() }).optional(),
 
-  /** Autres critères — rédactionnel uniquement. */
+  /** Other criteria — editorial only. */
   autres_criteres: z.object({ texte: texteSchema.optional() }).optional(),
 })
 export type Eligibilite = z.infer<typeof eligibiliteSchema>

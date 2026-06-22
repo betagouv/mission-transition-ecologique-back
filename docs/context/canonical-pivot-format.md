@@ -85,7 +85,7 @@ Sémantique : exclusions prioritaires sur inclusions. Codes COG **préfixés par
 | `OM-` | **Collectivité d'outre-mer** | `975`, `977`, `978`, `984`, `986`–`989` | `OM-988` (Nouvelle-Calédonie) |
 | `EPCI-` | EPCI / intercommunalité (et collectivités à SIREN) | SIREN 9 chiffres | `EPCI-200046977` (Métropole de Lyon) |
 
-Catalogue complet des cas particuliers (Corse, DROM, COM, statuts particuliers, arrondissements, cantons…) : voir `COG_CONVENTION.md` (convention partagée). `ARR-` (arrondissement départemental) ≠ arrondissement municipal de Paris/Lyon/Marseille, qui sont des codes commune `COM-`.
+Catalogue complet des cas particuliers (Corse, DROM, COM, statuts particuliers, arrondissements, cantons…) : voir `docs/adr/0007b-COG_CONVENTION.md` (convention partagée). `ARR-` (arrondissement départemental) ≠ arrondissement municipal de Paris/Lyon/Marseille, qui sont des codes commune `COM-`.
 
 ⚠️ Ne pas confondre `COM` (commune) et `OM` (outre-mer) — c'est le piège historique. La regex `cogCodeSchema` est une **garde de forme volontairement souple** (préfixe connu + corps alphanumérique) : elle accepte les cas irréguliers (`2A`, `69M`, SIREN…) et ne valide **pas** l'existence réelle. L'existence se vérifie contre le référentiel INSEE / `GeographicAreas`, keyé par `(niveau, code)` (hors paquet canonical).
 

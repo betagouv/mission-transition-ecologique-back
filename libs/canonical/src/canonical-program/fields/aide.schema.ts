@@ -6,7 +6,7 @@ import {
   nonEmptyStringSchema,
   urlSchema,
 } from '../../shared/primitives'
-import { operateursSchema } from '../../shared/operateur.schema'
+import { operateursSchema } from '../../shared/schema/operator'
 import {
   statutDispositifSchema,
   statutEditionSchema,
@@ -16,19 +16,15 @@ import {
 } from '../enums'
 
 /**
- * Section 3 — Faits structurés sur l'aide (cycle de vie, nature, acteurs).
+ * Section 3 — Structured facts about the aid (lifecycle, nature, actors).
  *
- * Les règles inter-champs vraiment locales (qui ne voient que des sous-clés du
- * même objet) sont exprimées ici même : `contact_question` est une union
- * discriminée. Les deux règles qui touchent des champs frères de premier niveau
- * (`duree`/`types_aides`, `remplace_par`/`statut_dispositif`) sont exportées comme refines
- * et appliquées par le schéma racine — la logique reste dans ce module.
+ * Cross-field rules local to this object live here (`contact_question` is a
+ * discriminated union). The two rules spanning sibling top-level fields
+ * (`duree`/`types_aides`, `remplace_par`/`statut_dispositif`) are exported as
+ * refines and applied by the root schema — the logic stays in this module.
  */
 
-/**
- * Question de contact : la valeur dépend du type.
- * `email`/`url` → valeur requise et validée ; `ADEME`/`conseiller_entreprise` → pas de valeur.
- */
+/** Contact question: value depends on type. `email`/`url` require a value; `ADEME`/`conseiller_entreprise` carry none. */
 export const contactQuestionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('ADEME') }).strict(),
   z.object({ type: z.literal('conseiller_entreprise') }).strict(),
@@ -37,7 +33,7 @@ export const contactQuestionSchema = z.discriminatedUnion('type', [
 ])
 export type ContactQuestion = z.infer<typeof contactQuestionSchema>
 
-/** Lien d'une étape : lien externe `{ texte, url }` ou renvoi vers Conseiller-Entreprise. */
+/** Step link: external `{ texte, url }` or a Conseiller-Entreprise redirect. */
 export const lienSchema = z.union([
   z.object({ texte: nonEmptyStringSchema, url: urlSchema }),
   z.object({ conseiller_entreprise: z.literal(true) }),
@@ -45,11 +41,9 @@ export const lienSchema = z.union([
 export type Lien = z.infer<typeof lienSchema>
 
 /**
- * Montant auto-décrit : `type` porte le libellé d'affichage qui dépend de la
- * nature de l'aide (« montant du financement », « coût de l'accompagnement »,
- * « montant du prêt », « montant de l'avantage fiscal »…) et `valeur` la chaîne
- * affichée. Le libellé voyage avec la donnée : pas de mapping type d'aide →
- * libellé à reconstruire côté front.
+ * Self-described amount: `type` carries the display label (depends on the aid
+ * nature), `valeur` the displayed string. The label travels with the data — no
+ * aid-type → label mapping to rebuild on the front.
  */
 export const montantSchema = z.object({
   type: nonEmptyStringSchema,
@@ -57,17 +51,14 @@ export const montantSchema = z.object({
 })
 export type Montant = z.infer<typeof montantSchema>
 
-/**
- * Durée auto-décrite : même principe que `montant`. `type` = libellé
- * (« durée de l'accompagnement », « durée du prêt »…), `valeur` = affichage.
- */
+/** Self-described duration: same principle as `montant`. */
 export const dureeSchema = z.object({
   type: nonEmptyStringSchema,
   valeur: nonEmptyStringSchema,
 })
 export type Duree = z.infer<typeof dureeSchema>
 
-/** Étape d'activation (ancien `objectifs` / `étape1…6` Baserow). */
+/** Activation step (former `objectifs` / `étape1…6` in Baserow). */
 export const etapeActivationSchema = z.object({
   description: z.string().min(1),
   liens: z.array(lienSchema).optional(),
@@ -75,41 +66,38 @@ export const etapeActivationSchema = z.object({
 export type EtapeActivation = z.infer<typeof etapeActivationSchema>
 
 export const aideSchema = z.object({
-  // Cycle de vie
-  /** Où en est la rédaction du contenu. */
+  // Lifecycle
+  /** Content authoring progress. */
   statut_edition: statutEditionSchema,
-  /** Validité réelle du dispositif. */
+  /** Real validity of the program. */
   statut_dispositif: statutDispositifSchema,
   date_ouverture: isoDateSchema.optional(),
   date_cloture: isoDateOrDateTimeSchema.optional(),
-  /** CUID du dispositif remplaçant — requis si `statut_dispositif === 'remplace'`. */
+  /** CUID of the replacing program — required when `statut_dispositif === 'remplace'`. */
   remplace_par: cuid2Schema.optional(),
 
-  // Nature de l'aide
+  // Aid nature
   types_aides: z.array(typeAideSchema).min(1),
-  /** Montant auto-décrit (`{ type, valeur }`), champ d'affichage. */
+  /** Self-described amount (`{ type, valeur }`), display field. */
   montant: montantSchema.optional(),
-  /** Durée auto-décrite (`{ type, valeur }`) — requise si `types_aides` contient `etude`/`formation`. */
+  /** Self-described duration — required when `types_aides` contains `etude`/`formation`. */
   duree: dureeSchema.optional(),
 
-  // Acteurs et contact
+  // Actors and contact
   operateurs: operateursSchema,
   contact_question: contactQuestionSchema.optional(),
   url_source: urlSchema.optional(),
   etapes_activation: z.array(etapeActivationSchema).min(1).max(6).optional(),
 })
 
-// --- Règles inter-champs de la section (appliquées par le schéma racine) ---
+// --- Cross-field rules (applied by the root schema) ---
 
 type NatureAideCrossFields = { types_aides?: TypeAide[]; duree?: Duree }
 type CycleVieCrossFields = { statut_dispositif?: StatutDispositif; remplace_par?: string }
 
 /**
- * `duree` est requise dès que l'aide est une étude ou une formation.
- *
- * Garde défensive sur `types_aides` : ce refine s'exécute au niveau racine, on
- * ne s'appuie donc pas sur la sémantique abort/dirty de zod pour garantir que
- * le champ est déjà un tableau valide.
+ * `duree` is required when the aid is an etude or formation. Defensive check on
+ * `types_aides` since this refine runs at the root level.
  */
 export const refineDuree = (data: NatureAideCrossFields, ctx: z.RefinementCtx): void => {
   const types = data.types_aides
@@ -123,7 +111,7 @@ export const refineDuree = (data: NatureAideCrossFields, ctx: z.RefinementCtx): 
   }
 }
 
-/** `remplace_par` est obligatoire quand le dispositif est remplacé. */
+/** `remplace_par` is required when the program is replaced. */
 export const refineRemplacePar = (data: CycleVieCrossFields, ctx: z.RefinementCtx): void => {
   if (data.statut_dispositif === 'remplace' && !data.remplace_par) {
     ctx.addIssue({

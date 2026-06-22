@@ -1,36 +1,31 @@
 import { z } from 'zod'
 import { markdownSchema, nonEmptyStringSchema, urlSchema } from '../../shared/primitives'
 
-/** SEO — affiché dans l'onglet navigateur / résultats de recherche. */
+/** SEO — shown in the browser tab / search results. */
 export const metaSchema = z.object({
   titre: nonEmptyStringSchema,
   description: nonEmptyStringSchema,
 })
 export type Meta = z.infer<typeof metaSchema>
 
-/**
- * Illustration du dispositif.
- * `alt` (texte alternatif) est optionnel : à défaut, le front dérive un libellé
- * depuis le titre — la dérivation est une préoccupation d'affichage, pas une
- * donnée du pivot.
- */
+/** Illustration. `alt` is optional; the front derives a label from the title otherwise. */
 export const illustrationSchema = z.object({
   url: urlSchema,
   alt: nonEmptyStringSchema.optional(),
 })
 export type Illustration = z.infer<typeof illustrationSchema>
 
-/** Section 2 — Contenu éditorial. */
+/** Section 2 — Editorial content. */
 export const contenuSchema = z.object({
-  /** Titre commercial du dispositif. */
+  /** Commercial title. */
   titre: nonEmptyStringSchema,
-  /** Résumé en une phrase, verbe à l'impératif (≤ 180 car.). */
+  /** One-sentence summary, imperative verb (≤ 180 chars). */
   promesse: z.string().trim().min(1).max(180).optional(),
-  /** Description courte, Markdown (≤ 5000 car.). */
+  /** Short description, Markdown (≤ 5000 chars). */
   description: markdownSchema.min(1).max(5000),
-  /** Complément facultatif, Markdown. */
+  /** Optional long-form complement, Markdown. */
   description_longue: markdownSchema.min(1).optional(),
-  /** Illustration du dispositif (URL + texte alternatif optionnel). */
+  /** Illustration (URL + optional alt text). */
   illustration: illustrationSchema.optional(),
   meta: metaSchema.optional(),
 })

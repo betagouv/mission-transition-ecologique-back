@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { CanonicalProgramValidator } from './CanonicalProgramValidator'
-import { validFull } from '../__fixtures__/valid-full'
+import { CanonicalProgramValidator } from '../../src/canonical-program/CanonicalProgramValidator'
+import { validFull } from '../fixtures/valid-full'
 
 describe('CanonicalProgram immutability', () => {
   const validator = new CanonicalProgramValidator()
