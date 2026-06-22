@@ -10,12 +10,13 @@
     "lint:fix": "nx run-many -t lint --fix",
     "lint:fix:affected": "nx affected -t lint --fix",
     "typecheck": "nx run @tee-backoffice/cms:typecheck",
-    "e2e": "nx run @tee-backoffice/cms-e2e:e2e",
+    "e2e": "nx run @tee-backoffice/cms:e2e",
     "generate": "pnpm generate:types && pnpm generate:importmap",
     "generate:importmap": "nx run @tee-backoffice/cms:generate:importmap",
     "generate:types": "nx run @tee-backoffice/cms:generate:types",
     "seed": "nx run @tee-backoffice/cms:seed",
-    "test": "nx run @tee-backoffice/cms:test"
+    "test": "nx run @tee-backoffice/cms:test",
+    "test:unit": "nx run @tee-backoffice/cms:test:unit"
   },
   "private": true,
   "dependencies": {
@@ -29,7 +30,8 @@
     "payload": "^3.79.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "sharp": "0.34.2"
+    "sharp": "0.34.2",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.5",
