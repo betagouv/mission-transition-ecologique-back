@@ -3,6 +3,7 @@ import { ProgramAccessPolicy } from '@/services/access/ProgramAccessPolicy'
 import { beforeChangeWorkflow } from '@/hooks/programs/beforeChangeWorkflow'
 import { assignCreatorOnCreate } from '@/hooks/programs/assignCreatorOnCreate'
 import { assignCanonicalId } from '@/hooks/programs/assignCanonicalId'
+import { syncCanonicalOnPublish } from '@/hooks/programs/syncCanonicalOnPublish'
 import { THEMES_OPTIONS } from '@/constants/themesOptions'
 import {
   ACTIVITY_SECTOR_OPTIONS,
@@ -49,6 +50,7 @@ export const Programs: CollectionConfig = {
   },
   hooks: {
     beforeChange: [assignCanonicalId, assignCreatorOnCreate, beforeChangeWorkflow],
+    afterChange: [syncCanonicalOnPublish],
   },
   access: {
     read: ProgramAccessPolicy.read,
