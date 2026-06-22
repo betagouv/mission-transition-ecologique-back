@@ -342,11 +342,9 @@ export const Programs: CollectionConfig = {
           relationTo: 'projects',
           hasMany: true,
           admin: {
-            // Tous les projets sont proposés, triés par titre (ordre
-            // alphabétique) et sans filtrage par thématique.
+            // All projects offered, no thematic filtering (deliberate).
             sortOptions: 'title',
-            // La création d'un projet depuis le formulaire dispositif est
-            // désactivée : le workflow projet reste séparé.
+            // Disabled here: the project workflow stays separate from the program one.
             allowCreate: false,
           },
         },
@@ -586,11 +584,10 @@ export const Programs: CollectionConfig = {
       label: 'Titre SEO',
       admin: {
         position: 'sidebar',
-        // Masqué pour le créateur : réservé aux administrateurs.
         condition: (_data, _siblingData, { user }) =>
           UserRole.isAdmin(user as { role: UserRoleValue } | null | undefined),
       },
-      // La condition ne masque qu'en UI ; access verrouille l'écriture API.
+      // The condition only hides the field in the UI; access locks API writes.
       access: {
         create: (({ req: { user } }) =>
           UserRole.isAdmin(user)) satisfies FieldAccess,
@@ -604,11 +601,10 @@ export const Programs: CollectionConfig = {
       label: 'Description SEO',
       admin: {
         position: 'sidebar',
-        // Masqué pour le créateur : réservé aux administrateurs.
         condition: (_data, _siblingData, { user }) =>
           UserRole.isAdmin(user as { role: UserRoleValue } | null | undefined),
       },
-      // La condition ne masque qu'en UI ; access verrouille l'écriture API.
+      // The condition only hides the field in the UI; access locks API writes.
       access: {
         create: (({ req: { user } }) =>
           UserRole.isAdmin(user)) satisfies FieldAccess,
