@@ -39,7 +39,7 @@ libs/canonical-store (infra libSQL/Drizzle)  ──▶ libs/canonical (domaine)
 - `DrizzleCanonicalProgramRepository` implémente le port (libSQL + Drizzle).
 - Base **dédiée** `canonical.db` (variable `CANONICAL_DATABASE_URI`, défaut `file:./canonical.db`), **distincte** de la base Payload : la donnée canonique survit à un changement de CMS.
 - La **localisation de la DB est portée par le store** : la factory `createCanonicalProgramRepository()` résout elle-même `CANONICAL_DATABASE_URI` et retourne un repository prêt à l'emploi. Le CMS demande un repository configuré sans connaître l'emplacement ni le driver.
-- Défaut **ancré au package** (`libs/canonical-store/canonical.db`, commitée à côté du module), résolu via `import.meta.url`. Tous les points d'entrée (seed, CMS dev/start) lisent ainsi le même fichier quel que soit le répertoire de lancement, sans dépendre d'un chemin relatif au CWD.
+- Défaut **ancré au workspace** (`libs/canonical-store/canonical.db`, commitée à côté du package), résolu en remontant du CWD jusqu'au marqueur `pnpm-workspace.yaml` (pas `import.meta.url`, peu fiable sous les transforms de test/bundler). Tous les points d'entrée (seed, CMS dev/start) lisent ainsi le même fichier quel que soit le répertoire de lancement, sans dépendre d'un chemin relatif au CWD.
 - Colonne `data` en **TEXT JSON** pour rester portable. La migration Postgres future (Payload migrera aussi) se limite à changer `schema.ts` (dialecte) et `db.ts` (driver), sans toucher au domaine, au port, ni au CMS.
 
 ### 4. Injection au composition root (pattern `new Service(new Repo())`)

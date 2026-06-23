@@ -1,4 +1,5 @@
-import { fileURLToPath } from 'node:url'
+import { existsSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import type { CanonicalProgramRepository } from '@tee-backoffice/canonical'
 import { DrizzleCanonicalProgramRepository } from './DrizzleCanonicalProgramRepository'
 
@@ -6,11 +7,27 @@ import { DrizzleCanonicalProgramRepository } from './DrizzleCanonicalProgramRepo
 // know where or how the canonical is persisted. A dedicated libSQL database,
 // independent of the CMS, lets the canonical data survive a CMS change.
 //
-// The default is the canonical.db committed next to this package, located
-// relative to this module (not the CWD): every entry point (seed, CMS dev/start)
-// then reads the same file whatever directory launches it. CANONICAL_DATABASE_URI
-// overrides it for deployments.
-const DEFAULT_DATABASE_URL = `file:${fileURLToPath(new URL('../canonical.db', import.meta.url))}`
+// The default is the canonical.db committed next to this package. It is anchored
+// to the workspace (not the CWD) by walking up from the CWD to the pnpm
+// workspace marker, so every entry point reads the same file whatever directory
+// launches it. This avoids `import.meta.url`, which test/bundler transforms do
+// not reliably expose as a `file:` URL. CANONICAL_DATABASE_URI overrides it.
+const WORKSPACE_MARKER = 'pnpm-workspace.yaml'
+const STORE_DATABASE_PATH = 'libs/canonical-store/canonical.db'
+
+function findWorkspaceRoot(): string {
+  let dir = process.cwd()
+  while (!existsSync(join(dir, WORKSPACE_MARKER))) {
+    const parent = dirname(dir)
+    if (parent === dir) return process.cwd()
+    dir = parent
+  }
+  return dir
+}
+
+function defaultDatabaseUrl(): string {
+  return `file:${join(findWorkspaceRoot(), STORE_DATABASE_PATH)}`
+}
 
 /**
  * Builds a ready-to-use canonical repository, resolving its database location
@@ -19,6 +36,6 @@ const DEFAULT_DATABASE_URL = `file:${fileURLToPath(new URL('../canonical.db', im
  * store via `DrizzleCanonicalProgramRepository.create`.
  */
 export function createCanonicalProgramRepository(): Promise<CanonicalProgramRepository> {
-  const url = process.env['CANONICAL_DATABASE_URI'] || DEFAULT_DATABASE_URL
+  const url = process.env['CANONICAL_DATABASE_URI'] || defaultDatabaseUrl()
   return DrizzleCanonicalProgramRepository.create(url)
 }
