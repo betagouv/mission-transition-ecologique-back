@@ -69,6 +69,7 @@ apps/cms/test-results/
 
 # Env
 .env
+.env*.local
 
 test-output
 

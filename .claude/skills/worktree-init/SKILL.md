@@ -2,8 +2,8 @@
 name: worktree-init
 description: >
   Crée un git worktree isolé du projet TEE POC Backoffice avec initialisation
-  complète (copie de apps/cms/.env, pnpm install, pnpm generate, pnpm seed,
-  attribution d'un port de dev libre).
+  complète (copie de .env racine si présent + apps/cms/.env, pnpm install,
+  pnpm generate, pnpm seed, attribution d'un port de dev libre).
   Use when the user says "create a worktree", "worktree init", "new worktree",
   "crée un worktree", "nouvelle branche de travail", "init worktree",
   or any variant asking to set up an isolated working copy of the project.
@@ -68,13 +68,15 @@ génération/seed explicites) :
 3. `pnpm install` — **obligatoire** (node_modules absent)
 4. `pnpm generate` — **obligatoire** : régénère `apps/cms/payload-types.ts` et
    `importMap.js`, tous deux gitignorés donc absents du worktree
-5. `pnpm seed` — **obligatoire par défaut** (base SQLite vide au départ) ;
-   sautée avec `--no-seed`. Peuple opérateurs, programmes, projets, zones
-   géographiques et utilisateurs de dev (`super.admin@tee.test`, etc.)
+5. `pnpm seed` — **lancé par défaut** (base SQLite vide au départ), sauté avec
+   `--no-seed`. Peuple opérateurs, programmes, projets, zones géographiques et
+   utilisateurs de dev (`super.admin@tee.test`, etc.). **Non bloquant** : si le
+   seed échoue, le worktree reste utilisable, le script affiche un `WARNING` et
+   poursuit (relancer / inspecter `pnpm seed` sur la branche ensuite).
 6. Attribution d'un **port de dev libre** (premier port ≥ 3001 non occupé / non
-   réservé par un autre worktree), écrit dans `apps/cms/.env.local` (`PORT`) et
-   surfacé dans la commande de dev finale. Next.js ne lit pas `PORT` depuis
-   `.env` pour `next dev`, d'où le passage explicite de `--port`.
+   réservé par un autre worktree), écrit dans `apps/cms/.env.local` (`PORT`,
+   gitignoré) et surfacé dans la commande de dev finale. Next.js ne lit pas
+   `PORT` depuis `.env` pour `next dev`, d'où le passage explicite de `--port`.
 
 Si le script échoue en cours de route (ex: PATH manquant), reprendre **toutes
 les étapes restantes** manuellement — ne pas sauter `pnpm generate` ni le seed.
