@@ -38,13 +38,14 @@ libs/canonical-store (infra libSQL/Drizzle)  ──▶ libs/canonical (domaine)
 
 - `DrizzleCanonicalProgramRepository` implémente le port (libSQL + Drizzle).
 - Base **dédiée** `canonical.db` (variable `CANONICAL_DATABASE_URI`, défaut `file:./canonical.db`), **distincte** de la base Payload : la donnée canonique survit à un changement de CMS.
+- La **localisation de la DB est portée par le store** : la factory `createCanonicalProgramRepository()` résout elle-même `CANONICAL_DATABASE_URI` et retourne un repository prêt à l'emploi. Le CMS demande un repository configuré sans connaître l'emplacement ni le driver.
 - Colonne `data` en **TEXT JSON** pour rester portable. La migration Postgres future (Payload migrera aussi) se limite à changer `schema.ts` (dialecte) et `db.ts` (driver), sans toucher au domaine, au port, ni au CMS.
 
 ### 4. Injection au composition root (pattern `new Service(new Repo())`)
 
 Les **ports** vivent dans le domaine, les **implémentations concrètes** sont injectées depuis `apps/cms` :
 
-- `getCanonicalProgramRepository()` et `getCanonicalProgramService()` : singletons async mémoïsés qui câblent l'impl libSQL dans le service domaine.
+- `getCanonicalProgramRepository()` et `getCanonicalProgramService()` : singletons async mémoïsés. Le premier ne fait que mémoïser le repository clé en main du store (`createCanonicalProgramRepository()`) ; le second l'injecte dans le service domaine.
 - Le **mapping Payload → canonical** (`ProgramCanonicalMapper`) et l'**adaptateur markdown** (`PayloadRichTextToMarkdown`, derrière le port `RichTextToMarkdown`) restent côté `apps/cms` : c'est le couplage CMS, assumé et remplaçable.
 - Nommage **par entité** (`canonicalProgramService.ts` / `getCanonicalProgramService`) pour préparer un futur `CanonicalProjectService`.
 
