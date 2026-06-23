@@ -15,6 +15,9 @@ export default defineConfig({
     teardownTimeout: 30_000,
     env: {
       DATABASE_URI: 'file:./tee-pco-test.db',
+      // Isolate the canonical store so the publish hook never touches the
+      // committed libs/canonical-store/canonical.db during tests.
+      CANONICAL_DATABASE_URI: 'file:./canonical-test.db',
       PAYLOAD_SECRET: 'test-secret-for-vitest',
     },
   },
