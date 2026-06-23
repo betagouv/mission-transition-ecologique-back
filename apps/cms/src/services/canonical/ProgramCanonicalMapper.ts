@@ -32,7 +32,10 @@ type EligibiliteInput = NonNullable<CanonicalProgramInput['eligibilite']>
  * validated by `CanonicalProgramValidator`. Validation is intentionally NOT done
  * here: this class only restructures and relabels data. Relations (`operator`,
  * `otherOperators`, `geographicAreas`, `replacedBy`) must be populated
- * (`depth >= 1`); unpopulated relations are skipped rather than guessed.
+ * (`depth >= 1`). Optional relations left unpopulated are omitted rather than
+ * guessed; a missing required `operator`, however, is emitted as an empty
+ * contact name on purpose, so the resulting canonical fails validation loudly
+ * instead of silently fabricating a value.
  */
 export class ProgramCanonicalMapper {
   constructor(private readonly markdown: RichTextToMarkdown) {}

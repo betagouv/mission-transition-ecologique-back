@@ -1,6 +1,6 @@
 import type { CollectionAfterChangeHook } from 'payload'
 import { ProgramCanonicalMapper } from '@/services/canonical/ProgramCanonicalMapper'
-import { PayloadRichTextToMarkdown } from '@/services/canonical/rich-text/PayloadRichTextToMarkdown'
+import { getRichTextToMarkdown } from '@/services/canonical/rich-text/richTextToMarkdownProvider'
 import { getCanonicalProgramService } from '@/services/canonical/canonicalProgramService'
 import type { Program } from '../../../payload-types'
 
@@ -23,7 +23,7 @@ export const syncCanonicalOnPublish: CollectionAfterChangeHook<Program> = async 
       overrideAccess: true,
     })
 
-    const markdown = await PayloadRichTextToMarkdown.create(req.payload.config)
+    const markdown = await getRichTextToMarkdown(req.payload.config)
     const input = new ProgramCanonicalMapper(markdown).map(full)
     const result = await (await getCanonicalProgramService()).save(input)
 
