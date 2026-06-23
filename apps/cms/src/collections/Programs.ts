@@ -464,14 +464,21 @@ export const Programs: CollectionConfig = {
 
     // --- Sidebar ---
     {
-      // Machine identity carried into the pivot format. Generated automatically,
-      // never edited by hand: a database-only field, hidden from the admin UI but
+      // Machine identity carried into the pivot format. Generated automatically
+      // by the assignCanonicalId hook, never edited by hand. Field access denies
+      // create/update for everyone (admins included), so the value is read-only
+      // through the UI and the REST/GraphQL API; only server-side writes with
+      // overrideAccess (seed, hooks) populate it. Hidden from the admin UI but
       // still returned by the API and present in payload-types for the mapper.
       name: 'canonicalId',
       type: 'text',
       unique: true,
       index: true,
-      admin: { hidden: true },
+      admin: { hidden: true, readOnly: true },
+      access: {
+        create: () => false,
+        update: () => false,
+      },
     },
     {
       name: 'slug',
