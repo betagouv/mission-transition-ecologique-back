@@ -11,6 +11,7 @@ import type { RichTextToMarkdown } from './rich-text/RichTextToMarkdown'
 import { clean, operatorName, toIsoDate } from './mapperHelpers'
 import {
   AID_TYPE_TO_CANONICAL,
+  ALL_NAF_SECTIONS,
   COMPANY_SIZE_BOUNDS,
   COVERAGE_TYPE_TO_COG_PREFIX,
   DUREE_BY_AID_TYPE,
@@ -205,9 +206,6 @@ export class ProgramCanonicalMapper {
     const secteurGeographique = this.mapSecteurGeographique(program)
     if (secteurGeographique) eligibilite.secteur_geographique = secteurGeographique
 
-    const anciennete = this.mapAnciennete(program)
-    if (anciennete) eligibilite.anciennete = anciennete
-
     const autresCriteres = this.mapAutresCriteres(program)
     if (autresCriteres) eligibilite.autres_criteres = autresCriteres
 
@@ -223,10 +221,8 @@ export class ProgramCanonicalMapper {
   }
 
   private mapEffectif(program: Program): EligibiliteInput['effectif'] | undefined {
-    const texte = this.bullets(program.sizeConditions)
     const structure = this.effectifStructure(program)
-    if (!texte && !structure) return undefined
-    return { ...(texte ? { texte } : {}), ...(structure ? { structure } : {}) }
+    return structure ? { structure } : undefined
   }
 
   /** Headcount interval derived from the structured size selects. */
@@ -237,8 +233,26 @@ export class ProgramCanonicalMapper {
     // All numeric buckets selected = no real constraint. The "autre" bucket carries
     // an explicit "De X à Y" range (off-boundary effectif) parsed back here.
     if (numeric.length === NUMERIC_COMPANY_SIZE_COUNT) return undefined
-    if (numeric.length === 0) return this.parseSizeText(program.companySizeOther)
-    return this.deriveInterval(numeric)
+    const interval =
+      numeric.length === 0 ? this.parseSizeText(program.companySizeOther) : this.deriveInterval(numeric)
+    return this.normalizeInterval(interval)
+  }
+
+  /**
+   * A lower bound of 0 means "no minimum headcount", i.e. no real lower bound:
+   * drop it so the interval (and the exported `minEmployees`) is omitted, matching
+   * a source that has no `minEmployees`. When nothing meaningful remains, the whole
+   * interval is dropped. Centralised here so both the bucket-derived and the
+   * off-boundary « De 0 à Y » paths are normalised once.
+   */
+  private normalizeInterval(
+    interval: { min?: number; max?: number } | undefined,
+  ): { min?: number; max?: number } | undefined {
+    if (!interval) return undefined
+    const min = interval.min === 0 ? undefined : interval.min
+    const { max } = interval
+    if (min === undefined && max === undefined) return undefined
+    return { ...(min !== undefined ? { min } : {}), ...(max !== undefined ? { max } : {}) }
   }
 
   /** « De X à Y » / « À partir de X » (tranche « autre ») → intervalle. */
@@ -268,32 +282,37 @@ export class ProgramCanonicalMapper {
   }
 
   private mapSecteurActivite(program: Program): EligibiliteInput['secteur_activite'] | undefined {
-    const texte = this.bullets(program.sectorConditions)
-    const sectors = program.activitySectors ?? []
-    const nafCode = sectors.includes('naf-code') ? clean(program.nafCodeOther) : undefined
-    const structure = nafCode ? { inclusions: [nafCode] } : undefined
+    const inclusions = this.nafSectionInclusions(program)
+    return inclusions.length > 0 ? { structure: { inclusions } } : undefined
+  }
 
-    if (!texte && !structure) return undefined
-    return { ...(texte ? { texte } : {}), ...(structure ? { structure } : {}) }
+  /**
+   * « Tous secteurs » covers every NAF section, so it expands to the full A–U
+   * list (deliberately kept out of the form). An explicit, partial selection
+   * reads the section letters / codes entered in `nafCodeOther`.
+   */
+  private nafSectionInclusions(program: Program): string[] {
+    const sectors = program.activitySectors ?? []
+    if (sectors.includes('all')) return [...ALL_NAF_SECTIONS]
+    if (sectors.includes('naf-code')) return this.nafInclusions(program.nafCodeOther)
+    return []
+  }
+
+  /** NAF section letters / codes from the multi-value field, blanks dropped. */
+  private nafInclusions(values: string[] | null | undefined): string[] {
+    return (values ?? [])
+      .map((value) => clean(value))
+      .filter((value): value is string => Boolean(value))
   }
 
   private mapSecteurGeographique(program: Program): EligibiliteInput['secteur_geographique'] | undefined {
-    const texte = this.bullets(program.geographicConditions)
     const areas = (program.geographicAreas ?? []).filter(
       (area): area is GeographicArea => typeof area === 'object' && area !== null,
     )
     const inclusions = areas
       .map((area) => this.toCogCode(area))
       .filter((code): code is string => code !== undefined)
-    const structure = inclusions.length > 0 ? { inclusions } : undefined
-
-    if (!texte && !structure) return undefined
-    return { ...(texte ? { texte } : {}), ...(structure ? { structure } : {}) }
-  }
-
-  private mapAnciennete(program: Program): EligibiliteInput['anciennete'] | undefined {
-    const texte = this.bullets(program.seniorityConditions)
-    return texte ? { texte } : undefined
+    return inclusions.length > 0 ? { structure: { inclusions } } : undefined
   }
 
   private toCogCode(area: GeographicArea): string | undefined {

@@ -37,6 +37,7 @@ export class TeeExporter {
     'Montant du prêt': 'montant du prêt',
     "Montant de l'avantage fiscal": "montant de l'avantage fiscal",
     'Coût restant à charge': "coût de l'accompagnement",
+    'Durée du prêt': 'durée du prêt',
     'Durée de la formation': "durée de l'accompagnement",
     "Durée du diagnostic ou de l'étude": "durée de l'accompagnement",
   }

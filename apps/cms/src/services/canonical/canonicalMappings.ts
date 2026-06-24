@@ -1,5 +1,6 @@
 import type { StatutDispositif, StatutEdition, Theme, TypeAide } from '@tee-backoffice/canonical'
 import type { GeographicArea, Program } from '../../../payload-types'
+import { NAF_SECTIONS_OPTIONS } from '@/constants/nafSectionsOptions'
 
 /**
  * Lookup tables between the Payload `Program` vocabularies and the canonical
@@ -16,6 +17,9 @@ type CoverageType = GeographicArea['coverageType']
 
 /** Number of numeric size buckets (all but `other`); selecting them all = no constraint. */
 export const NUMERIC_COMPANY_SIZE_COUNT = 7
+
+/** Every NAF section letter (A–U). « Tous secteurs » expands to this on export. */
+export const ALL_NAF_SECTIONS: string[] = NAF_SECTIONS_OPTIONS.map((option) => option.value)
 
 /** Aid nature: single Payload `aidType` → one canonical `types_aides` value. */
 export const AID_TYPE_TO_CANONICAL: Record<AidType, TypeAide> = {
@@ -84,6 +88,7 @@ export const MONTANT_BY_AID_TYPE: Record<AidType, { label: string; field: keyof 
 
 /** Self-described duration — only the aid types that carry one in Payload. */
 export const DUREE_BY_AID_TYPE: Partial<Record<AidType, { label: string; field: keyof Program }>> = {
+  pret: { label: 'Durée du prêt', field: 'loanDuration' },
   formation: { label: 'Durée de la formation', field: 'formationDuration' },
   'diagnostic-etude': { label: "Durée du diagnostic ou de l'étude", field: 'studyDuration' },
 }

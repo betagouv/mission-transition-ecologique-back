@@ -55,6 +55,7 @@ interface CompanySizeMapping {
 interface ActivitySectorMapping {
   sectors: ActivitySector[]
   sectorOther: string | undefined
+  nafCodeOther: string[] | undefined
 }
 
 type ContactMethod = 'email' | 'url' | 'advisor'
@@ -96,7 +97,11 @@ const ACTIVITY_SECTOR_KEYWORDS: { value: ActivitySector; matchers: RegExp[] }[] 
 export class ProgramMapper {
   constructor(private readonly editorConfig: EditorConfig) {}
 
-  map(program: SourceProgram, operatorIdByName: Map<string, number>) {
+  map(
+    program: SourceProgram,
+    operatorIdByName: Map<string, number>,
+    geographicAreaIdByName: Map<string, number>,
+  ) {
     const operatorId = operatorIdByName.get(program['opérateur de contact'])
     if (!operatorId) return null
 
@@ -104,19 +109,26 @@ export class ProgramMapper {
       .map((name) => operatorIdByName.get(name))
       .filter((id): id is number => id !== undefined)
 
+    // allowedRegion (region names) → GeographicArea ids. The lookup only holds
+    // region-level areas, so the export's RegionNameResolver round-trips each
+    // name exactly; unknown names are dropped (and reported) rather than guessed.
+    const geographicAreaIds = (program.eligibilityData?.company?.allowedRegion ?? [])
+      .map((name) => {
+        const id = geographicAreaIdByName.get(name)
+        if (id === undefined) {
+          process.stderr.write(`No geographic area for region "${name}" (program "${program.id}").\n`)
+        }
+        return id
+      })
+      .filter((id): id is number => id !== undefined)
+
     const aidType = this.mapAidType(program["nature de l'aide"])
     const eligibilityCondition = program["conditions d'éligibilité"]
     const { sizes, sizeOther } = this.mapCompanySizes(program.eligibilityData?.company)
-    const { sectors, sectorOther } = this.mapActivitySectors(
+    const { sectors, sectorOther, nafCodeOther } = this.mapActivitySectors(
       eligibilityCondition?.["secteur d'activité"] ?? [],
+      program.eligibilityData?.company?.allowedNafSections,
     )
-    // Verbatim displayed bullets, preserved per source category so the export
-    // round-trips `conditions d'éligibilité` exactly. The structured selects
-    // (sizes, sectors, geographicAreas) feed `eligibilityData` independently.
-    const sizeConditions = this.toCriteria(eligibilityCondition?.["taille de l'entreprise"])
-    const geographicConditions = this.toCriteria(eligibilityCondition?.['secteur géographique'])
-    const sectorConditions = this.toCriteria(eligibilityCondition?.["secteur d'activité"])
-    const seniorityConditions = this.toCriteria(eligibilityCondition?.["nombre d'années d'activité"])
     const otherCriteria = this.toCriteria(eligibilityCondition?.["autres critères d'éligibilité"])
 
     const contact = this.mapContact(program['contact question'])
@@ -135,6 +147,7 @@ export class ProgramMapper {
         : undefined,
       operator: operatorId,
       otherOperators: otherOperatorIds.length > 0 ? otherOperatorIds : undefined,
+      geographicAreas: geographicAreaIds.length > 0 ? geographicAreaIds : undefined,
       url: trimmedUrl,
       ...amounts,
       steps: (program.objectifs ?? []).map((obj) => ({
@@ -156,10 +169,7 @@ export class ProgramMapper {
       companySizeOther: sizeOther,
       activitySectors: sectors,
       activitySectorOther: sectorOther,
-      sizeConditions,
-      geographicConditions,
-      sectorConditions,
-      seniorityConditions,
+      nafCodeOther,
       otherCriteria,
       workflowStatus: hasValidUrl ? ('publie' as const) : ('en-creation' as const),
       _status: hasValidUrl ? ('published' as const) : ('draft' as const),
@@ -192,6 +202,7 @@ export class ProgramMapper {
   private mapAmountFields(aidType: AidType, program: SourceProgram): Partial<{
     fundingAmount: string
     loanAmount: string
+    loanDuration: string
     taxBenefitAmount: string
     formationRemainingCost: string
     formationDuration: string
@@ -202,7 +213,7 @@ export class ProgramMapper {
       case 'financement':
         return { fundingAmount: program['montant du financement'] }
       case 'pret':
-        return { loanAmount: program['montant du prêt'] }
+        return { loanAmount: program['montant du prêt'], loanDuration: program['durée du prêt'] }
       case 'avantage-fiscal':
         return { taxBenefitAmount: program["montant de l'avantage fiscal"] }
       case 'formation':
@@ -273,7 +284,10 @@ export class ProgramMapper {
     return Number.isFinite(n) ? n : undefined
   }
 
-  private mapActivitySectors(values: string[]): ActivitySectorMapping {
+  private mapActivitySectors(
+    values: string[],
+    allowedNafSections: string[] | undefined,
+  ): ActivitySectorMapping {
     const sectors = new Set<ActivitySector>()
     const unmatched: string[] = []
     for (const value of values) {
@@ -287,9 +301,18 @@ export class ProgramMapper {
       }
     }
     if (unmatched.length > 0) sectors.add('other')
+
+    // « Tous secteurs » already covers every NAF section, so we don't surface the
+    // codes in the form: the export regenerates the full A–U list from 'all'. NAF
+    // codes are only shown for an explicit, partial sector selection.
+    const nafCodeOther =
+      !sectors.has('all') && allowedNafSections?.length ? [...allowedNafSections] : undefined
+    if (nafCodeOther) sectors.add('naf-code')
+
     return {
       sectors: [...sectors],
       sectorOther: unmatched.length > 0 ? unmatched.join(' — ') : undefined,
+      nafCodeOther,
     }
   }
 }

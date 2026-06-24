@@ -17,11 +17,17 @@ const EXCLUDED_KEYS = ['publicodes', 'activable en autonomie', 'illustration']
 const omitExcluded = (record: Record<string, unknown>): Record<string, unknown> =>
   Object.fromEntries(Object.entries(record).filter(([key]) => !EXCLUDED_KEYS.includes(key)))
 
+// Trim strings, preserve array order, but SORT object keys: programs.json and
+// TeeExporter emit the same keys in different orders, which is not a real diff.
 const deepTrim = (value: unknown): unknown => {
   if (typeof value === 'string') return value.trim()
   if (Array.isArray(value)) return value.map(deepTrim)
   if (value && typeof value === 'object') {
-    return Object.fromEntries(Object.entries(value).map(([key, inner]) => [key, deepTrim(inner)]))
+    return Object.fromEntries(
+      Object.entries(value)
+        .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+        .map(([key, inner]) => [key, deepTrim(inner)]),
+    )
   }
   return value
 }
