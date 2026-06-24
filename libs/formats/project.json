@@ -1,0 +1,16 @@
+{
+  "name": "@tee-backoffice/formats",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/formats/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "libs/formats",
+        "command": "vitest run"
+      }
+    }
+  }
+}

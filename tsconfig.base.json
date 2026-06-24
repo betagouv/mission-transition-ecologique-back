@@ -10,7 +10,8 @@
     "noImplicitReturns": true,
     "paths": {
       "@tee-backoffice/canonical": ["libs/canonical/src/index.ts"],
-      "@tee-backoffice/canonical-store": ["libs/canonical-store/src/index.ts"]
+      "@tee-backoffice/canonical-store": ["libs/canonical-store/src/index.ts"],
+      "@tee-backoffice/formats": ["libs/formats/src/index.ts"]
     }
   }
 }
