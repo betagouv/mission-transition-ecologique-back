@@ -10,10 +10,8 @@ import type { GeographicArea, Program } from '../../../payload-types'
 import type { RichTextToMarkdown } from './rich-text/RichTextToMarkdown'
 import { clean, operatorName, toIsoDate } from './mapperHelpers'
 import {
-  ACTIVITY_SECTOR_LABELS,
   AID_TYPE_TO_CANONICAL,
   COMPANY_SIZE_BOUNDS,
-  COMPANY_SIZE_LABELS,
   COVERAGE_TYPE_TO_COG_PREFIX,
   DUREE_BY_AID_TYPE,
   MONTANT_BY_AID_TYPE,
@@ -207,28 +205,51 @@ export class ProgramCanonicalMapper {
     const secteurGeographique = this.mapSecteurGeographique(program)
     if (secteurGeographique) eligibilite.secteur_geographique = secteurGeographique
 
+    const anciennete = this.mapAnciennete(program)
+    if (anciennete) eligibilite.anciennete = anciennete
+
     const autresCriteres = this.mapAutresCriteres(program)
     if (autresCriteres) eligibilite.autres_criteres = autresCriteres
 
     return Object.keys(eligibilite).length > 0 ? eligibilite : undefined
   }
 
+  /** Verbatim displayed bullets → `texte`; blanks dropped, `undefined` when empty. */
+  private bullets(items: { value?: string | null }[] | null | undefined): string[] | undefined {
+    const texte = (items ?? [])
+      .map((item) => clean(item.value))
+      .filter((value): value is string => Boolean(value))
+    return texte.length > 0 ? texte : undefined
+  }
+
   private mapEffectif(program: Program): EligibiliteInput['effectif'] | undefined {
+    const texte = this.bullets(program.sizeConditions)
+    const structure = this.effectifStructure(program)
+    if (!texte && !structure) return undefined
+    return { ...(texte ? { texte } : {}), ...(structure ? { structure } : {}) }
+  }
+
+  /** Headcount interval derived from the structured size selects. */
+  private effectifStructure(program: Program): { min?: number; max?: number } | undefined {
     const sizes = program.companySizes ?? []
     if (sizes.length === 0) return undefined
-
-    const texte = sizes.map((size) =>
-      size === 'other' ? (clean(program.companySizeOther) ?? COMPANY_SIZE_LABELS.other) : COMPANY_SIZE_LABELS[size],
-    )
-
     const numeric = sizes.filter((size) => size !== 'other')
-    // All numeric buckets selected = no real constraint, so emit no structure.
-    const structure =
-      numeric.length === 0 || numeric.length === NUMERIC_COMPANY_SIZE_COUNT
-        ? undefined
-        : this.deriveInterval(numeric)
+    // All numeric buckets selected = no real constraint. The "autre" bucket carries
+    // an explicit "De X à Y" range (off-boundary effectif) parsed back here.
+    if (numeric.length === NUMERIC_COMPANY_SIZE_COUNT) return undefined
+    if (numeric.length === 0) return this.parseSizeText(program.companySizeOther)
+    return this.deriveInterval(numeric)
+  }
 
-    return { texte, ...(structure ? { structure } : {}) }
+  /** « De X à Y » / « À partir de X » (tranche « autre ») → intervalle. */
+  private parseSizeText(text: string | null | undefined): { min?: number; max?: number } | undefined {
+    const value = clean(text)
+    if (!value) return undefined
+    const range = /de\s+(\d+)\s+à\s+(\d+)/i.exec(value)
+    if (range) return { min: Number(range[1]), max: Number(range[2]) }
+    const from = /à partir de\s+(\d+)/i.exec(value)
+    if (from) return { min: Number(from[1]) }
+    return undefined
   }
 
   private deriveInterval(
@@ -247,41 +268,32 @@ export class ProgramCanonicalMapper {
   }
 
   private mapSecteurActivite(program: Program): EligibiliteInput['secteur_activite'] | undefined {
+    const texte = this.bullets(program.sectorConditions)
     const sectors = program.activitySectors ?? []
-    // 'all' alone means no sector restriction.
-    if (sectors.length === 0 || (sectors.length === 1 && sectors[0] === 'all')) return undefined
-
-    const texte = sectors
-      .filter((sector) => sector !== 'all')
-      .map((sector) => {
-        if (sector === 'other') return clean(program.activitySectorOther) ?? ACTIVITY_SECTOR_LABELS.other
-        if (sector === 'naf-code') return clean(program.nafCodeOther) ?? ACTIVITY_SECTOR_LABELS['naf-code']
-        return ACTIVITY_SECTOR_LABELS[sector]
-      })
-
     const nafCode = sectors.includes('naf-code') ? clean(program.nafCodeOther) : undefined
     const structure = nafCode ? { inclusions: [nafCode] } : undefined
 
-    if (texte.length === 0 && !structure) return undefined
-    return { ...(texte.length > 0 ? { texte } : {}), ...(structure ? { structure } : {}) }
+    if (!texte && !structure) return undefined
+    return { ...(texte ? { texte } : {}), ...(structure ? { structure } : {}) }
   }
 
   private mapSecteurGeographique(program: Program): EligibiliteInput['secteur_geographique'] | undefined {
+    const texte = this.bullets(program.geographicConditions)
     const areas = (program.geographicAreas ?? []).filter(
       (area): area is GeographicArea => typeof area === 'object' && area !== null,
     )
-
-    const texte = areas.map((area) => area.name)
-    const feedback = clean(program.geographicAreaFeedback)
-    if (feedback) texte.push(feedback)
-
     const inclusions = areas
       .map((area) => this.toCogCode(area))
       .filter((code): code is string => code !== undefined)
     const structure = inclusions.length > 0 ? { inclusions } : undefined
 
-    if (texte.length === 0 && !structure) return undefined
-    return { ...(texte.length > 0 ? { texte } : {}), ...(structure ? { structure } : {}) }
+    if (!texte && !structure) return undefined
+    return { ...(texte ? { texte } : {}), ...(structure ? { structure } : {}) }
+  }
+
+  private mapAnciennete(program: Program): EligibiliteInput['anciennete'] | undefined {
+    const texte = this.bullets(program.seniorityConditions)
+    return texte ? { texte } : undefined
   }
 
   private toCogCode(area: GeographicArea): string | undefined {
@@ -291,9 +303,7 @@ export class ProgramCanonicalMapper {
   }
 
   private mapAutresCriteres(program: Program): EligibiliteInput['autres_criteres'] | undefined {
-    const texte = (program.otherCriteria ?? [])
-      .map((criterion) => clean(criterion.value))
-      .filter((value): value is string => Boolean(value))
-    return texte.length > 0 ? { texte } : undefined
+    const texte = this.bullets(program.otherCriteria)
+    return texte ? { texte } : undefined
   }
 }

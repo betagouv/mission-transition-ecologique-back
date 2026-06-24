@@ -1,14 +1,14 @@
 {
-  "name": "@tee-backoffice/formats",
+  "name": "@tee-backoffice/format-adapters",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "libs/formats/src",
+  "sourceRoot": "libs/format-adapters/src",
   "projectType": "library",
   "tags": [],
   "targets": {
     "test": {
       "executor": "nx:run-commands",
       "options": {
-        "cwd": "libs/formats",
+        "cwd": "libs/format-adapters",
         "command": "vitest run"
       }
     }

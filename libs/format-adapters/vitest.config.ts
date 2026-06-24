@@ -5,7 +5,7 @@ export default defineConfig({
   // Résout l'alias `@tee-backoffice/canonical` (paths du tsconfig de base) au runtime des tests.
   plugins: [tsconfigPaths()],
   test: {
-    name: '@tee-backoffice/formats',
+    name: '@tee-backoffice/format-adapters',
     globals: true,
   },
 })

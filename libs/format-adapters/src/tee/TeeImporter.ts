@@ -21,6 +21,12 @@ interface SourceCompany {
 }
 
 /**
+ * ⚠️ ONE-SHOT IMPORT (Baserow → Payload) — code éphémère. Sert uniquement à
+ * l'import unique de la donnée TEE historique vers le pivot. Une fois la
+ * migration faite, le seul sens qui subsiste est l'export (pivot → TEE). À
+ * SUPPRIMER après migration avec tout le chemin d'import (voir la checklist de
+ * nettoyage dans README.md).
+ *
  * Reconstruit un `CanonicalProgramInput` brut depuis une fiche **iso
  * `programs.json`** (sans `publicodes` ni `activable en autonomie`). Inverse de
  * {@link TeeExporter}. Transformation pure ; aucune validation (c'est le rôle de

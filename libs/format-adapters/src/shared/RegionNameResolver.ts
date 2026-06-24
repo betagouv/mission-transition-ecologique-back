@@ -40,6 +40,9 @@ export class RegionNameResolver {
     'OM-988': 'Nouvelle-Calédonie',
   }
 
+  // ⚠️ ONE-SHOT IMPORT (Baserow → Payload): the inverse table + codesOf below
+  // exist only for the historical import. Delete with the import path after
+  // migration — see README cleanup checklist.
   /** Inverse table (nom → code COG), derived from {@link CODE_TO_NAME}. */
   private static readonly NAME_TO_CODE: Record<string, string> = Object.fromEntries(
     Object.entries(RegionNameResolver.CODE_TO_NAME).map(([code, name]) => [name, code]),

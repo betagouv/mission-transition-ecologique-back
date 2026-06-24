@@ -1,5 +1,5 @@
 {
-  "name": "@tee-backoffice/formats",
+  "name": "@tee-backoffice/format-adapters",
   "version": "0.0.0",
   "private": true,
   "type": "module"

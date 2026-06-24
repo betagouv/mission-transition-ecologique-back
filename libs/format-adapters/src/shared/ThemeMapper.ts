@@ -21,6 +21,9 @@ export class ThemeMapper {
     biodiversite: 'biodiversite',
   }
 
+  // ⚠️ ONE-SHOT IMPORT (Baserow → Payload): the inverse table + toFrench/
+  // toFrenchList below exist only for the historical import. Delete with the
+  // import path after migration — see README cleanup checklist.
   /** Inverse table (programs.json → pivot), derived from {@link FR_TO_EN}. */
   private static readonly EN_TO_FR: Record<string, Theme> = Object.fromEntries(
     Object.entries(ThemeMapper.FR_TO_EN).map(([fr, en]) => [en, fr as Theme]),

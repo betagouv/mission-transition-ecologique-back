@@ -388,6 +388,24 @@ export const Programs: CollectionConfig = {
           },
         },
         {
+          // Verbatim displayed bullets for « taille de l'entreprise ». Carried
+          // through to the canonical `effectif.texte`; the structured size selects
+          // above feed `effectif.structure` independently.
+          name: 'sizeConditions',
+          type: 'array',
+          label: 'Conditions de taille (texte affiché)',
+          labels: { singular: 'une condition', plural: 'conditions de taille' },
+          admin: {
+            components: {
+              RowLabel: {
+                path: '@/components/programs/NumberedRowLabel#NumberedRowLabel',
+                clientProps: { singular: 'Condition de taille' },
+              },
+            },
+          },
+          fields: [{ name: 'value', type: 'text', label: 'Condition', required: true }],
+        },
+        {
           name: 'geographicAreas',
           type: 'relationship',
           label: "Zone géographique couverte par l'aide",
@@ -402,6 +420,24 @@ export const Programs: CollectionConfig = {
             description:
               'Décrivez librement la zone manquante — un administrateur pourra ensuite la créer.',
           },
+        },
+        {
+          // Verbatim displayed bullets for « secteur géographique ». Feeds the
+          // canonical `secteur_geographique.texte`; the relationship above feeds
+          // `secteur_geographique.structure` (COG codes).
+          name: 'geographicConditions',
+          type: 'array',
+          label: 'Conditions géographiques (texte affiché)',
+          labels: { singular: 'une condition', plural: 'conditions géographiques' },
+          admin: {
+            components: {
+              RowLabel: {
+                path: '@/components/programs/NumberedRowLabel#NumberedRowLabel',
+                clientProps: { singular: 'Condition géographique' },
+              },
+            },
+          },
+          fields: [{ name: 'value', type: 'text', label: 'Condition', required: true }],
         },
         {
           name: 'activitySectors',
@@ -430,6 +466,42 @@ export const Programs: CollectionConfig = {
               Array.isArray(data?.activitySectors) &&
               (data.activitySectors as string[]).includes('naf-code'),
           },
+        },
+        {
+          // Verbatim displayed bullets for « secteur d'activité ». Feeds the
+          // canonical `secteur_activite.texte`; the selects above feed
+          // `secteur_activite.structure` (NAF codes).
+          name: 'sectorConditions',
+          type: 'array',
+          label: "Conditions de secteur d'activité (texte affiché)",
+          labels: { singular: 'une condition', plural: 'conditions de secteur' },
+          admin: {
+            components: {
+              RowLabel: {
+                path: '@/components/programs/NumberedRowLabel#NumberedRowLabel',
+                clientProps: { singular: 'Condition de secteur' },
+              },
+            },
+          },
+          fields: [{ name: 'value', type: 'text', label: 'Condition', required: true }],
+        },
+        {
+          // Verbatim displayed bullets for « nombre d'années d'activité ».
+          // Editorial-only criterion (no structured equivalent); feeds the
+          // canonical `anciennete.texte`.
+          name: 'seniorityConditions',
+          type: 'array',
+          label: "Ancienneté / années d'activité (texte affiché)",
+          labels: { singular: 'une condition', plural: "conditions d'ancienneté" },
+          admin: {
+            components: {
+              RowLabel: {
+                path: '@/components/programs/NumberedRowLabel#NumberedRowLabel',
+                clientProps: { singular: "Condition d'ancienneté" },
+              },
+            },
+          },
+          fields: [{ name: 'value', type: 'text', label: 'Condition', required: true }],
         },
         {
           name: 'otherCriteria',

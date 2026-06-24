@@ -80,3 +80,5 @@ local/**
 docs/sources/exports/**
 
 vitest.config.*.timestamp*
+# Throwaway round-trip inspection artifact
+tee-program.json

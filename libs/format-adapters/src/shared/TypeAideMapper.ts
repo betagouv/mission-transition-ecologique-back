@@ -40,6 +40,9 @@ export class TypeAideMapper {
     return types.join('|')
   }
 
+  // ⚠️ ONE-SHOT IMPORT (Baserow → Payload): the inverse table + fromNatureAideLabel
+  // below exist only for the historical import. Delete with the import path after
+  // migration — see README cleanup checklist.
   /** Inverse table (`nature de l'aide` → type pivot), derived from {@link FR_LABEL}. */
   private static readonly LABEL_TO_TYPE: Record<string, TypeAide> = Object.fromEntries(
     Object.entries(TypeAideMapper.FR_LABEL).map(([type, label]) => [label, type as TypeAide]),

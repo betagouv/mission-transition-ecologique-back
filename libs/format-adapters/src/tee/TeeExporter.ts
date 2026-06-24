@@ -28,6 +28,23 @@ import type {
  * libellé auto-décrit (`montant.type` / `duree.type`).
  */
 export class TeeExporter {
+  /**
+   * Libellés montant/durée du pivot CMS → clés historiques programs.json. Un
+   * libellé déjà au format historique (ex. import direct) passe inchangé.
+   */
+  private static readonly LABEL_TO_TEE: Record<string, string> = {
+    'Montant du financement': 'montant du financement',
+    'Montant du prêt': 'montant du prêt',
+    "Montant de l'avantage fiscal": "montant de l'avantage fiscal",
+    'Coût restant à charge': "coût de l'accompagnement",
+    'Durée de la formation': "durée de l'accompagnement",
+    "Durée du diagnostic ou de l'étude": "durée de l'accompagnement",
+  }
+
+  private static teeLabel(label: string): string {
+    return TeeExporter.LABEL_TO_TEE[label] ?? label
+  }
+
   /** Programmes publiés uniquement (`statut_edition === 'pret_prod'`). */
   exportMany(programs: readonly CanonicalProgram[]): TeeProgram[] {
     return programs.filter((program) => ExportPolicy.isPublished(program)).map((program) => this.export(program))
@@ -66,9 +83,10 @@ export class TeeExporter {
       out['aide temporairement indisponible'] = 'oui'
     }
 
-    // Montant / durée : la clé EST le libellé auto-décrit porté par le pivot.
-    if (d.montant) out[d.montant.type] = d.montant.valeur
-    if (d.duree) out[d.duree.type] = d.duree.valeur
+    // Montant / durée : la clé EST le libellé porté par le pivot, ramené au
+    // libellé historique programs.json (les libellés canonical du CMS diffèrent).
+    if (d.montant) out[TeeExporter.teeLabel(d.montant.type)] = d.montant.valeur
+    if (d.duree) out[TeeExporter.teeLabel(d.duree.type)] = d.duree.valeur
 
     const objectifs = this.objectifs(d.etapes_activation)
     if (objectifs) out.objectifs = objectifs

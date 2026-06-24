@@ -1,9 +1,5 @@
 import type { StatutDispositif, StatutEdition, Theme, TypeAide } from '@tee-backoffice/canonical'
 import type { GeographicArea, Program } from '../../../payload-types'
-import {
-  ACTIVITY_SECTOR_OPTIONS,
-  COMPANY_SIZE_OPTIONS,
-} from '@/constants/eligibilityOptions'
 
 /**
  * Lookup tables between the Payload `Program` vocabularies and the canonical
@@ -17,16 +13,6 @@ type WorkflowStatus = Program['workflowStatus']
 type PayloadTheme = NonNullable<Program['themes']>[number]
 type CompanySize = NonNullable<Program['companySizes']>[number]
 type CoverageType = GeographicArea['coverageType']
-
-/** Maps a select-option list to a `value → label` record, keeping value typing. */
-function labelsByValue<O extends readonly { label: string; value: string }[]>(
-  options: O,
-): Record<O[number]['value'], string> {
-  return Object.fromEntries(options.map((option) => [option.value, option.label])) as Record<
-    O[number]['value'],
-    string
-  >
-}
 
 /** Number of numeric size buckets (all but `other`); selecting them all = no constraint. */
 export const NUMERIC_COMPANY_SIZE_COUNT = 7
@@ -113,12 +99,6 @@ export const COMPANY_SIZE_BOUNDS: Record<CompanySize, { min?: number; max?: numb
   '5000+': { min: 5000 },
   other: {},
 }
-
-/** Human labels for the activity sectors, reused in the editorial `texte`. */
-export const ACTIVITY_SECTOR_LABELS = labelsByValue(ACTIVITY_SECTOR_OPTIONS)
-
-/** Human labels for the size buckets, reused in the editorial `texte`. */
-export const COMPANY_SIZE_LABELS = labelsByValue(COMPANY_SIZE_OPTIONS)
 
 /** Geographic coverage type → COG prefix. `autre` carries no structured code. */
 export const COVERAGE_TYPE_TO_COG_PREFIX: Record<CoverageType, string | null> = {
