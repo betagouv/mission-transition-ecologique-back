@@ -1,10 +1,10 @@
 import { z } from 'zod'
 
 /**
- * Schéma zod de sortie **Tee** (iso `programs.json`). Volontairement **permissif**
- * (`.passthrough()`) : la forme historique porte des clés dynamiques de montant/
- * durée (« montant du financement »…) et n'a pas de contrat strict. On valide
- * surtout la présence des champs structurants.
+ * Tee output zod schema (iso `programs.json`). Deliberately permissive
+ * (`.passthrough()`): the historical shape carries dynamic montant/durée keys
+ * (« montant du financement »…) and has no strict contract. We mainly validate
+ * the presence of the structural fields.
  */
 export const teeProgramSchema = z
   .object({

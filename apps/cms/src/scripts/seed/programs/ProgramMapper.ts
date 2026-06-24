@@ -1,6 +1,6 @@
 import type { editorConfigFactory } from '@payloadcms/richtext-lexical'
 import { convertMarkdownToLexical } from '@payloadcms/richtext-lexical'
-import type { SourceEligibilityCompany, SourceProgram } from './types'
+import type { SourceProgram } from './types'
 import { FrenchDateParser } from '@/utils/FrenchDateParser'
 
 type AidType =
@@ -31,20 +31,6 @@ type ActivitySector =
   | 'other'
   | 'naf-code'
 
-// Source `priorityObjectives` carry the Payload theme values verbatim (EN).
-const PROGRAM_THEMES = [
-  'energy',
-  'waste',
-  'mobility',
-  'environmental',
-  'building',
-  'water',
-  'eco-design',
-  'rh',
-  'biodiversite',
-] as const
-type ProgramTheme = (typeof PROGRAM_THEMES)[number]
-
 type EditorConfig = Awaited<ReturnType<typeof editorConfigFactory.default>>
 
 interface CompanySizeMapping {
@@ -55,7 +41,6 @@ interface CompanySizeMapping {
 interface ActivitySectorMapping {
   sectors: ActivitySector[]
   sectorOther: string | undefined
-  nafCodeOther: string[] | undefined
 }
 
 type ContactMethod = 'email' | 'url' | 'advisor'
@@ -74,14 +59,14 @@ const AID_TYPE_MAP: Record<string, AidType> = {
   'avantage fiscal': 'avantage-fiscal',
 }
 
-const SIZE_BUCKETS: { value: CompanySize; min: number; max?: number }[] = [
-  { value: '0-9', min: 0, max: 9 },
-  { value: '10-19', min: 10, max: 19 },
-  { value: '20-49', min: 20, max: 49 },
-  { value: '50-249', min: 50, max: 249 },
-  { value: '250-499', min: 250, max: 499 },
-  { value: '500-4999', min: 500, max: 4999 },
-  { value: '5000+', min: 5000 },
+const COMPANY_SIZE_KEYWORDS: { value: CompanySize; matchers: RegExp[] }[] = [
+  { value: '0-9', matchers: [/0\s*[àa-]\s*9/i, /\bTPE\b/i, /micro[\s-]?entreprise/i] },
+  { value: '10-19', matchers: [/10\s*[àa-]\s*19/i] },
+  { value: '20-49', matchers: [/20\s*[àa-]\s*49/i] },
+  { value: '50-249', matchers: [/50\s*[àa-]\s*249/i, /\bPME\b/i] },
+  { value: '250-499', matchers: [/250\s*[àa-]\s*499/i] },
+  { value: '500-4999', matchers: [/500\s*[àa-]\s*4999/i] },
+  { value: '5000+', matchers: [/[+5]\s*5000/i, /grandes?\s+entreprises?/i] },
 ]
 
 const ACTIVITY_SECTOR_KEYWORDS: { value: ActivitySector; matchers: RegExp[] }[] = [
@@ -97,11 +82,7 @@ const ACTIVITY_SECTOR_KEYWORDS: { value: ActivitySector; matchers: RegExp[] }[] 
 export class ProgramMapper {
   constructor(private readonly editorConfig: EditorConfig) {}
 
-  map(
-    program: SourceProgram,
-    operatorIdByName: Map<string, number>,
-    geographicAreaIdByName: Map<string, number>,
-  ) {
+  map(program: SourceProgram, operatorIdByName: Map<string, number>) {
     const operatorId = operatorIdByName.get(program['opérateur de contact'])
     if (!operatorId) return null
 
@@ -109,27 +90,23 @@ export class ProgramMapper {
       .map((name) => operatorIdByName.get(name))
       .filter((id): id is number => id !== undefined)
 
-    // allowedRegion (region names) → GeographicArea ids. The lookup only holds
-    // region-level areas, so the export's RegionNameResolver round-trips each
-    // name exactly; unknown names are dropped (and reported) rather than guessed.
-    const geographicAreaIds = (program.eligibilityData?.company?.allowedRegion ?? [])
-      .map((name) => {
-        const id = geographicAreaIdByName.get(name)
-        if (id === undefined) {
-          process.stderr.write(`No geographic area for region "${name}" (program "${program.id}").\n`)
-        }
-        return id
-      })
-      .filter((id): id is number => id !== undefined)
-
     const aidType = this.mapAidType(program["nature de l'aide"])
     const eligibilityCondition = program["conditions d'éligibilité"]
-    const { sizes, sizeOther } = this.mapCompanySizes(program.eligibilityData?.company)
-    const { sectors, sectorOther, nafCodeOther } = this.mapActivitySectors(
-      eligibilityCondition?.["secteur d'activité"] ?? [],
-      program.eligibilityData?.company?.allowedNafSections,
+    const { sizes, sizeOther } = this.mapCompanySizes(
+      eligibilityCondition?.["taille de l'entreprise"] ?? [],
     )
-    const otherCriteria = this.toCriteria(eligibilityCondition?.["autres critères d'éligibilité"])
+    const { sectors, sectorOther } = this.mapActivitySectors(
+      eligibilityCondition?.["secteur d'activité"] ?? [],
+    )
+    const geographicAreaFeedback = (eligibilityCondition?.['secteur géographique'] ?? [])
+      .filter(Boolean)
+      .join(' — ')
+    const otherCriteria = [
+      ...(eligibilityCondition?.["nombre d'années d'activité"] ?? []),
+      ...(eligibilityCondition?.["autres critères d'éligibilité"] ?? []),
+    ]
+      .filter(Boolean)
+      .map((value) => ({ value }))
 
     const contact = this.mapContact(program['contact question'])
     const amounts = this.mapAmountFields(aidType, program)
@@ -147,7 +124,6 @@ export class ProgramMapper {
         : undefined,
       operator: operatorId,
       otherOperators: otherOperatorIds.length > 0 ? otherOperatorIds : undefined,
-      geographicAreas: geographicAreaIds.length > 0 ? geographicAreaIds : undefined,
       url: trimmedUrl,
       ...amounts,
       steps: (program.objectifs ?? []).map((obj) => ({
@@ -162,33 +138,17 @@ export class ProgramMapper {
       contactPageUrl: contact.contactPageUrl,
       validityStart: FrenchDateParser.parse(program['début de validité']),
       validityEnd: FrenchDateParser.parse(program['fin de validité']),
-      // Thématiques : copie directe des priorityObjectives source (mêmes valeurs EN
-      // que le champ `themes` Payload). Sans ce mapping, programs_themes reste vide.
-      themes: this.mapThemes(program.eligibilityData?.priorityObjectives),
       companySizes: sizes,
       companySizeOther: sizeOther,
+      geographicAreaFeedback: geographicAreaFeedback || undefined,
       activitySectors: sectors,
       activitySectorOther: sectorOther,
-      nafCodeOther,
       otherCriteria,
       workflowStatus: hasValidUrl ? ('publie' as const) : ('en-creation' as const),
       _status: hasValidUrl ? ('published' as const) : ('draft' as const),
       metaTitle: program.metaTitre,
       metaDescription: program.metaDescription,
     }
-  }
-
-  /** Source bullets → Payload `{ value }[]`, preserved verbatim, blanks dropped. */
-  private toCriteria(values: string[] | undefined): { value: string }[] {
-    return (values ?? []).filter(Boolean).map((value) => ({ value }))
-  }
-
-  /** Keep only values that are valid Payload theme options (source values match). */
-  private mapThemes(values: string[] | undefined): ProgramTheme[] | undefined {
-    const themes = (values ?? []).filter((value): value is ProgramTheme =>
-      (PROGRAM_THEMES as readonly string[]).includes(value),
-    )
-    return themes.length > 0 ? themes : undefined
   }
 
   private toRichText(markdown: string) {
@@ -245,49 +205,30 @@ export class ProgramMapper {
         contactPageUrl: trimmed,
       }
     }
-    // Le tag historique « formulaire » = renvoi vers Conseillers-Entreprises.
-    if (trimmed === 'formulaire') {
-      return { contactMethods: ['advisor'], contactEmail: undefined, contactPageUrl: undefined }
-    }
     return { contactMethods: [], contactEmail: undefined, contactPageUrl: undefined }
   }
 
-  /**
-   * Effectif depuis `eligibilityData.company` (source structurée). Si `[min, max]`
-   * s'aligne sur des bornes de tranches, on sélectionne les tranches couvrantes ;
-   * sinon « autre » + texte « De X à Y » (reparsé à l'export). Mapping exact.
-   */
-  private mapCompanySizes(company?: SourceEligibilityCompany): CompanySizeMapping {
-    const min = this.toInt(company?.minEmployees)
-    const max = this.toInt(company?.maxEmployees)
-    if (min === undefined && max === undefined) return { sizes: [], sizeOther: undefined }
-
-    const lo = min ?? 0
-    const covering = SIZE_BUCKETS.filter(
-      (b) => (max === undefined || b.min <= max) && (b.max === undefined || b.max >= lo),
-    )
-    const first = covering[0]
-    const last = covering[covering.length - 1]
-    const exact =
-      first !== undefined &&
-      first.min === lo &&
-      (max === undefined ? last.max === undefined : last.max === max)
-    if (exact) return { sizes: covering.map((b) => b.value), sizeOther: undefined }
-
-    const text = max === undefined ? `À partir de ${lo}` : `De ${lo} à ${max}`
-    return { sizes: ['other'], sizeOther: text }
+  private mapCompanySizes(values: string[]): CompanySizeMapping {
+    const sizes = new Set<CompanySize>()
+    const unmatched: string[] = []
+    for (const value of values) {
+      const matched = COMPANY_SIZE_KEYWORDS.filter(({ matchers }) =>
+        matchers.some((re) => re.test(value)),
+      )
+      if (matched.length === 0) {
+        unmatched.push(value)
+      } else {
+        for (const m of matched) sizes.add(m.value)
+      }
+    }
+    if (unmatched.length > 0) sizes.add('other')
+    return {
+      sizes: [...sizes],
+      sizeOther: unmatched.length > 0 ? unmatched.join(' — ') : undefined,
+    }
   }
 
-  private toInt(value: string | undefined): number | undefined {
-    if (value === undefined) return undefined
-    const n = Number(value)
-    return Number.isFinite(n) ? n : undefined
-  }
-
-  private mapActivitySectors(
-    values: string[],
-    allowedNafSections: string[] | undefined,
-  ): ActivitySectorMapping {
+  private mapActivitySectors(values: string[]): ActivitySectorMapping {
     const sectors = new Set<ActivitySector>()
     const unmatched: string[] = []
     for (const value of values) {
@@ -301,18 +242,9 @@ export class ProgramMapper {
       }
     }
     if (unmatched.length > 0) sectors.add('other')
-
-    // « Tous secteurs » already covers every NAF section, so we don't surface the
-    // codes in the form: the export regenerates the full A–U list from 'all'. NAF
-    // codes are only shown for an explicit, partial sector selection.
-    const nafCodeOther =
-      !sectors.has('all') && allowedNafSections?.length ? [...allowedNafSections] : undefined
-    if (nafCodeOther) sectors.add('naf-code')
-
     return {
       sectors: [...sectors],
       sectorOther: unmatched.length > 0 ? unmatched.join(' — ') : undefined,
-      nafCodeOther,
     }
   }
 }

@@ -1,14 +1,13 @@
 import type { CogCode } from '@tee-backoffice/canonical'
 
 /**
- * Traduit entre les **noms de territoires** (français) attendus par
- * `eligibilityData.company.allowedRegion` de programs.json et les codes COG
- * d'inclusion géographique du pivot.
+ * Translates between the French territory names expected by
+ * `eligibilityData.company.allowedRegion` (programs.json) and the pivot's
+ * geographic COG inclusion codes.
  *
- * Couvre les régions (métropole + DROM, niveau `REG-`) et les collectivités
- * d'outre-mer (niveau `OM-` : Saint-Pierre-et-Miquelon, Saint-Barthélemy,
- * Saint-Martin, TAAF, Wallis-et-Futuna, Polynésie, Nouvelle-Calédonie). Les
- * autres niveaux COG (département, commune…) ne sont pas traduits pour ce champ.
+ * Covers regions (mainland + DROM, level `REG-`) and overseas collectivities
+ * (level `OM-`). Other COG levels (department, commune…) are not translated
+ * for this field.
  */
 export class RegionNameResolver {
   private static readonly CODE_TO_NAME: Record<string, string> = {
@@ -30,7 +29,7 @@ export class RegionNameResolver {
     'REG-84': 'Auvergne-Rhône-Alpes',
     'REG-93': "Provence-Alpes-Côte d'Azur",
     'REG-94': 'Corse',
-    // Collectivités d'outre-mer (codes INSEE), graphie iso programs.json.
+    // Overseas collectivities (INSEE codes), iso programs.json spelling.
     'OM-975': 'Saint-Pierre-Et-Miquelon',
     'OM-977': 'Saint-Barthélemy',
     'OM-978': 'Saint-Martin',
@@ -43,12 +42,12 @@ export class RegionNameResolver {
   // ⚠️ ONE-SHOT IMPORT (Baserow → Payload): the inverse table + codesOf below
   // exist only for the historical import. Delete with the import path after
   // migration — see README cleanup checklist.
-  /** Inverse table (nom → code COG), derived from {@link CODE_TO_NAME}. */
+  /** Inverse table (name → COG code), derived from {@link CODE_TO_NAME}. */
   private static readonly NAME_TO_CODE: Record<string, string> = Object.fromEntries(
     Object.entries(RegionNameResolver.CODE_TO_NAME).map(([code, name]) => [name, code]),
   )
 
-  /** Noms de territoires correspondant aux codes COG fournis (niveaux non gérés ignorés). */
+  /** Territory names for the given COG codes (unsupported levels ignored). */
   static namesOf(codes: readonly CogCode[]): string[] {
     const names: string[] = []
     for (const code of codes) {
@@ -60,7 +59,7 @@ export class RegionNameResolver {
     return names
   }
 
-  /** Codes COG pour les noms de territoires fournis (noms inconnus ignorés). */
+  /** COG codes for the given territory names (unknown names ignored). */
   static codesOf(names: readonly string[]): string[] {
     const codes: string[] = []
     for (const name of names) {

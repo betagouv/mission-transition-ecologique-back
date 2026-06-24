@@ -1,14 +1,12 @@
 import type { NafCode } from '@tee-backoffice/canonical'
 
 /**
- * Réduit un code NAF (n'importe quel niveau) à sa **section** (lettre A–U).
- *
- * Sert à reconstruire `allowedNafSections` (programs.json) et à réduire le
- * secteur d'activité aux catégories principales (AGIR), à partir des codes
- * d'inclusion du pivot. Table des intervalles de divisions NAF rév. 2.
+ * Reduces a NAF code (any level) to its section (letter A–U), to rebuild
+ * `allowedNafSections` (programs.json) from the pivot's inclusion codes.
+ * Division ranges follow NAF rev. 2.
  */
 export class NafSectionResolver {
-  /** Intervalles de divisions (2 premiers chiffres) → section. NAF rév. 2. */
+  /** Division ranges (first two digits) → section. NAF rev. 2. */
   private static readonly RANGES: ReadonlyArray<{ from: number; to: number; section: string }> = [
     { from: 1, to: 3, section: 'A' },
     { from: 5, to: 9, section: 'B' },
@@ -33,7 +31,7 @@ export class NafSectionResolver {
     { from: 99, to: 99, section: 'U' },
   ]
 
-  /** Section d'un code NAF, ou `undefined` si la division est inconnue. */
+  /** Section of a NAF code, or `undefined` if the division is unknown. */
   static sectionOf(code: NafCode | string): string | undefined {
     const value = String(code)
     if (/^[A-U]$/.test(value)) {
@@ -47,7 +45,7 @@ export class NafSectionResolver {
       ?.section
   }
 
-  /** Sections distinctes (triées) couvertes par une liste de codes NAF. */
+  /** Distinct sections (sorted) covered by a list of NAF codes. */
   static sectionsOf(codes: readonly (NafCode | string)[]): string[] {
     const sections = new Set<string>()
     for (const code of codes) {

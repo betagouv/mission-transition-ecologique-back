@@ -433,8 +433,7 @@ export const Programs: CollectionConfig = {
         {
           name: 'nafCodeOther',
           type: 'text',
-          hasMany: true,
-          label: 'Code(s) NAF spécifique(s) associé(s)',
+          label: 'Code NAF spécifique associé',
           admin: {
             condition: (data) =>
               Array.isArray(data?.activitySectors) &&

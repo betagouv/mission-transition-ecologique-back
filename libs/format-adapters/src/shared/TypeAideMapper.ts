@@ -1,17 +1,14 @@
 import type { TypeAide } from '@tee-backoffice/canonical'
 
 /**
- * Conversions de `types_aides` (les 8 types du pivot) vers les cibles.
+ * Maps the pivot's `types_aides` (8 types) to target formats.
  *
- * - **Schéma interministériel** : les 8 valeurs du pivot SONT les valeurs
- *   Etalab (décision : copie à l'identique) → jointes par des pipes.
- * - **programs.json** : `nature de l'aide` est un libellé FR **unique**. Le
- *   pivot porte un tableau ; on retient le type le plus saillant (le label
- *   « privilégié » côté front — financement d'abord, cf. ADR 0007) et on le
- *   traduit en libellé historique accentué.
+ * programs.json's `nature de l'aide` is a single FR label, whereas the pivot
+ * carries a list: we keep the most salient type (financement first, cf. ADR
+ * 0007) and render it as the historical accented label.
  */
 export class TypeAideMapper {
-  /** Libellés historiques de programs.json (`nature de l'aide`). */
+  /** Historical programs.json labels (`nature de l'aide`). */
   private static readonly FR_LABEL: Record<TypeAide, string> = {
     assistance: 'assistance',
     avantage_fiscal: 'avantage fiscal',
@@ -23,7 +20,7 @@ export class TypeAideMapper {
     pret: 'prêt',
   }
 
-  /** Ordre de saillance pour réduire un tableau à un libellé unique. */
+  /** Salience order used to reduce a list to a single label. */
   private static readonly PRIORITY: readonly TypeAide[] = [
     'financement',
     'formation',
@@ -35,7 +32,7 @@ export class TypeAideMapper {
     'information',
   ]
 
-  /** Schéma Etalab : les types du pivot, joints par des pipes. */
+  /** Etalab schema: pivot types joined by pipes. */
   static toSchema(types: readonly TypeAide[]): string {
     return types.join('|')
   }
@@ -48,13 +45,13 @@ export class TypeAideMapper {
     Object.entries(TypeAideMapper.FR_LABEL).map(([type, label]) => [label, type as TypeAide]),
   )
 
-  /** programs.json : un libellé FR unique (type le plus saillant). */
+  /** programs.json: a single FR label (most salient type). */
   static toNatureAideLabel(types: readonly TypeAide[]): string {
     const primary = TypeAideMapper.PRIORITY.find((type) => types.includes(type)) ?? types[0]
     return primary ? TypeAideMapper.FR_LABEL[primary] : ''
   }
 
-  /** `nature de l'aide` (libellé historique) → type pivot, ou `undefined` si inconnu. */
+  /** `nature de l'aide` (historical label) → pivot type, or `undefined` if unknown. */
   static fromNatureAideLabel(label: string): TypeAide | undefined {
     return TypeAideMapper.LABEL_TO_TYPE[label]
   }

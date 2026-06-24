@@ -1,9 +1,9 @@
 import { CanonicalProgramValidator, type CanonicalProgram } from '@tee-backoffice/canonical'
 
 /**
- * Programmes pivot **validés**, prêts à projeter dans les tests d'export.
- * Reprend les golden fixtures de `@tee-backoffice/canonical` (minimal/full) +
- * une variante non publiée pour tester les filtres d'inclusion.
+ * Validated pivot programs, ready to project in export tests. Mirrors the
+ * `@tee-backoffice/canonical` golden fixtures (minimal/full) plus an
+ * unpublished variant to exercise the inclusion filters.
  */
 const validator = new CanonicalProgramValidator()
 const build = (input: unknown): CanonicalProgram => validator.parse(input)
@@ -79,7 +79,7 @@ const fullInput = {
   autres_donnees: { ademe_id_dsp: 'DSP-000123', operateur_ref_interne: 'XYZ-42' },
 }
 
-/** Brouillon non publié (statut d'édition avant `pret_prod`) — exclu des exports publics. */
+/** Unpublished draft (edit status before `pret_prod`) — excluded from public exports. */
 const draftInput = { ...minimalInput, slug: 'aide-en-creation', statut_edition: 'en_creation' }
 
 export const minimalProgram = build(minimalInput)

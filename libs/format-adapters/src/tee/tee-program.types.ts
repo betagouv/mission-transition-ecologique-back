@@ -1,10 +1,10 @@
 /**
- * Forme cible **iso `docs/sources/programs.json`** (sans `publicodes`).
+ * Target shape, iso `docs/sources/programs.json` (no `publicodes`).
  *
- * Les clés conservent leur graphie historique (français accentué, espaces,
- * apostrophes). L'index `[string]: unknown` couvre les clés de montant/durée
- * **dynamiques** (« montant du financement », « coût de l'accompagnement »…),
- * dont le libellé est porté par le pivot (`montant.type` / `duree.type`).
+ * Keys keep their historical spelling (accented French, spaces, apostrophes).
+ * The `[string]: unknown` index covers the dynamic montant/durée keys
+ * (« montant du financement », « coût de l'accompagnement »…), whose label is
+ * carried by the pivot (`montant.type` / `duree.type`).
  */
 export interface TeeProgram {
   id: string
@@ -28,7 +28,7 @@ export interface TeeProgram {
   "conditions d'éligibilité"?: TeeConditionsEligibilite
   eligibilityData?: TeeEligibilityData
   'champs conditionnels'?: TeeChampConditionnel[]
-  /** Clés dynamiques de montant/durée portées par `montant.type` / `duree.type`. */
+  /** Dynamic montant/durée keys carried by `montant.type` / `duree.type`. */
   [montantOrDureeKey: string]: unknown
 }
 
@@ -37,7 +37,7 @@ export interface TeeObjectif {
   liens?: TeeLien[]
 }
 
-/** Lien externe `{ lien, texte }` ou renvoi vers le formulaire TEE `{ formulaire: true }`. */
+/** External link `{ lien, texte }` or a TEE form reference `{ formulaire: true }`. */
 export type TeeLien = { lien: string; texte: string } | { formulaire: true }
 
 export interface TeeConditionsEligibilite {
@@ -64,7 +64,7 @@ export interface TeeEligibilityData {
   priorityObjectives?: string[]
 }
 
-/** Reconstruit depuis `variantes` (best-effort, voir `docs/features/004-formats-exports.md`). */
+/** Rebuilt from `variantes` (best-effort, see `docs/features/004-formats-exports.md`). */
 export interface TeeChampConditionnel {
   'toutes ces conditions': string[]
   'Montant du dispositif'?: string

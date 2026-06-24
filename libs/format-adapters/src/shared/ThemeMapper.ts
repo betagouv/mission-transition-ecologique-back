@@ -1,12 +1,10 @@
 import type { Theme } from '@tee-backoffice/canonical'
 
 /**
- * Taxonomie thématique : le pivot est en **français** (`energie`, `batiment`…).
+ * Theme taxonomy: the pivot is in French (`energie`, `batiment`…).
  *
- * - AGIR garde le français (les clés AGIR sont françaises) → pas de mapping.
- * - programs.json historise les `priorityObjectives` en **anglais** : pour
- *   rester iso, `TeeExporter` traduit FR → EN via cette table.
- * - Le schéma interministériel n'a pas de champ thème.
+ * programs.json stores `priorityObjectives` in English, so `TeeExporter`
+ * translates FR → EN through this table to stay iso.
  */
 export class ThemeMapper {
   private static readonly FR_TO_EN: Record<Theme, string> = {

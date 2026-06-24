@@ -15,11 +15,7 @@ export class ProgramImporter {
     private readonly mapper: ProgramMapper,
   ) {}
 
-  async import(
-    programs: SourceProgram[],
-    operatorIdByName: Map<string, number>,
-    geographicAreaIdByName: Map<string, number>,
-  ): Promise<ImportResult> {
+  async import(programs: SourceProgram[], operatorIdByName: Map<string, number>): Promise<ImportResult> {
     const existingIdBySlug = await this.fetchExisting(programs.map((p) => p.id))
 
     const progress = new ProgressBar(programs.length)
@@ -29,7 +25,7 @@ export class ProgramImporter {
 
     await Promise.all(programs.map(async (program) => {
       try {
-        const data = this.mapper.map(program, operatorIdByName, geographicAreaIdByName)
+        const data = this.mapper.map(program, operatorIdByName)
         if (!data) {
           process.stderr.write(`Operator not found for program "${program.id}" — skipping.\n`)
           errors++

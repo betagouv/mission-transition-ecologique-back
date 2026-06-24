@@ -22,15 +22,15 @@ import type {
 } from './tee-program.types'
 
 /**
- * Projette un programme du pivot vers la forme **iso `programs.json`** (sans
- * `publicodes`, sans `activable en autonomie`). Transformation pure : aucune
- * lecture externe. `montant`/`duree` retombent sur leur clé historique via le
- * libellé auto-décrit (`montant.type` / `duree.type`).
+ * Projects a pivot program to the iso `programs.json` shape (no `publicodes`,
+ * no `activable en autonomie`). Pure transformation, no external reads.
+ * `montant`/`duree` fall back to their historical key via the self-describing
+ * label (`montant.type` / `duree.type`).
  */
 export class TeeExporter {
   /**
-   * Libellés montant/durée du pivot CMS → clés historiques programs.json. Un
-   * libellé déjà au format historique (ex. import direct) passe inchangé.
+   * CMS pivot montant/durée labels → historical programs.json keys. A label
+   * already in historical form (e.g. direct import) passes through unchanged.
    */
   private static readonly LABEL_TO_TEE: Record<string, string> = {
     'Montant du financement': 'montant du financement',
@@ -46,7 +46,7 @@ export class TeeExporter {
     return TeeExporter.LABEL_TO_TEE[label] ?? label
   }
 
-  /** Programmes publiés uniquement (`statut_edition === 'pret_prod'`). */
+  /** Published programs only (`statut_edition === 'pret_prod'`). */
   exportMany(programs: readonly CanonicalProgram[]): TeeProgram[] {
     return programs.filter((program) => ExportPolicy.isPublished(program)).map((program) => this.export(program))
   }
@@ -84,8 +84,8 @@ export class TeeExporter {
       out['aide temporairement indisponible'] = 'oui'
     }
 
-    // Montant / durée : la clé EST le libellé porté par le pivot, ramené au
-    // libellé historique programs.json (les libellés canonical du CMS diffèrent).
+    // Montant / durée: the key IS the pivot label, mapped back to the
+    // historical programs.json label (CMS canonical labels differ).
     if (d.montant) out[TeeExporter.teeLabel(d.montant.type)] = d.montant.valeur
     if (d.duree) out[TeeExporter.teeLabel(d.duree.type)] = d.duree.valeur
 
@@ -104,7 +104,7 @@ export class TeeExporter {
     return out
   }
 
-  /** `email` → `mailto:…` · `url` → URL brute · `ADEME`/`conseiller_entreprise` → `formulaire`. */
+  /** `email` → `mailto:…` · `url` → raw URL · `ADEME`/`conseiller_entreprise` → `formulaire`. */
   private contactQuestion(cq: ContactQuestion | undefined): string | undefined {
     if (!cq) return undefined
     switch (cq.type) {
@@ -134,7 +134,7 @@ export class TeeExporter {
   private conditions(elig: Eligibilite | undefined): TeeConditionsEligibilite | undefined {
     if (!elig) return undefined
     const conditions: TeeConditionsEligibilite = {}
-    // « taille de l'entreprise » regroupe effectif + catégorie légale (ex. exclusion micro).
+    // « taille de l'entreprise » groups headcount + legal category (e.g. micro exclusion).
     const taille = [...(elig.effectif?.texte ?? []), ...(elig.categorie_legale?.texte ?? [])]
     if (taille.length) conditions["taille de l'entreprise"] = taille
     if (elig.secteur_geographique?.texte?.length) {
@@ -185,8 +185,8 @@ export class TeeExporter {
   }
 
   /**
-   * Reconstruit `champs conditionnels` depuis `variantes` — best-effort : les
-   * conditions sont rendues en expressions simples (sans moteur publicodes).
+   * Rebuilds `champs conditionnels` from `variantes` — best-effort: conditions
+   * are rendered as simple expressions (no publicodes engine).
    */
   private champsConditionnels(variantes: Variante[] | undefined): TeeChampConditionnel[] | undefined {
     if (!variantes?.length) return undefined
@@ -208,7 +208,7 @@ export class TeeExporter {
     })
   }
 
-  /** ISO (`2026-01-01` ou date-heure) → `JJ/MM/AAAA`. */
+  /** ISO (`2026-01-01` or date-time) → `DD/MM/YYYY`. */
   private frenchDate(iso: string | undefined): string | undefined {
     if (!iso) return undefined
     const [year, month, day] = iso.slice(0, 10).split('-')

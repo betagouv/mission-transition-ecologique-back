@@ -11,21 +11,6 @@ export interface SourceEligibilityConditions {
   "autres critères d'éligibilité"?: string[]
 }
 
-export interface SourceEligibilityCompany {
-  allowedNafSections?: string[]
-  minEmployees?: string
-  maxEmployees?: string
-  allowedRegion?: string[]
-  excludeMicroentrepreneur?: boolean
-}
-
-export interface SourceEligibilityData {
-  company?: SourceEligibilityCompany
-  validity?: { start?: string; end?: string }
-  /** Thématiques (EN) — copie directe vers le champ `themes` du programme Payload. */
-  priorityObjectives?: string[]
-}
-
 export interface SourceProgram {
   id: string
   titre: string
@@ -48,7 +33,6 @@ export interface SourceProgram {
   "montant de l'avantage fiscal"?: string
   objectifs?: SourceObjective[]
   "conditions d'éligibilité"?: SourceEligibilityConditions
-  eligibilityData?: SourceEligibilityData
   metaTitre?: string
   metaDescription?: string
 }

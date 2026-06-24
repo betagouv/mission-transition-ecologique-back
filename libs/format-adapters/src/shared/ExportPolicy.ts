@@ -1,17 +1,15 @@
 import type { CanonicalProgram } from '@tee-backoffice/canonical'
 
 /**
- * Politique d'inclusion des exports.
+ * Export inclusion policy.
  *
- * Le **statut d'édition** décide ce qui sort vers les cibles publiques
- * (programs.json, AGIR) : seuls les dispositifs *publiés* (`pret_prod`) sont
- * exportés. Le **statut de dispositif** (`temporairement_indisponible`,
- * `remplace`, `archive`…) n'est pas un filtre — il est transmis tel quel.
- *
- * L'export Grist (schéma interministériel) ne filtre rien : il transmet tout.
+ * The edit status decides what ships to public targets (programs.json, AGIR):
+ * only published (`pret_prod`) programs are exported. The program status
+ * (`temporairement_indisponible`, `remplace`, `archive`…) is not a filter — it
+ * is passed through as is.
  */
 export class ExportPolicy {
-  /** Publié = prêt pour la production. */
+  /** Published = ready for production. */
   static isPublished(program: CanonicalProgram): boolean {
     return program.statutEdition === 'pret_prod'
   }

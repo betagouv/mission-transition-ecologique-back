@@ -1,9 +1,8 @@
-// @tee-backoffice/format-adapters — adaptateurs entre le pivot
-// (`@tee-backoffice/canonical`) et les formats externes, dans les deux sens.
+// @tee-backoffice/format-adapters — two-way adapters between the canonical
+// pivot (`@tee-backoffice/canonical`) and external formats.
 //
-// API publique organisée par format. Périmètre courant : TEE (iso
-// programs.json), import + export. AGIR et schéma interministériel (Grist)
-// arriveront sur leurs propres branches. Les helpers de `shared/` sont internes.
+// Public API grouped by format. Current scope: TEE (iso programs.json),
+// import + export. `shared/` holds internal helpers.
 
 export * from './tee/tee-program.types'
 export * from './tee/tee-program.schema'
