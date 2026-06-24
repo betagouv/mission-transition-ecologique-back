@@ -30,6 +30,13 @@
         "cwd": "{projectRoot}"
       }
     },
+    "export": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsx src/scripts/export-tee.ts",
+        "cwd": "{projectRoot}"
+      }
+    },
     "test": {
       "executor": "nx:run-commands",
       "options": {
