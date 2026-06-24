@@ -1,18 +1,18 @@
-// TEE export command: reads the canonical store, writes the TEE feed, then
+// Canonical → TEE export. Reads the canonical store, writes the TEE feed, then
 // prints a per-field recap of what still diverges from the reference
 // `docs/sources/programs.json` — so the remaining shared work is visible at a
 // glance ("which fields still have problems, and are we done yet?").
 //
-// Run from apps/cms:
-//   tsx --tsconfig ../../tsconfig.base.json src/scripts/export-tee.ts
-// or, from the repo root: `pnpm export`.
+// Run from the repo root: `pnpm export:tee`
+// or: `nx run @tee-backoffice/data-hub:export:tee`.
 //
 // The recap section is EPHEMERAL: it disappears with programs.json. The feed
 // export itself is permanent.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
+import { CanonicalProgramService } from '@tee-backoffice/canonical'
+import { createCanonicalProgramRepository } from '@tee-backoffice/canonical-store'
 import { TeeExporter } from '@tee-backoffice/format-adapters'
-import { getCanonicalProgramService } from '../services/canonical/canonicalProgramService'
 
 const OUTPUT_PATH = resolve(process.cwd(), 'dist/tee-export.json')
 const REFERENCE_PATH = resolve(process.cwd(), '../../docs/sources/programs.json')
@@ -100,7 +100,8 @@ function reportGaps(feed: Record<string, unknown>[]): void {
 }
 
 async function main(): Promise<void> {
-  const service = await getCanonicalProgramService()
+  const repository = await createCanonicalProgramRepository()
+  const service = new CanonicalProgramService(repository)
   const programs = await service.getAll()
   const feed = new TeeExporter().exportMany(programs)
 
@@ -112,6 +113,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((err: unknown) => {
-  console.error(err)
+  process.stderr.write(`${String(err)}\n`)
   process.exit(1)
 })
