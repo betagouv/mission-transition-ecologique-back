@@ -1,4 +1,5 @@
 import { eq } from 'drizzle-orm'
+import type { z } from 'zod'
 import { CanonicalProgramValidator, NullEventSink } from '@tee-backoffice/canonical'
 import type {
   CanonicalProgram,
@@ -76,16 +77,29 @@ export class DrizzleCanonicalProgramRepository implements CanonicalProgramReposi
 
   /** Validates a stored row, reporting (and dropping) it when it no longer fits. */
   private rebuild(row: { slug: string; canonicalId: string; data: string }): CanonicalProgram | null {
-    const result = this.validator.validate(JSON.parse(row.data))
+    // Drift can also leave a row unparseable (interrupted write, manual edit);
+    // drop and report it rather than letting one bad row abort the whole read.
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(row.data)
+    } catch {
+      return this.drop(row, [])
+    }
+
+    const result = this.validator.validate(parsed)
     if (result.success) return result.program
 
+    return this.drop(row, result.errors)
+  }
+
+  private drop(row: { slug: string; canonicalId: string }, errors: z.ZodIssue[]): null {
     this.events.emit({
       type: 'program_dropped',
       severity: 'warning',
       phase: 'read',
       slug: row.slug,
       canonicalId: row.canonicalId,
-      errors: result.errors,
+      errors,
     })
     return null
   }

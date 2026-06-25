@@ -24,6 +24,9 @@ const validInput = {
 
 const program = new CanonicalProgramValidator().parse(validInput)
 
+// Unique temp-file suffix per drift test, avoiding cross-worker name clashes.
+let driftCounter = 0
+
 describe('DrizzleCanonicalProgramRepository', () => {
   it('saves then reads a program back by slug', async () => {
     const repo = await DrizzleCanonicalProgramRepository.create(':memory:')
@@ -61,8 +64,11 @@ describe('DrizzleCanonicalProgramRepository', () => {
       dbPath = undefined
     })
 
-    it('drops a row that no longer validates and reports it as a read event', async () => {
-      dbPath = join(tmpdir(), `canonical-drift-${process.pid.toString()}.db`)
+    // Corrupts the stored `data` for the saved program through a second
+    // connection to the same file, then returns repo + recorded events.
+    async function withCorruptedRow(corruptData: string) {
+      driftCounter += 1
+      dbPath = join(tmpdir(), `canonical-drift-${process.pid.toString()}-${driftCounter.toString()}.db`)
       const url = `file:${dbPath}`
       const events: CanonicalEvent[] = []
       const sink: CanonicalEventSink = { emit: (event) => events.push(event) }
@@ -70,13 +76,25 @@ describe('DrizzleCanonicalProgramRepository', () => {
       const repo = await DrizzleCanonicalProgramRepository.create(url, sink)
       await repo.save(program)
 
-      // Simulate a schema drift: corrupt the stored JSON through a second
-      // connection to the same file so the row no longer validates on read.
       const db = await createCanonicalDb(url)
       await db
         .update(canonicalPrograms)
-        .set({ data: JSON.stringify({ slug: 'diagnostic-energie-pme' }) })
+        .set({ data: corruptData })
         .where(eq(canonicalPrograms.slug, 'diagnostic-energie-pme'))
+
+      return { repo, events }
+    }
+
+    it('drops a row that no longer validates and reports it as a read event', async () => {
+      const { repo, events } = await withCorruptedRow(JSON.stringify({ slug: 'diagnostic-energie-pme' }))
+
+      expect(await repo.findAll()).toEqual([])
+      expect(await repo.findBySlug('diagnostic-energie-pme')).toBeNull()
+      expect(events.filter((e) => e.type === 'program_dropped' && e.phase === 'read')).toHaveLength(2)
+    })
+
+    it('drops an unparseable row instead of throwing, and reports it', async () => {
+      const { repo, events } = await withCorruptedRow('{not valid json')
 
       expect(await repo.findAll()).toEqual([])
       expect(await repo.findBySlug('diagnostic-energie-pme')).toBeNull()

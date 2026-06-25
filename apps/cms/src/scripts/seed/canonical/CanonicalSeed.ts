@@ -29,6 +29,8 @@ export class CanonicalSeed {
 
     process.stdout.write(`Syncing ${docs.length.toString()} published programs to the canonical store...\n`)
 
+    // Per-program drops are reported by the service through the event sink
+    // (logger), so the seed only keeps the aggregate summary here.
     let saved = 0
     let invalid = 0
     for (const program of docs) {
@@ -37,7 +39,6 @@ export class CanonicalSeed {
         saved++
       } else {
         invalid++
-        process.stderr.write(`Invalid canonical for "${result.slug}" — skipped.\n`)
       }
     }
 

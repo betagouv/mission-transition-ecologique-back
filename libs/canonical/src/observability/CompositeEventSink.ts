@@ -1,21 +1,21 @@
 import type { CanonicalEvent } from './CanonicalEvent'
 import type { CanonicalEventSink } from './CanonicalEventSink'
+import { RoutingCanonicalEventSink } from './RoutingCanonicalEventSink'
 
 /**
  * Fans one event out to several channels at once: e.g. send every error to
- * email AND Slack by grouping both sinks here behind a single route. One channel
- * throwing must not stop the others.
+ * email AND Slack by grouping both sinks here behind a single route. A composite
+ * is just a router whose every route always matches, so it reuses the router's
+ * fan-out and per-channel failure isolation.
  */
 export class CompositeEventSink implements CanonicalEventSink {
-  constructor(private readonly sinks: readonly CanonicalEventSink[]) {}
+  private readonly router: RoutingCanonicalEventSink
+
+  constructor(sinks: readonly CanonicalEventSink[]) {
+    this.router = new RoutingCanonicalEventSink(sinks.map((sink) => ({ sink, when: () => true })))
+  }
 
   emit(event: CanonicalEvent): void {
-    for (const sink of this.sinks) {
-      try {
-        sink.emit(event)
-      } catch {
-        // A failing channel must never break the others.
-      }
-    }
+    this.router.emit(event)
   }
 }

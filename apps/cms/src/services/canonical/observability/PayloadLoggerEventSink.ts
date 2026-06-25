@@ -27,6 +27,9 @@ export class PayloadLoggerEventSink implements CanonicalEventSink {
       case 'info':
         this.logger.info(message)
         return
+      default:
+        // A new severity must not be silently swallowed by the logger channel.
+        return assertNever(event)
     }
   }
 
@@ -34,10 +37,17 @@ export class PayloadLoggerEventSink implements CanonicalEventSink {
     switch (event.type) {
       case 'program_saved':
         return `canonical saved "${event.slug}" (${event.canonicalId})`
-      case 'program_dropped':
-        return `canonical dropped on ${event.phase} for "${event.slug}": ${event.errors.length.toString()} validation issue(s)`
+      case 'program_dropped': {
+        const detail =
+          event.errors.length > 0 ? `${event.errors.length.toString()} validation issue(s)` : 'unreadable stored data'
+        return `canonical dropped on ${event.phase} for "${event.slug}": ${detail}`
+      }
       case 'sync_failed':
         return `canonical sync failed for "${event.slug}": ${event.error}`
     }
   }
+}
+
+function assertNever(value: never): never {
+  throw new Error(`Unhandled canonical event: ${JSON.stringify(value)}`)
 }
