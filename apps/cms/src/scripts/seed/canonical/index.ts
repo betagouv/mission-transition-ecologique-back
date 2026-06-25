@@ -1,1 +1,0 @@
-export { CanonicalSeed } from './CanonicalSeed'

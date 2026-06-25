@@ -50,14 +50,14 @@ Les **ports** vivent dans le domaine, les **implémentations concrètes** sont i
 - Le **mapping Payload → canonical** (`ProgramCanonicalMapper`) et l'**adaptateur markdown** (`PayloadRichTextToMarkdown`, derrière le port `RichTextToMarkdown`) restent côté `apps/cms` : c'est le couplage CMS, assumé et remplaçable.
 - Nommage **par entité** (`canonicalProgramService.ts` / `getCanonicalProgramService`) pour préparer un futur `CanonicalProjectService`.
 
-### 5. Synchronisation au publish + seed
+### 5. Synchronisation au publish (chemin unique)
 
 - Hook `syncCanonicalOnPublish` (afterChange sur `Programs`) : un dispositif publié (`_status === 'published'`) est mappé, validé, persisté. Les issues sont **émises comme événements** (`program_dropped`, `sync_failed`) via le sink (voir §6) et **ne bloquent jamais** l'écriture CMS.
-- Étape `CanonicalSeed` (batch, sélection `workflowStatus === 'publie'`) réutilise **le même** `CanonicalProgramService`. Hook et seed alimentent donc le store par la même logique.
+- Le **seed** n'a **pas** d'étape canonical dédiée : `ProgramMapper` écrit les dispositifs publiés en `_status: 'published'`, ce qui déclenche le même hook. Le store est donc peuplé par le hook, en seed comme en prod (un seul chemin de sync). Une étape batch `CanonicalSeed` a existé puis a été retirée car redondante avec le hook (elle resynchronisait le même ensemble, doublant le travail et les logs).
 
 ### 6. Observabilité des drops via un port à canaux pluggables
 
-La validation écarte de la donnée à deux endroits, sans le signaler : à l'**écriture** (publish/seed : un input invalide n'est pas persisté) et surtout à la **lecture** (`findAll`/`findBySlug` : une row stockée qui ne valide plus, typiquement après une évolution de schéma, disparaît silencieusement). Ce dernier cas est quasi invisible.
+La validation écarte de la donnée à deux endroits, sans le signaler : à l'**écriture** (au publish, hook : un input invalide n'est pas persisté) et surtout à la **lecture** (`findAll`/`findBySlug` : une row stockée qui ne valide plus, typiquement après une évolution de schéma, disparaît silencieusement). Ce dernier cas est quasi invisible.
 
 Décision : un **port d'observabilité** `CanonicalEventSink` dans le domaine (`libs/canonical/src/observability/`). Le domaine et le store **émettent** des `CanonicalEvent` typés (`program_saved`, `program_dropped` avec `phase: 'write' | 'read'`, `sync_failed`) sans savoir où ils partent. `emit` est fire-and-forget et ne jette jamais : l'observabilité ne peut pas casser un save ni une lecture.
 
@@ -81,7 +81,7 @@ Le **routage** est déclaratif : `RoutingCanonicalEventSink` dispatche chaque é
 
 **Coûts / limites**
 - Une base et une couche d'accès supplémentaires, indépendantes de Payload.
-- Redondance partielle entre le hook (au fil de l'eau) et le seed (batch), mais idempotente (upsert).
+- Population du canonical par effet de bord du hook (y compris au seed) plutôt que par une étape explicite : si un import bulk désactivait les hooks, le store ne serait pas alimenté. Acceptable ici car le seed publie via Payload (hooks actifs) ; un script de réconciliation batch reste possible plus tard si besoin.
 
 **Gaps connus (à traiter ailleurs)**
 - Pas de suppression du canonical sur unpublish / archive (l'entrée reste).

@@ -45,7 +45,7 @@ pnpm seed                                  # seed complet : operators + programs
 
 ## Seed
 
-**`pnpm seed`** — seed complet idempotent (upsert) : `GeographicAreasSeed` (18 régions + 101 départements) → `ProgramsSeed` (operators + programs depuis `docs/sources/programs.json`) → `CanonicalSeed` (sync des programmes `publie` vers le store canonical) → `ProjectsSeed` (depuis `docs/sources/projects.json`) → `UsersSeed` (utilisateurs de dev).
+**`pnpm seed`** — seed complet idempotent (upsert) : `GeographicAreasSeed` (18 régions + 101 départements) → `ProgramsSeed` (operators + programs depuis `docs/sources/programs.json`) → `ProjectsSeed` (depuis `docs/sources/projects.json`) → `UsersSeed` (utilisateurs de dev). Le store canonical est alimenté automatiquement par le hook `syncCanonicalOnPublish` quand `ProgramsSeed` écrit les dispositifs publiés (même chemin qu'en prod) : pas d'étape de seed canonical dédiée.
 
 ### Utilisateurs de dev (`pnpm seed`)
 
@@ -58,8 +58,7 @@ pnpm seed                                  # seed complet : operators + programs
 Les fichiers seed vivent dans `apps/cms/src/scripts/seed/` :
 - `run.ts` — entrypoint `pnpm seed` (initialisation Payload + orchestration).
 - `geographic-areas/` — `GeographicAreasSeed` (régions + départements, fixtures dans `fixtures.ts`).
-- `programs/` — `ProgramsSeed`, `OperatorImporter`, `ProgramMapper`, `ProgramImporter`.
-- `canonical/` : `CanonicalSeed` (sélectionne les programmes `workflowStatus === 'publie'`, mappe et persiste dans le store canonical via `CanonicalProgramService`).
+- `programs/` — `ProgramsSeed`, `OperatorImporter`, `ProgramMapper`, `ProgramImporter`. `ProgramMapper` écrit les dispositifs à URL valide en `_status: 'published'`, ce qui déclenche le hook `syncCanonicalOnPublish` : le store canonical est donc peuplé pendant cette étape, sans seed canonical séparé.
 - `projects/` — `ProjectsSeed`, `ProjectMapper`, `ProjectImporter`, `LinkedProjectsUpdater`.
 - `users/` — `UsersSeed`.
 
@@ -132,7 +131,7 @@ Ne lire un ADR que s'il est pertinent pour la tâche en cours.
 | `docs/adr/0005-programs-workflow-extended.md` | Workflow éditorial des programmes — 9 états, 3 rôles, `WorkflowTransitionPolicy`, `WorkflowAutomation`, `replacedBy` |
 | `docs/adr/0006-programs-form-refactor.md` | Refonte du formulaire `Programs` — sections collapsibles, conditionnels par `aidType`, suppression du double modèle d'éligibilité, collection `GeographicAreas`, composants admin custom |
 | `docs/adr/0007-canonical-pivot-format.md` | Format pivot interne (`libs/canonical`) — Canonical Data Model, zod source de vérité, clés `snake_case`, primitifs brandés, éligibilité refacto (`texte`/`structure` par critère), `CanonicalProgram` + `CanonicalProgramValidator`. Référence champs : `docs/context/canonical-pivot-format.md` |
-| `docs/adr/0008-canonical-persistence-ddd.md` | Persistance du canonical + architecture DDD/DI : canonical = source de vérité durable (anti-lock-in), store libSQL/Drizzle indépendant de Payload (`libs/canonical-store`), port `CanonicalProgramRepository` + service domaine `CanonicalProgramService`, composition root et injection dans `apps/cms`, sync au publish + seed, observabilité des drops (port `CanonicalEventSink` + canaux pluggables logger/Sentry/email/Slack, routage), migration Postgres future |
+| `docs/adr/0008-canonical-persistence-ddd.md` | Persistance du canonical + architecture DDD/DI : canonical = source de vérité durable (anti-lock-in), store libSQL/Drizzle indépendant de Payload (`libs/canonical-store`), port `CanonicalProgramRepository` + service domaine `CanonicalProgramService`, composition root et injection dans `apps/cms`, sync au publish (hook unique, seed inclus), observabilité des drops (port `CanonicalEventSink` + canaux pluggables logger/Sentry/email/Slack, routage), migration Postgres future |
 
 ## Commits
 
