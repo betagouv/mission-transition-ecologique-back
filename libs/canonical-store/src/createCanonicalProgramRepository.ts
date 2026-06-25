@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
-import type { CanonicalProgramRepository } from '@tee-backoffice/canonical'
+import type { CanonicalProgramRepository, CanonicalEventSink } from '@tee-backoffice/canonical'
 import { DrizzleCanonicalProgramRepository } from './DrizzleCanonicalProgramRepository'
 
 // The store owns its own database location, so consumers (the CMS) never need to
@@ -33,9 +33,12 @@ function defaultDatabaseUrl(): string {
  * Builds a ready-to-use canonical repository, resolving its database location
  * from `CANONICAL_DATABASE_URI` (default: the committed store database). This is
  * the entry point for application wiring; tests open an explicit `:memory:`
- * store via `DrizzleCanonicalProgramRepository.create`.
+ * store via `DrizzleCanonicalProgramRepository.create`. The optional event sink
+ * (injected by the composition root) surfaces rows dropped on read.
  */
-export function createCanonicalProgramRepository(): Promise<CanonicalProgramRepository> {
+export function createCanonicalProgramRepository(
+  events?: CanonicalEventSink,
+): Promise<CanonicalProgramRepository> {
   const url = process.env['CANONICAL_DATABASE_URI'] || defaultDatabaseUrl()
-  return DrizzleCanonicalProgramRepository.create(url)
+  return DrizzleCanonicalProgramRepository.create(url, events)
 }

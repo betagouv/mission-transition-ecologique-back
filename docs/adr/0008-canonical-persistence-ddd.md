@@ -52,10 +52,22 @@ Les **ports** vivent dans le domaine, les **implémentations concrètes** sont i
 
 ### 5. Synchronisation au publish + seed
 
-- Hook `syncCanonicalOnPublish` (afterChange sur `Programs`) : un dispositif publié (`_status === 'published'`) est mappé, validé, persisté. Les échecs sont **loggés et ne bloquent jamais** l'écriture CMS.
+- Hook `syncCanonicalOnPublish` (afterChange sur `Programs`) : un dispositif publié (`_status === 'published'`) est mappé, validé, persisté. Les issues sont **émises comme événements** (`program_dropped`, `sync_failed`) via le sink (voir §6) et **ne bloquent jamais** l'écriture CMS.
 - Étape `CanonicalSeed` (batch, sélection `workflowStatus === 'publie'`) réutilise **le même** `CanonicalProgramService`. Hook et seed alimentent donc le store par la même logique.
 
-### 6. Périmètre actuel : aller simple, lossy, publiés
+### 6. Observabilité des drops via un port à canaux pluggables
+
+La validation écarte de la donnée à deux endroits, sans le signaler : à l'**écriture** (publish/seed : un input invalide n'est pas persisté) et surtout à la **lecture** (`findAll`/`findBySlug` : une row stockée qui ne valide plus, typiquement après une évolution de schéma, disparaît silencieusement). Ce dernier cas est quasi invisible.
+
+Décision : un **port d'observabilité** `CanonicalEventSink` dans le domaine (`libs/canonical/src/observability/`). Le domaine et le store **émettent** des `CanonicalEvent` typés (`program_saved`, `program_dropped` avec `phase: 'write' | 'read'`, `sync_failed`) sans savoir où ils partent. `emit` est fire-and-forget et ne jette jamais : l'observabilité ne peut pas casser un save ni une lecture.
+
+Les **canaux** sont des adaptateurs implémentant le port, injectés au composition root (`apps/cms`) :
+- `PayloadLoggerEventSink` (logs, toujours actif aujourd'hui).
+- Points d'extension documentés (Sentry, email, Slack) : ajouter un canal = une classe + une route, sans toucher au domaine ni au store.
+
+Le **routage** est déclaratif : `RoutingCanonicalEventSink` dispatche chaque événement vers tous les canaux dont le filtre matche (un événement peut donc atteindre plusieurs canaux), et `CompositeEventSink` groupe plusieurs canaux derrière une seule route (ex. envoyer toute erreur par email **et** Slack). La config vit dans `canonicalEventSink.ts` (composition root).
+
+### 7. Périmètre actuel : aller simple, lossy, publiés
 
 - **Aller simple** `CMS → canonical` (le retour `canonical → CMS` et les flux entrants viendront plus tard).
 - **Lossy assumé** : on perd le propre au CMS (`workflowHistory`, contributeurs assignés…), on garde la donnée métier du dispositif.
@@ -73,7 +85,7 @@ Les **ports** vivent dans le domaine, les **implémentations concrètes** sont i
 
 **Gaps connus (à traiter ailleurs)**
 - Pas de suppression du canonical sur unpublish / archive (l'entrée reste).
-- Gate de validation **bloquante** au publish pas encore en place : aujourd'hui le hook loggue et n'écrit pas l'invalide.
+- Gate de validation **bloquante** au publish pas encore en place : aujourd'hui le hook émet un événement et n'écrit pas l'invalide (les drops écriture/lecture sont désormais observables, cf. §6).
 - Fiabilisation du **mapping durée** dans le seed (`ProgramMapper`) : certains dispositifs `etude` / `formation` n'ont pas de `duree` en source et sont donc rejetés par la règle `refineDuree` (volontairement conservée). Fix prévu dans une autre PR.
 - Migration **Postgres** (Payload + store) à venir.
 

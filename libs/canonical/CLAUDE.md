@@ -16,8 +16,9 @@ C'est un choix de conception assumé (source de vérité métier en français) �
 
 Contenu :
 - **Modèle pivot** : schémas zod (source de vérité), types inférés, value object `CanonicalProgram`, `CanonicalProgramValidator`.
-- **Port de persistance** : `CanonicalProgramRepository` (interface `save` / `findBySlug`). Le domaine définit le **contrat** ; il ignore la techno de stockage.
-- **Service de domaine** : `CanonicalProgramService` (`save(input)` : valide puis upsert via le port). Porte la règle métier « seul un canonical valide est persisté ». Source-agnostique (réutilisable par le CMS aujourd'hui, des flux externes demain). Le `CanonicalProgramValidator` est instancié **en interne** ; seul le repository est **injecté**.
+- **Port de persistance** : `CanonicalProgramRepository` (interface `save` / `findBySlug` / `findAll`). Le domaine définit le **contrat** ; il ignore la techno de stockage.
+- **Port d'observabilité** (`src/observability/`) : `CanonicalEventSink` (`emit(event)`, fire-and-forget, ne jette jamais). Le domaine émet des `CanonicalEvent` typés (`program_saved`, `program_dropped` avec `phase: 'write' | 'read'`, `sync_failed`) ; il ignore où ils partent. Briques pures fournies : `NullEventSink` (défaut), `RoutingCanonicalEventSink` (routage par filtre, un événement peut atteindre plusieurs canaux), `CompositeEventSink` (fan-out d'un événement vers un groupe de canaux). Les **canaux concrets** (logger, Sentry, email, Slack) sont des adaptateurs injectés depuis `apps/cms`.
+- **Service de domaine** : `CanonicalProgramService` (`save(input)` : valide puis upsert via le port). Porte la règle métier « seul un canonical valide est persisté », et **émet** `program_dropped`/`program_saved` pour rendre les drops visibles. Source-agnostique (réutilisable par le CMS aujourd'hui, des flux externes demain). Le `CanonicalProgramValidator` est instancié **en interne** ; le repository et le sink sont **injectés** (sink optionnel, défaut `NullEventSink`).
 
 ### Règle de dépendance (hexagonal)
 ```

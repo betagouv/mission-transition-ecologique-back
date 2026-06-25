@@ -1,6 +1,13 @@
-import { describe, it, expect } from 'vitest'
+import { afterEach, describe, it, expect } from 'vitest'
+import { rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { eq } from 'drizzle-orm'
 import { CanonicalProgramValidator } from '@tee-backoffice/canonical'
+import type { CanonicalEvent, CanonicalEventSink } from '@tee-backoffice/canonical'
 import { DrizzleCanonicalProgramRepository } from '../src/DrizzleCanonicalProgramRepository'
+import { createCanonicalDb } from '../src/db'
+import { canonicalPrograms } from '../src/schema'
 
 const validInput = {
   id: 'a1b2c3d4e5f6g7h8i9j0klmn',
@@ -44,5 +51,36 @@ describe('DrizzleCanonicalProgramRepository', () => {
     await repo.save(program)
     const all = await repo.findAll()
     expect(all.map((p) => p.slug)).toEqual(['diagnostic-energie-pme'])
+  })
+
+  describe('format drift on read', () => {
+    let dbPath: string | undefined
+
+    afterEach(() => {
+      if (dbPath) rmSync(dbPath, { force: true })
+      dbPath = undefined
+    })
+
+    it('drops a row that no longer validates and reports it as a read event', async () => {
+      dbPath = join(tmpdir(), `canonical-drift-${process.pid.toString()}.db`)
+      const url = `file:${dbPath}`
+      const events: CanonicalEvent[] = []
+      const sink: CanonicalEventSink = { emit: (event) => events.push(event) }
+
+      const repo = await DrizzleCanonicalProgramRepository.create(url, sink)
+      await repo.save(program)
+
+      // Simulate a schema drift: corrupt the stored JSON through a second
+      // connection to the same file so the row no longer validates on read.
+      const db = await createCanonicalDb(url)
+      await db
+        .update(canonicalPrograms)
+        .set({ data: JSON.stringify({ slug: 'diagnostic-energie-pme' }) })
+        .where(eq(canonicalPrograms.slug, 'diagnostic-energie-pme'))
+
+      expect(await repo.findAll()).toEqual([])
+      expect(await repo.findBySlug('diagnostic-energie-pme')).toBeNull()
+      expect(events.filter((e) => e.type === 'program_dropped' && e.phase === 'read')).toHaveLength(2)
+    })
   })
 })

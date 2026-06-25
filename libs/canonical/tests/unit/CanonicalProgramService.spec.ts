@@ -3,6 +3,8 @@ import { CanonicalProgramService } from '../../src/canonical-program/CanonicalPr
 import type { CanonicalProgram } from '../../src/canonical-program/CanonicalProgram'
 import type { CanonicalProgramInput } from '../../src/canonical-program/canonical-program.types'
 import type { CanonicalProgramRepository } from '../../src/canonical-program/CanonicalProgramRepository'
+import type { CanonicalEvent } from '../../src/observability/CanonicalEvent'
+import type { CanonicalEventSink } from '../../src/observability/CanonicalEventSink'
 
 class InMemoryRepository implements CanonicalProgramRepository {
   readonly saved = new Map<string, CanonicalProgram>()
@@ -14,6 +16,13 @@ class InMemoryRepository implements CanonicalProgramRepository {
   }
   async findAll(): Promise<CanonicalProgram[]> {
     return [...this.saved.values()]
+  }
+}
+
+class RecordingSink implements CanonicalEventSink {
+  readonly events: CanonicalEvent[] = []
+  emit(event: CanonicalEvent): void {
+    this.events.push(event)
   }
 }
 
@@ -54,5 +63,24 @@ describe('CanonicalProgramService', () => {
 
     const slugs = (await service.getAll()).map((program) => program.slug).sort()
     expect(slugs).toEqual(['autre-dispositif', 'diagnostic-energie-pme'])
+  })
+
+  it('emits a saved event when an input is persisted', async () => {
+    const events = new RecordingSink()
+    await new CanonicalProgramService(new InMemoryRepository(), events).save(validInput)
+
+    expect(events.events).toEqual([
+      { type: 'program_saved', severity: 'info', slug: 'diagnostic-energie-pme', canonicalId: 'a1b2c3d4e5f6g7h8i9j0klmn' },
+    ])
+  })
+
+  it('emits a write drop event when validation fails', async () => {
+    const events = new RecordingSink()
+    await new CanonicalProgramService(new InMemoryRepository(), events).save({ ...validInput, id: 'not-a-cuid' })
+
+    expect(events.events).toHaveLength(1)
+    const [event] = events.events
+    expect(event.type).toBe('program_dropped')
+    expect(event).toMatchObject({ severity: 'warning', phase: 'write', slug: 'diagnostic-energie-pme' })
   })
 })

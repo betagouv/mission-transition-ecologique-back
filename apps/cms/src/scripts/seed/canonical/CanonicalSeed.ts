@@ -16,7 +16,7 @@ export class CanonicalSeed {
   async run(): Promise<void> {
     const markdown = await PayloadRichTextToMarkdown.create(this.payload.config)
     const mapper = new ProgramCanonicalMapper(markdown)
-    const service = await getCanonicalProgramService()
+    const service = await getCanonicalProgramService(this.payload.logger)
 
     const { docs } = await this.payload.find({
       collection: 'programs',

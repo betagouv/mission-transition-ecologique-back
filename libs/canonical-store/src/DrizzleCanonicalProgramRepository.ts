@@ -1,6 +1,10 @@
 import { eq } from 'drizzle-orm'
-import { CanonicalProgramValidator } from '@tee-backoffice/canonical'
-import type { CanonicalProgram, CanonicalProgramRepository } from '@tee-backoffice/canonical'
+import { CanonicalProgramValidator, NullEventSink } from '@tee-backoffice/canonical'
+import type {
+  CanonicalProgram,
+  CanonicalProgramRepository,
+  CanonicalEventSink,
+} from '@tee-backoffice/canonical'
 import { createCanonicalDb, type CanonicalDb } from './db'
 import { canonicalPrograms } from './schema'
 
@@ -8,17 +12,25 @@ import { canonicalPrograms } from './schema'
  * libSQL-backed canonical store. Implements the domain repository port without
  * any CMS dependency: the canonical is persisted as its own JSON, keyed by
  * canonical id, and rebuilt through the validator on read.
+ *
+ * Rows that no longer validate on read (e.g. after a schema change) are dropped
+ * and reported through the event sink, so a format drift never silently hides
+ * previously valid programs.
  */
 export class DrizzleCanonicalProgramRepository implements CanonicalProgramRepository {
   private constructor(
     private readonly db: CanonicalDb,
     private readonly validator: CanonicalProgramValidator,
+    private readonly events: CanonicalEventSink,
   ) {}
 
   /** Opens (and bootstraps) the canonical store at the given libSQL url. */
-  static async create(url: string): Promise<DrizzleCanonicalProgramRepository> {
+  static async create(
+    url: string,
+    events: CanonicalEventSink = new NullEventSink(),
+  ): Promise<DrizzleCanonicalProgramRepository> {
     const db = await createCanonicalDb(url)
-    return new DrizzleCanonicalProgramRepository(db, new CanonicalProgramValidator())
+    return new DrizzleCanonicalProgramRepository(db, new CanonicalProgramValidator(), events)
   }
 
   async save(program: CanonicalProgram): Promise<void> {
@@ -48,8 +60,7 @@ export class DrizzleCanonicalProgramRepository implements CanonicalProgramReposi
     const row = rows[0]
     if (!row) return null
 
-    const result = this.validator.validate(JSON.parse(row.data))
-    return result.success ? result.program : null
+    return this.rebuild(row)
   }
 
   async findAll(): Promise<CanonicalProgram[]> {
@@ -57,9 +68,25 @@ export class DrizzleCanonicalProgramRepository implements CanonicalProgramReposi
 
     const programs: CanonicalProgram[] = []
     for (const row of rows) {
-      const result = this.validator.validate(JSON.parse(row.data))
-      if (result.success) programs.push(result.program)
+      const program = this.rebuild(row)
+      if (program) programs.push(program)
     }
     return programs
+  }
+
+  /** Validates a stored row, reporting (and dropping) it when it no longer fits. */
+  private rebuild(row: { slug: string; canonicalId: string; data: string }): CanonicalProgram | null {
+    const result = this.validator.validate(JSON.parse(row.data))
+    if (result.success) return result.program
+
+    this.events.emit({
+      type: 'program_dropped',
+      severity: 'warning',
+      phase: 'read',
+      slug: row.slug,
+      canonicalId: row.canonicalId,
+      errors: result.errors,
+    })
+    return null
   }
 }
