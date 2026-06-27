@@ -32,7 +32,7 @@ describe('canonicalProgramSchema', () => {
     expect(canonicalProgramSchema.safeParse(input).success).toBe(false)
   })
 
-  describe('cross-field: duree required for etude/formation', () => {
+  describe('cross-field: duree required for formation', () => {
     it('rejects formation without duree', () => {
       const input = cloneMinimal()
       input['types_aides'] = ['formation']
@@ -43,6 +43,12 @@ describe('canonicalProgramSchema', () => {
       const input = cloneMinimal()
       input['types_aides'] = ['formation']
       input['duree'] = { type: 'durée de l’accompagnement', valeur: '5 jours' }
+      expect(canonicalProgramSchema.safeParse(input).success).toBe(true)
+    })
+
+    it('does not require duree for etude (financed studies have none)', () => {
+      const input = cloneMinimal()
+      input['types_aides'] = ['etude']
       expect(canonicalProgramSchema.safeParse(input).success).toBe(true)
     })
 
