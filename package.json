@@ -15,6 +15,7 @@
     "generate:importmap": "nx run @tee-backoffice/cms:generate:importmap",
     "generate:types": "nx run @tee-backoffice/cms:generate:types",
     "seed": "nx run @tee-backoffice/cms:seed",
+    "export:tee": "nx run @tee-backoffice/format-adapters:export:tee",
     "test": "nx run @tee-backoffice/cms:test",
     "test:unit": "nx run @tee-backoffice/cms:test:unit"
   },

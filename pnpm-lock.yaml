@@ -161,6 +161,8 @@ importers:
 
   libs/canonical-store: {}
 
+  libs/format-adapters: {}
+
 packages:
 
   '@apidevtools/json-schema-ref-parser@11.9.3':
