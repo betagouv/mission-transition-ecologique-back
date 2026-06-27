@@ -59,6 +59,8 @@ apps/cms/media/
 test.db
 # test/dev databases (integration + e2e)
 tee-*.db
+canonical-test.db
+# Note: libs/canonical-store/canonical.db is committed (serves review/prod, like tee-poc.db)
 
 # Playwright
 apps/cms/playwright-report/

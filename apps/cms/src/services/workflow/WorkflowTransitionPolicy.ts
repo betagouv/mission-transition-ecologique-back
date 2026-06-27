@@ -1,16 +1,20 @@
 import type { UserRoleValue } from '@/utils/user/UserRole'
 import { UserRole } from '@/utils/user/UserRole'
 
-export type WorkflowStatus =
-  | 'en-creation'
-  | 'en-relecture'
-  | 'en-cours-publication'
-  | 'publie'
-  | 'en-cours-modification'
-  | 'importe'
-  | 'annule'
-  | 'archive'
-  | 'remplace'
+/** Workflow status values as named constants — the single source of truth. */
+export const WORKFLOW_STATUS = {
+  enCreation: 'en-creation',
+  enRelecture: 'en-relecture',
+  enCoursPublication: 'en-cours-publication',
+  publie: 'publie',
+  enCoursModification: 'en-cours-modification',
+  importe: 'importe',
+  annule: 'annule',
+  archive: 'archive',
+  remplace: 'remplace',
+} as const
+
+export type WorkflowStatus = (typeof WORKFLOW_STATUS)[keyof typeof WORKFLOW_STATUS]
 
 export type { UserRoleValue as UserRole }
 
