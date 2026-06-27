@@ -1,15 +1,15 @@
-// Boucle de validation TEE : programs.json → pivot → programs.json.
+// TEE validation loop: programs.json → pivot → programs.json.
 //
-// Pour chaque dispositif : on charge la fiche source, on retire les clés non
-// portées par le pivot (`publicodes`, `activable en autonomie`, `illustration`),
-// on l'importe dans le format canonique puis on la réexporte, et on vérifie que
-// la sortie (1) respecte le schéma TEE et (2) est **identique à l'entrée** (au
-// trim près — le pivot nettoie les espaces parasites).
+// For each program: load the source record, drop the keys the pivot does not
+// carry (`publicodes`, `activable en autonomie`, `illustration`), import it into
+// the canonical format then re-export it, and check the output (1) matches the
+// TEE schema and (2) is identical to the input (modulo trim — the pivot
+// normalizes stray whitespace).
 //
-// ⚠️ ÉPHÉMÈRE : ce dossier dépend de la copie locale `static/input/programs.json`,
-// vouée à disparaître. Quand cette entrée est supprimée, supprimer tout ce dossier
-// (`__roundtrip__/`) — aucun autre test n'en dépend. La couverture pérenne de
-// l'import/export vit dans TeeImporter.spec.ts / TeeExporter.spec.ts.
+// ⚠️ EPHEMERAL: this folder depends on the local copy `static/input/programs.json`
+// and is meant to disappear. When that input is removed, delete this whole folder
+// (`__roundtrip__/`) — nothing else depends on it. The durable import/export
+// coverage lives in TeeImporter.spec.ts / TeeExporter.spec.ts.
 import { CanonicalProgramValidator } from '@tee-backoffice/canonical'
 import programs from '../../../static/input/programs.json'
 import { TeeImporter } from '../TeeImporter'

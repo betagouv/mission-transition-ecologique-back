@@ -1,17 +1,22 @@
 import type {
   CanonicalProgram,
   CanonicalProgramData,
+  CanonicalProgramInput,
   ContactQuestion,
   Eligibilite,
   EtapeActivation,
   Lien,
   Variante,
 } from '@tee-backoffice/canonical'
+import { CanonicalProgramValidator } from '@tee-backoffice/canonical'
+import { ConsoleExportLogger } from '../shared/ConsoleExportLogger'
+import type { ExportLogger } from '../shared/ExportLogger'
 import { ExportPolicy } from '../shared/ExportPolicy'
 import { NafSectionResolver } from '../shared/NafSectionResolver'
 import { RegionNameResolver } from '../shared/RegionNameResolver'
 import { ThemeMapper } from '../shared/ThemeMapper'
 import { TypeAideMapper } from '../shared/TypeAideMapper'
+import { TeeImporter } from './TeeImporter'
 import type {
   TeeChampConditionnel,
   TeeConditionsEligibilite,
@@ -21,13 +26,48 @@ import type {
   TeeProgram,
 } from './tee-program.types'
 
+/** Importer used by the exporter's round-trip self-check. */
+export interface TeeRecordImporter {
+  import(record: TeeProgram): CanonicalProgramInput
+}
+
+export interface TeeExporterOptions {
+  /** Where round-trip diagnostics go. Default: stderr (`ConsoleExportLogger`). */
+  logger?: ExportLogger
+  /** Re-import every export and report fields that don't round-trip. Default: true. */
+  selfCheck?: boolean
+  importer?: TeeRecordImporter
+  validator?: CanonicalProgramValidator
+}
+
 /**
  * Projects a pivot program to the iso `programs.json` shape (no `publicodes`,
- * no `activable en autonomie`). Pure transformation, no external reads.
- * `montant`/`duree` fall back to their historical key via the self-describing
- * label (`montant.type` / `duree.type`).
+ * no `activable en autonomie`). The projection itself is a pure transformation
+ * with no external reads; `montant`/`duree` fall back to their historical key
+ * via the self-describing label (`montant.type` / `duree.type`).
+ *
+ * By default the exporter self-checks each export: it re-imports the output and
+ * re-exports it, then reports any field that does not survive the round-trip.
+ * This is the package's signal that an export format is not content-perfect —
+ * one import feeds many export formats, each verified the same way.
  */
 export class TeeExporter {
+  // Keys absent from the pivot that intentionally never round-trip, so the
+  // self-check does not count them as discrepancies.
+  private static readonly NON_ROUND_TRIP_KEYS = ['publicodes', 'activable en autonomie', 'illustration']
+
+  private readonly logger: ExportLogger
+  private readonly selfCheck: boolean
+  private readonly importer: TeeRecordImporter
+  private readonly validator: CanonicalProgramValidator
+
+  constructor(options: TeeExporterOptions = {}) {
+    this.logger = options.logger ?? new ConsoleExportLogger()
+    this.selfCheck = options.selfCheck ?? true
+    this.importer = options.importer ?? new TeeImporter()
+    this.validator = options.validator ?? new CanonicalProgramValidator()
+  }
+
   /**
    * CMS pivot montant/durée labels → historical programs.json keys. A label
    * already in historical form (e.g. direct import) passes through unchanged.
@@ -52,6 +92,12 @@ export class TeeExporter {
   }
 
   export(program: CanonicalProgram): TeeProgram {
+    const out = this.build(program)
+    if (this.selfCheck) this.reportRoundTrip(out)
+    return out
+  }
+
+  private build(program: CanonicalProgram): TeeProgram {
     const d = program.data
 
     const out: TeeProgram = {
@@ -199,8 +245,11 @@ export class TeeExporter {
       if (effectif?.min !== undefined) toutes.push(`effectif >= ${effectif.min}`)
       if (effectif?.max !== undefined) toutes.push(`effectif <= ${effectif.max}`)
       if (toutes.length) champ['toutes ces conditions'] = toutes
-      if (regions?.length) {
-        champ['une de ces conditions'] = RegionNameResolver.namesOf(regions).map((name) => `région = ${name}`)
+      // Resolve first: `namesOf` skips non-REG/OM COG levels, so guard on the
+      // resolved names to avoid emitting an empty `une de ces conditions: []`.
+      const regionNames = regions?.length ? RegionNameResolver.namesOf(regions) : []
+      if (regionNames.length) {
+        champ['une de ces conditions'] = regionNames.map((name) => `région = ${name}`)
       }
 
       const mods = variante.modifications
@@ -223,5 +272,47 @@ export class TeeExporter {
     const [year, month, day] = iso.slice(0, 10).split('-')
     if (!year || !month || !day) return undefined
     return `${day}/${month}/${year}`
+  }
+
+  /**
+   * Round-trip self-check: re-import the export and re-export it, then report
+   * fields that don't survive. A re-import that fails validation is reported as
+   * an import failure (the export can't be verified at all).
+   */
+  private reportRoundTrip(exported: TeeProgram): void {
+    const result = this.validator.validate(this.importer.import(exported))
+    if (!result.success) {
+      this.logger.warn(`[tee][${String(exported.id)}] export not re-importable — round-trip cannot be verified`)
+      return
+    }
+    const fields = this.divergentFields(exported, this.build(result.program))
+    if (fields.length > 0) {
+      this.logger.warn(`[tee][${String(exported.id)}] non-reversible fields: ${fields.join(', ')}`)
+    }
+  }
+
+  /** Top-level keys whose content differs between the two exports (excluded keys aside). */
+  private divergentFields(exported: TeeProgram, reexported: TeeProgram): string[] {
+    const keys = [...new Set([...Object.keys(exported), ...Object.keys(reexported)])].filter(
+      (key) => !TeeExporter.NON_ROUND_TRIP_KEYS.includes(key),
+    )
+    return keys.filter((key) => this.normalize(exported[key]) !== this.normalize(reexported[key]))
+  }
+
+  /** Trim-tolerant, key-order-insensitive serialization for content comparison. */
+  private normalize(value: unknown): string {
+    const norm = (inner: unknown): unknown => {
+      if (typeof inner === 'string') return inner.trim()
+      if (Array.isArray(inner)) return inner.map(norm)
+      if (inner && typeof inner === 'object') {
+        return Object.fromEntries(
+          Object.entries(inner as Record<string, unknown>)
+            .sort(([a], [b]) => (a < b ? -1 : 1))
+            .map(([key, item]) => [key, norm(item)]),
+        )
+      }
+      return inner
+    }
+    return JSON.stringify(norm(value))
   }
 }

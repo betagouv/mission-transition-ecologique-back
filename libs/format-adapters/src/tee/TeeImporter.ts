@@ -25,20 +25,20 @@ interface SourceCompany {
 }
 
 /**
- * ⚠️ ONE-SHOT IMPORT (Baserow → Payload) — code éphémère. Sert uniquement à
- * l'import unique de la donnée TEE historique vers le pivot. Une fois la
- * migration faite, le seul sens qui subsiste est l'export (pivot → TEE). À
- * SUPPRIMER après migration avec tout le chemin d'import (voir la checklist de
- * nettoyage dans README.md).
+ * ⚠️ ONE-SHOT IMPORT (Baserow → Payload) — ephemeral code. Used only for the
+ * single import of the historical TEE data into the pivot. Once the migration is
+ * done, the only remaining direction is export (pivot → TEE). DELETE after
+ * migration together with the whole import path (see the cleanup checklist in
+ * README.md).
  *
- * Reconstruit un `CanonicalProgramInput` brut depuis une fiche **iso
- * `programs.json`** (sans `publicodes` ni `activable en autonomie`). Inverse de
- * {@link TeeExporter}. Transformation pure ; aucune validation (c'est le rôle de
+ * Rebuilds a raw `CanonicalProgramInput` from an iso `programs.json` record
+ * (without `publicodes` or `activable en autonomie`). Inverse of
+ * {@link TeeExporter}. Pure transformation; no validation (that is the role of
  * `CanonicalProgramValidator`).
  *
- * Les champs propres au pivot mais absents de programs.json (`id` cuid2,
- * `source`, `date_mise_a_jour`) sont remplis par des valeurs de remplacement :
- * ils ne ressortent pas à l'export, donc n'affectent pas l'aller-retour.
+ * Pivot-only fields absent from programs.json (`id` cuid2, `source`,
+ * `date_mise_a_jour`) are filled with placeholders: they are never re-emitted on
+ * export, so they don't affect the round-trip.
  */
 export class TeeImporter {
   // A real cuid2 (round-trip-safe placeholder): `id` is never re-emitted by the
@@ -237,7 +237,7 @@ export class TeeImporter {
     return { type: 'url', valeur: value }
   }
 
-  /** Une seule paire montant/durée : clés dynamiques portant le libellé (« durée … » → durée). */
+  /** A single montant/duree pair: the dynamic key carries the label (a "durée …" key → duree). */
   private montantDuree(record: TeeRecord): {
     montant?: CanonicalProgramInput['montant']
     duree?: CanonicalProgramInput['duree']
@@ -340,7 +340,7 @@ export class TeeImporter {
     return themes.length > 0 ? themes : undefined
   }
 
-  /** `JJ/MM/AAAA` → `AAAA-MM-JJ`. */
+  /** `DD/MM/YYYY` → `YYYY-MM-DD`. */
   private isoDate(value: unknown): string | undefined {
     const text = this.str(value)
     if (!text) return undefined

@@ -1,8 +1,21 @@
+import type { CanonicalProgramInput } from '@tee-backoffice/canonical'
 import { TeeExporter } from './TeeExporter'
+import type { TeeRecordImporter } from './TeeExporter'
+import { TeeImporter } from './TeeImporter'
+import type { ExportLogger } from '../shared/ExportLogger'
 import { draftProgram, fullProgram, minimalProgram } from '../__fixtures__/canonical-programs'
 
+class CapturingLogger implements ExportLogger {
+  readonly messages: string[] = []
+  warn(message: string): void {
+    this.messages.push(message)
+  }
+}
+
 describe('TeeExporter', () => {
-  const exporter = new TeeExporter()
+  // Build-output tests target the pure projection; the round-trip self-check is
+  // exercised separately below.
+  const exporter = new TeeExporter({ selfCheck: false })
 
   describe('programme complet', () => {
     const out = exporter.export(fullProgram)
@@ -86,6 +99,34 @@ describe('TeeExporter', () => {
     it("n'exporte que les programmes publiés", () => {
       const out = exporter.exportMany([fullProgram, draftProgram, minimalProgram])
       expect(out.map((p) => p.id)).toEqual(['diagnostic-energie-pme', 'aide-decarbonation-industrie'])
+    })
+  })
+
+  describe('vérification d’aller-retour (self-check)', () => {
+    const baseImporter = new TeeImporter()
+
+    it("ne signale rien quand l'export est réversible", () => {
+      const logger = new CapturingLogger()
+      new TeeExporter({ logger }).export(minimalProgram)
+      expect(logger.messages).toEqual([])
+    })
+
+    it('signale les champs non réversibles', () => {
+      const logger = new CapturingLogger()
+      const importer: TeeRecordImporter = {
+        import: (record) => ({ ...baseImporter.import(record), titre: 'titre modifié' }),
+      }
+      new TeeExporter({ logger, importer }).export(minimalProgram)
+      expect(logger.messages).toHaveLength(1)
+      expect(logger.messages[0]).toContain('titre')
+    })
+
+    it('signale un export non réimportable', () => {
+      const logger = new CapturingLogger()
+      const importer: TeeRecordImporter = { import: () => ({}) as unknown as CanonicalProgramInput }
+      new TeeExporter({ logger, importer }).export(minimalProgram)
+      expect(logger.messages).toHaveLength(1)
+      expect(logger.messages[0]).toContain('re-importable')
     })
   })
 })
