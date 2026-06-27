@@ -4,8 +4,7 @@
 // portées par le pivot (`publicodes`, `activable en autonomie`, `illustration`),
 // on l'importe dans le format canonique puis on la réexporte, et on vérifie que
 // la sortie (1) respecte le schéma TEE et (2) est **identique à l'entrée** (au
-// trim près — le pivot nettoie les espaces parasites). Les écarts irréductibles
-// sont listés dans `known-gaps.ts`.
+// trim près — le pivot nettoie les espaces parasites).
 //
 // ⚠️ ÉPHÉMÈRE : ce dossier dépend de la copie locale `static/input/programs.json`,
 // vouée à disparaître. Quand cette entrée est supprimée, supprimer tout ce dossier
@@ -16,7 +15,6 @@ import programs from '../../../static/input/programs.json'
 import { TeeImporter } from '../TeeImporter'
 import { TeeExporter } from '../TeeExporter'
 import { teeProgramSchema } from '../tee-program.schema'
-import { KNOWN_GAPS } from './known-gaps'
 
 /** Clés de programs.json absentes du pivot (donc hors comparaison). */
 const EXCLUDED_KEYS = ['publicodes', 'activable en autonomie', 'illustration']
@@ -45,33 +43,14 @@ const roundTrip = (source: Record<string, unknown>): Record<string, unknown> | n
 }
 
 const allPrograms = programs as Record<string, unknown>[]
-const testable = allPrograms.filter((program) => !KNOWN_GAPS.has(String(program['id'])))
-const gaps = allPrograms.filter((program) => KNOWN_GAPS.has(String(program['id'])))
 
 describe('TEE round-trip (programs.json)', () => {
-  it('chaque known-gap existe bien dans programs.json', () => {
-    expect(gaps.length).toBe(KNOWN_GAPS.size)
-  })
-
-  it.each(testable.map((program) => [String(program['id']), program] as const))(
+  it.each(allPrograms.map((program) => [String(program['id']), program] as const))(
     '%s : sortie conforme au schéma TEE et identique à l\'entrée (au trim près)',
     (_id, source) => {
       const actual = roundTrip(source)
       expect(teeProgramSchema.safeParse(actual).success).toBe(true)
       expect(deepTrim(actual)).toEqual(deepTrim(omitExcluded(source)))
-    },
-  )
-
-  // Garde-fou : un known-gap doit RÉELLEMENT échouer. Si l'un repasse au vert
-  // (ex. import des variantes implémenté), ce test casse → le retirer de la liste.
-  it.each(gaps.map((program) => [String(program['id']), program] as const))(
-    'known-gap %s ne fait pas d\'aller-retour bit-for-bit',
-    (_id, source) => {
-      const actual = roundTrip(source)
-      const isClean =
-        actual !== null &&
-        JSON.stringify(deepTrim(actual)) === JSON.stringify(deepTrim(omitExcluded(source)))
-      expect(isClean).toBe(false)
     },
   )
 })

@@ -7,6 +7,10 @@ type EligibiliteInput = NonNullable<CanonicalProgramInput['eligibilite']>
 type ContactQuestionInput = NonNullable<CanonicalProgramInput['contact_question']>
 type EtapeInput = NonNullable<CanonicalProgramInput['etapes_activation']>[number]
 type LienInput = NonNullable<EtapeInput['liens']>[number]
+type VarianteInput = NonNullable<CanonicalProgramInput['variantes']>[number]
+type VarianteConditionsInput = VarianteInput['conditions']
+type VarianteModificationsInput = VarianteInput['modifications']
+type VarianteOperateursInput = NonNullable<VarianteModificationsInput['operateurs']>
 
 /** Raw programs.json record (loose: dynamic montant/durée keys, free extras). */
 export type TeeRecord = Record<string, unknown>
@@ -124,7 +128,89 @@ export class TeeImporter {
     const themes = this.themes(record)
     if (themes) input.themes = themes
 
+    const variantes = this.variantes(record)
+    if (variantes) input.variantes = variantes
+
     return input
+  }
+
+  /** `champs conditionnels` → pivot `variantes`. Inverse of `TeeExporter`. */
+  private variantes(record: TeeRecord): VarianteInput[] | undefined {
+    const champs = Array.isArray(record['champs conditionnels'])
+      ? (record['champs conditionnels'] as TeeRecord[])
+      : []
+    const variantes = champs
+      .map((champ): VarianteInput | undefined => {
+        const conditions = this.varianteConditions(champ)
+        const modifications = this.varianteModifications(champ)
+        return conditions && modifications ? { conditions, modifications } : undefined
+      })
+      .filter((variante): variante is VarianteInput => variante !== undefined)
+    return variantes.length > 0 ? variantes : undefined
+  }
+
+  /** `effectif >= n` / `effectif <= n` → AND interval ; `région = Nom` → OR regions. */
+  private varianteConditions(champ: TeeRecord): VarianteConditionsInput | undefined {
+    const lines = [...this.strArray(champ['toutes ces conditions']), ...this.strArray(champ['une de ces conditions'])]
+    let min: number | undefined
+    let max: number | undefined
+    const names: string[] = []
+    for (const line of lines) {
+      const minMatch = /^effectif\s*>=\s*(\d+)$/.exec(line)
+      const maxMatch = /^effectif\s*<=\s*(\d+)$/.exec(line)
+      const regionMatch = /^r[ée]gion\s*=\s*(.+)$/.exec(line)
+      if (minMatch) min = Number(minMatch[1])
+      else if (maxMatch) max = Number(maxMatch[1])
+      else if (regionMatch) names.push(regionMatch[1].trim())
+    }
+    const conditions: VarianteConditionsInput = {}
+    if (min !== undefined || max !== undefined) {
+      conditions.effectif = { ...(min !== undefined ? { min } : {}), ...(max !== undefined ? { max } : {}) }
+    }
+    const regions = RegionNameResolver.codesOf(names)
+    if (regions.length > 0) conditions.regions = regions
+    return conditions.effectif || conditions.regions ? conditions : undefined
+  }
+
+  private varianteModifications(champ: TeeRecord): VarianteModificationsInput | undefined {
+    const modifications: VarianteModificationsInput = {}
+
+    const operateurs = this.varianteOperateurs(champ)
+    if (operateurs) modifications.operateurs = operateurs
+
+    const url = this.str(champ['url'])
+    if (url) modifications.url_source = url
+
+    const montant = this.str(champ['Montant du dispositif'])
+    if (montant) modifications.montant = { type: 'Montant du dispositif', valeur: montant }
+
+    const duree = this.str(champ['Durée du dispositif'])
+    if (duree) modifications.duree = { type: 'Durée du dispositif', valeur: duree }
+
+    const eligibilite = this.varianteEligibilite(champ)
+    if (eligibilite) modifications.eligibilite = eligibilite
+
+    return Object.keys(modifications).length > 0 ? modifications : undefined
+  }
+
+  private varianteOperateurs(champ: TeeRecord): VarianteOperateursInput | undefined {
+    const contactNom = this.str(champ['opérateur de contact'])
+    const autres = this.strArray(champ['autres opérateurs']).map((nom) => ({ nom }))
+    if (!contactNom && autres.length === 0) return undefined
+    return {
+      ...(contactNom ? { contact: { nom: contactNom } } : {}),
+      ...(autres.length > 0 ? { autres } : {}),
+    }
+  }
+
+  /** Variant overrides of eligibility text (taille, autres critères). */
+  private varianteEligibilite(champ: TeeRecord): EligibiliteInput | undefined {
+    const eligibilite: EligibiliteInput = {}
+    const taille = this.str(champ['Eligibilité taille'])
+    if (taille) eligibilite.effectif = { texte: [taille] }
+    const autres = this.strArray(champ["autres critères d'éligibilité"])
+    if (autres.length > 0) eligibilite.autres_criteres = { texte: autres }
+    return Object.keys(eligibilite).length > 0 ? eligibilite : undefined
   }
 
   private operateurs(record: TeeRecord): CanonicalProgramInput['operateurs'] {

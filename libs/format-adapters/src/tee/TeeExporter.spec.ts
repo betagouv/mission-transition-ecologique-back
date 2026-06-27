@@ -57,7 +57,8 @@ describe('TeeExporter', () => {
 
     it('reconstruit champs conditionnels depuis les variantes', () => {
       const champ = out['champs conditionnels']?.[0]
-      expect(champ?.['toutes ces conditions']).toEqual(['effectif >= 0', 'effectif <= 49', 'region = REG-53'])
+      expect(champ?.['toutes ces conditions']).toEqual(['effectif >= 0', 'effectif <= 49'])
+      expect(champ?.['une de ces conditions']).toEqual(['région = Bretagne'])
       expect(champ?.['Montant du dispositif']).toBe('5 400 € HT après subvention de 70 %')
       expect(champ?.["autres critères d'éligibilité"]).toEqual(['CA < 10 M€'])
     })

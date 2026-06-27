@@ -64,10 +64,19 @@ export interface TeeEligibilityData {
   priorityObjectives?: string[]
 }
 
-/** Rebuilt from `variantes` (best-effort, see `docs/features/004-formats-exports.md`). */
+/**
+ * Rebuilt from `variantes` (see `docs/features/004-formats-exports.md`).
+ * Conditions are an AND (`toutes ces conditions`, headcount) or an OR
+ * (`une de ces conditions`, regions). The other keys are per-variant overrides.
+ */
 export interface TeeChampConditionnel {
-  'toutes ces conditions': string[]
+  'toutes ces conditions'?: string[]
+  'une de ces conditions'?: string[]
+  'opérateur de contact'?: string
+  'autres opérateurs'?: string[]
+  url?: string
   'Montant du dispositif'?: string
+  'Durée du dispositif'?: string
   'Eligibilité taille'?: string
   "autres critères d'éligibilité"?: string[]
 }

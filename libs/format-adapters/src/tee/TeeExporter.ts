@@ -185,21 +185,30 @@ export class TeeExporter {
   }
 
   /**
-   * Rebuilds `champs conditionnels` from `variantes` — best-effort: conditions
-   * are rendered as simple expressions (no publicodes engine).
+   * Rebuilds `champs conditionnels` from `variantes`. Conditions render as simple
+   * expressions (no publicodes engine): headcount bounds become an AND
+   * (`toutes ces conditions`), a region list becomes an OR (`une de ces
+   * conditions`) using the historical region names. Inverse of `TeeImporter`.
    */
   private champsConditionnels(variantes: Variante[] | undefined): TeeChampConditionnel[] | undefined {
     if (!variantes?.length) return undefined
     return variantes.map((variante) => {
-      const conditions: string[] = []
-      const effectif = variante.conditions.effectif
-      if (effectif?.min !== undefined) conditions.push(`effectif >= ${effectif.min}`)
-      if (effectif?.max !== undefined) conditions.push(`effectif <= ${effectif.max}`)
-      for (const region of variante.conditions.regions ?? []) conditions.push(`region = ${region}`)
+      const champ: TeeChampConditionnel = {}
+      const { effectif, regions } = variante.conditions
+      const toutes: string[] = []
+      if (effectif?.min !== undefined) toutes.push(`effectif >= ${effectif.min}`)
+      if (effectif?.max !== undefined) toutes.push(`effectif <= ${effectif.max}`)
+      if (toutes.length) champ['toutes ces conditions'] = toutes
+      if (regions?.length) {
+        champ['une de ces conditions'] = RegionNameResolver.namesOf(regions).map((name) => `région = ${name}`)
+      }
 
-      const champ: TeeChampConditionnel = { 'toutes ces conditions': conditions }
       const mods = variante.modifications
+      if (mods.operateurs?.contact) champ['opérateur de contact'] = mods.operateurs.contact.nom
+      if (mods.operateurs?.autres?.length) champ['autres opérateurs'] = mods.operateurs.autres.map((o) => o.nom)
+      if (mods.url_source !== undefined) champ.url = mods.url_source
       if (mods.montant) champ['Montant du dispositif'] = mods.montant.valeur
+      if (mods.duree) champ['Durée du dispositif'] = mods.duree.valeur
       const tailleTexte = mods.eligibilite?.effectif?.texte
       if (tailleTexte?.length) champ['Eligibilité taille'] = tailleTexte.join(', ')
       const autres = mods.eligibilite?.autres_criteres?.texte
