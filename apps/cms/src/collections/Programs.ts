@@ -2,6 +2,8 @@ import type { CollectionConfig, FieldAccess } from 'payload'
 import { ProgramAccessPolicy } from '@/services/access/ProgramAccessPolicy'
 import { beforeChangeWorkflow } from '@/hooks/programs/beforeChangeWorkflow'
 import { assignCreatorOnCreate } from '@/hooks/programs/assignCreatorOnCreate'
+import { assignCanonicalId } from '@/hooks/programs/assignCanonicalId'
+import { syncCanonicalOnPublish } from '@/hooks/programs/syncCanonicalOnPublish'
 import { THEMES_OPTIONS } from '@/constants/themesOptions'
 import { COMPANY_SIZE_OPTIONS } from '@/constants/companySizeOptions'
 import { ACTIVITY_SECTOR_OPTIONS } from '@/constants/activitySectorOptions'
@@ -34,7 +36,8 @@ export const Programs: CollectionConfig = {
     },
   },
   hooks: {
-    beforeChange: [assignCreatorOnCreate, beforeChangeWorkflow],
+    beforeChange: [assignCanonicalId, assignCreatorOnCreate, beforeChangeWorkflow],
+    afterChange: [syncCanonicalOnPublish],
   },
   access: {
     read: ProgramAccessPolicy.read,
@@ -460,6 +463,23 @@ export const Programs: CollectionConfig = {
     },
 
     // --- Sidebar ---
+    {
+      // Machine identity carried into the pivot format. Generated automatically
+      // by the assignCanonicalId hook, never edited by hand. Field access denies
+      // create/update for everyone (admins included), so the value is read-only
+      // through the UI and the REST/GraphQL API; only server-side writes with
+      // overrideAccess (seed, hooks) populate it. Hidden from the admin UI but
+      // still returned by the API and present in payload-types for the mapper.
+      name: 'canonicalId',
+      type: 'text',
+      unique: true,
+      index: true,
+      admin: { hidden: true, readOnly: true },
+      access: {
+        create: () => false,
+        update: () => false,
+      },
+    },
     {
       name: 'slug',
       type: 'text',
