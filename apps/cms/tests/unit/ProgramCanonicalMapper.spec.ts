@@ -116,13 +116,13 @@ describe('ProgramCanonicalMapper', () => {
         buildProgram({
           steps: [
             {
-              description: 'Complétez le formulaire',
+              description: richText('Complétez le formulaire'),
               links: [
                 { url: 'https://example.org/form', linkLabel: 'Formulaire' },
                 { url: 'https://example.org/incomplete', linkLabel: '' },
               ],
             },
-            { description: '' },
+            { description: richText('') },
           ],
         }),
       )

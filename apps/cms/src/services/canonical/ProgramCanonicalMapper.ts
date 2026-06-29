@@ -168,7 +168,7 @@ export class ProgramCanonicalMapper {
   private mapEtapes(program: Program): EtapeActivation[] | undefined {
     const etapes = (program.steps ?? [])
       .map((step) => {
-        const description = clean(step.description)
+        const description = clean(this.markdown.convert(step.description))
         if (!description) return undefined
         const liens = this.mapLiens(step.links)
         return liens.length > 0 ? { description, liens } : { description }
