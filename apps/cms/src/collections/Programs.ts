@@ -631,13 +631,12 @@ export const Programs: CollectionConfig = {
       labels: { singular: 'un commentaire', plural: 'commentaires' },
       admin: {
         position: 'sidebar',
-        description:
-          'Retours des relecteurs. L’auteur et la date sont enregistrés automatiquement.',
+        // Custom Field renders the array as a chat thread (avatars, author,
+        // timestamp, bubbles) with a comment input. Author/date are stamped
+        // server-side by the stampReviewComments hook.
         components: {
-          RowLabel: {
-            path: '@/components/programs/NumberedRowLabel#NumberedRowLabel',
-            clientProps: { singular: 'Commentaire' },
-          },
+          Field:
+            '@/components/programs/ReviewCommentsThread#ReviewCommentsThread',
         },
       },
       fields: [

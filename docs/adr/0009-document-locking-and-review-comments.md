@@ -46,11 +46,12 @@ lockDocuments: {
 | `author` | `relationship` → `users` | Lecture seule, horodaté automatiquement |
 | `date` | `date` (`dayAndTime`) | Lecture seule, horodaté automatiquement |
 
-Le label de ligne réutilise le composant existant `NumberedRowLabel` (`clientProps: { singular: 'Commentaire' }`), sans nouveau composant admin (donc pas de régénération d'`importMap`).
+**Présentation : fil de discussion.** Le rendu par défaut d'un champ `array` (lignes pliables) ne correspond pas à l'usage attendu (un échange de relecture). Le champ est donc rendu par un **composant Field custom** `ReviewCommentsThread` (`apps/cms/src/components/programs/ReviewCommentsThread.tsx`) qui affiche les commentaires comme un fil de messagerie : séparateurs de date, avatar à initiales, nom de l'auteur, horodatage, bulle de texte, et une zone de saisie « Commentaire » en bas (envoi à la touche Entrée ou via le bouton). L'ajout d'une ligne passe par `addFieldRow` du contexte de formulaire Payload ; le fil est lu depuis l'état de formulaire via `useFormFields`, les noms d'auteurs étant résolus une fois via l'API `/api/users`. Ce composant remplace entièrement l'UI native du champ, il faut donc régénérer l'`importMap`.
 
 **Justification :**
 - Version **simple** voulue par le produit : un fil de commentaires plat, suffisant pour des retours de relecture, sans threading ni résolution.
-- La sidebar sous la description SEO maintient le commentaire à portée de regard pendant l'édition, à l'emplacement libéré par le retrait de « Historique des transitions » (ADR PR 4).
+- La présentation « chat » (avatars, auteur, heure, bulles) reprend la maquette produit et rend la relecture lisible d'un coup d'œil.
+- La sidebar sous la description SEO maintient le fil à portée de regard pendant l'édition, à l'emplacement libéré par le retrait de « Historique des transitions » (ADR PR 4).
 
 ### 3. Horodatage automatique via le hook `stampReviewComments`
 
