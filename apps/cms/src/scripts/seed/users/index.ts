@@ -6,10 +6,12 @@ import type { UserFixture } from './types'
 const FIXTURES: UserFixture[] = [
   {
     email: 'super.admin@tee.test',
+    name: 'Super Admin',
     role: UserRole.SUPER_ADMIN,
   },
   {
     email: 'admin@tee.test',
+    name: 'Manon Piffaut',
     role: UserRole.ADMIN,
     team: 'ADEME Grand Est',
     region: 'Grand Est',
@@ -17,6 +19,7 @@ const FIXTURES: UserFixture[] = [
   },
   {
     email: 'createur@ademe.test',
+    name: 'Coline Durand',
     role: UserRole.CREATOR,
     team: 'CCI Grand Est',
     region: 'Grand Est',
@@ -54,6 +57,7 @@ export class UsersSeed {
       email: fixture.email,
       password: fixture.email,
       role: fixture.role,
+      ...(fixture.name !== undefined && { name: fixture.name }),
       ...(fixture.team !== undefined && { team: fixture.team }),
       ...(fixture.region !== undefined && { region: fixture.region }),
       ...(operatorId !== undefined && { operator: operatorId }),

@@ -3,7 +3,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth, useDocumentInfo } from '@payloadcms/ui'
 
-type RawAuthor = number | { id: number; email?: string } | null | undefined
+type RawAuthor =
+  | number
+  | { id: number; name?: string; email?: string }
+  | null
+  | undefined
 
 type RawComment = {
   id: number
@@ -16,6 +20,7 @@ type Comment = {
   id: number | string
   text: string
   authorId: number | null
+  authorName?: string
   authorEmail?: string
   createdAt: string | null
   pending?: boolean
@@ -63,6 +68,7 @@ const normalize = (raw: RawComment): Comment => {
     id: raw.id,
     text: raw.text ?? '',
     authorId: isObject ? author.id : (author ?? null),
+    authorName: isObject ? author.name : undefined,
     authorEmail: isObject ? author.email : undefined,
     createdAt: raw.createdAt ?? null,
   }
@@ -107,7 +113,7 @@ export const ReviewCommentsThread: React.FC = () => {
   const authorIds = useMemo(() => {
     const ids = new Set<number>()
     comments.forEach((comment) => {
-      if (comment.authorId != null && !comment.authorEmail) {
+      if (comment.authorId != null && !comment.authorName && !comment.authorEmail) {
         ids.add(comment.authorId)
       }
     })
@@ -127,11 +133,11 @@ export const ReviewCommentsThread: React.FC = () => {
     })
     fetch(`/api/users?${params.toString()}`, { credentials: 'include' })
       .then((res) => res.json())
-      .then((data: { docs?: { id: number; email: string }[] }) => {
+      .then((data: { docs?: { id: number; name?: string; email: string }[] }) => {
         setLabels((prev) => {
           const next = { ...prev }
           data.docs?.forEach((doc) => {
-            next[doc.id] = doc.email
+            next[doc.id] = doc.name ?? doc.email
           })
           return next
         })
@@ -140,9 +146,10 @@ export const ReviewCommentsThread: React.FC = () => {
   }, [authorIds, labels, user?.id])
 
   const labelFor = (comment: Comment): string => {
+    if (comment.authorName) return comment.authorName
     if (comment.authorEmail) return comment.authorEmail
     if (comment.authorId == null || comment.authorId === user?.id) {
-      return user?.email ?? 'Moi'
+      return user?.name ?? user?.email ?? 'Moi'
     }
     return labels[comment.authorId] ?? `Utilisateur ${comment.authorId.toString()}`
   }
@@ -152,6 +159,7 @@ export const ReviewCommentsThread: React.FC = () => {
       id: `pending-${comments.length.toString()}`,
       text,
       authorId: typeof user?.id === 'number' ? user.id : null,
+      authorName: user?.name ?? undefined,
       authorEmail: user?.email,
       createdAt: null,
       pending: true,
