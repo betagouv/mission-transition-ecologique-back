@@ -45,7 +45,7 @@ pnpm seed                                  # seed complet : operators + programs
 
 ## Seed
 
-**`pnpm seed`** — seed complet idempotent (upsert) : `GeographicAreasSeed` (18 régions + 101 départements) → `ProgramsSeed` (operators + programs depuis `docs/sources/programs.json`) → `ProjectsSeed` (depuis `docs/sources/projects.json`) → `UsersSeed` (utilisateurs de dev).
+**`pnpm seed`** — seed complet idempotent (upsert) : `GeographicAreasSeed` (25 zones région : 13 métropole + 12 outre-mer, + 101 départements) → `ProgramsSeed` (operators + programs depuis `docs/sources/programs.json`) → `ProjectsSeed` (depuis `docs/sources/projects.json`) → `UsersSeed` (utilisateurs de dev).
 
 ### Utilisateurs de dev (`pnpm seed`)
 
@@ -89,7 +89,7 @@ Les fichiers seed vivent dans `apps/cms/src/scripts/seed/` :
 - `src/constants/` — options de select réutilisables (`themesOptions.ts`, `nafSectionsOptions.ts`)
 - `src/services/workflow/` — `WorkflowTransitionPolicy` (logique de transitions, partagée client/serveur), `WorkflowAutomation` (point d'extension phase automatisée)
 - `src/hooks/programs/` — `beforeChangeWorkflow` (validation, sync `workflowStatus` ↔ `_status`, intégration `WorkflowAutomation`)
-- `src/components/programs/` — `WorkflowActionBar` (bouton contextuel), `WorkflowStatusBadge` (statut sidebar), `WorkflowStatusCell` (badge liste), `NumberedRowLabel` (label d'array auto-numéroté, `singular` passé via `clientProps`), `LinkedProjectsCounter` (champ `type: 'ui'` qui affiche en live le nombre de projets matchant les thèmes sélectionnés)
+- `src/components/programs/` — `WorkflowActionBar` (bouton contextuel), `WorkflowStatusBadge` (statut sidebar), `WorkflowStatusCell` (badge liste), `NumberedRowLabel` (label d'array auto-numéroté, `singular` passé via `clientProps`), `LinkedProjectsCounter` (champ `type: 'ui'` qui affiche en live le nombre de projets matchant les thèmes sélectionnés), `SelectAllAreasButtons` (champ `type: 'ui'` réservé aux admins : boutons de sélection groupée du champ `geographicAreas` — métropole seule, métropole + outre-mer, vider — selon la couverture régionale/départementale, en s'appuyant sur le drapeau `isOverseas` des `GeographicAreas`)
 
 ## Documentation de référence
 

@@ -435,6 +435,20 @@ export const Programs: CollectionConfig = {
           },
         },
         {
+          name: 'selectAllAreasButtons',
+          type: 'ui',
+          label: '',
+          admin: {
+            condition: (data) =>
+              data?.geographicCoverage === 'regional' ||
+              data?.geographicCoverage === 'departemental',
+            components: {
+              Field:
+                '@/components/programs/SelectAllAreasButtons#SelectAllAreasButtons',
+            },
+          },
+        },
+        {
           name: 'geographicAreas',
           type: 'relationship',
           label: "Zones géographiques couvertes par l'aide",

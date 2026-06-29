@@ -16,7 +16,7 @@ export const GeographicAreas: CollectionConfig = {
   },
   admin: {
     useAsTitle: 'name',
-    defaultColumns: ['name', 'coverageType', 'inseeCode', 'parentArea'],
+    defaultColumns: ['name', 'coverageType', 'inseeCode', 'isOverseas', 'parentArea'],
     hidden: ({ user }) =>
       !UserRole.isAdmin(user as unknown as { role: UserRoleValue } | null),
   },
@@ -47,6 +47,16 @@ export const GeographicAreas: CollectionConfig = {
       admin: {
         description:
           'Code INSEE officiel (ex: "75" pour Paris, "11" pour Île-de-France).',
+      },
+    },
+    {
+      name: 'isOverseas',
+      type: 'checkbox',
+      label: 'DOM-TOM / Outre-mer',
+      defaultValue: false,
+      admin: {
+        description:
+          "Cochez si la zone fait partie de l'outre-mer (DROM, COM ou autre collectivité). Permet de distinguer métropole et outre-mer lors de la sélection groupée.",
       },
     },
     {
