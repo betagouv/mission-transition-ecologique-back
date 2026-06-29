@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { cogCodeSchema } from '../../shared/schema/cog'
 import { intervalleSchema, urlSchema } from '../../shared/primitives'
-import { operateursSchema } from '../../shared/schema/operator'
+import { operateurSchema } from '../../shared/schema/operator'
 import { dureeSchema, montantSchema } from '../fields/aide.schema'
 import { eligibiliteSchema } from '../fields/eligibilite.schema'
 
@@ -23,13 +23,26 @@ export const varianteConditionsSchema = z
     message: 'une variante doit porter au moins une condition (effectif ou regions)',
   })
 
+/**
+ * Operators a variant overrides. Unlike the base program, `contact` is optional:
+ * a variant may override only the regional partner (`autres`), or only the contact.
+ */
+export const varianteOperateursSchema = z
+  .object({
+    contact: operateurSchema.optional(),
+    autres: z.array(operateurSchema).optional(),
+  })
+  .refine((o) => o.contact !== undefined || (o.autres?.length ?? 0) > 0, {
+    message: 'une variante operateurs doit porter un contact ou des autres',
+  })
+
 /** Subset of base fields a variant may override. */
 export const varianteModificationsSchema = z
   .object({
     montant: montantSchema,
     duree: dureeSchema,
     url_source: urlSchema,
-    operateurs: operateursSchema,
+    operateurs: varianteOperateursSchema,
     eligibilite: eligibiliteSchema,
   })
   .partial()

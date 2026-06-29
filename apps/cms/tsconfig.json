@@ -19,7 +19,8 @@
     "paths": {
       "@/*": ["./src/*"],
       "@payload-config": ["./payload.config.ts"],
-      "@tee-backoffice/canonical": ["../../libs/canonical/src/index.ts"]
+      "@tee-backoffice/canonical": ["../../libs/canonical/src/index.ts"],
+      "@tee-backoffice/canonical-store": ["../../libs/canonical-store/src/index.ts"]
     }
   },
   "include": [

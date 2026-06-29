@@ -1,0 +1,30 @@
+{
+  "name": "@tee-backoffice/format-adapters",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/format-adapters/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "libs/format-adapters",
+        "command": "vitest run"
+      }
+    },
+    "export:tee": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "libs/format-adapters",
+        "command": "tsx scripts/export-tee.ts"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "libs/format-adapters",
+        "command": "tsc --noEmit -p tsconfig.scripts.json"
+      }
+    }
+  }
+}

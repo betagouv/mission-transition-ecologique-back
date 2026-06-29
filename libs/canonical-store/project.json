@@ -1,0 +1,16 @@
+{
+  "name": "@tee-backoffice/canonical-store",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/canonical-store/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "test": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "libs/canonical-store",
+        "command": "vitest run"
+      }
+    }
+  }
+}
