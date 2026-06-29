@@ -2,13 +2,24 @@
 
 import type { ArrayFieldClientComponent } from 'payload'
 import React, { useEffect, useMemo, useState } from 'react'
-import { useAuth, useForm, useFormFields } from '@payloadcms/ui'
+import { useAuth, useDocumentInfo } from '@payloadcms/ui'
 
-type ThreadRow = {
-  index: number
+type RawAuthor = number | { id: number; email?: string } | null | undefined
+
+type RawComment = {
+  id?: string
+  text?: string
+  author?: RawAuthor
+  date?: string | null
+}
+
+type Comment = {
+  id?: string
   text: string
-  author: number | null
+  authorId: number | null
+  authorEmail?: string
   date: string | null
+  pending?: boolean
 }
 
 const AVATAR_COLORS = [
@@ -46,50 +57,55 @@ const timeFormatter = new Intl.DateTimeFormat('fr-FR', {
   minute: '2-digit',
 })
 
-export const ReviewCommentsThread: ArrayFieldClientComponent = ({
-  path,
-  schemaPath,
-}) => {
+const normalize = (raw: RawComment): Comment => {
+  const author = raw.author
+  const isObject = typeof author === 'object' && author !== null
+  return {
+    id: raw.id,
+    text: raw.text ?? '',
+    authorId: isObject ? author.id : (author ?? null),
+    authorEmail: isObject ? author.email : undefined,
+    date: raw.date ?? null,
+  }
+}
+
+export const ReviewCommentsThread: ArrayFieldClientComponent = () => {
   const { user } = useAuth()
-  const { addFieldRow } = useForm()
+  const { id, savedDocumentData } = useDocumentInfo()
+  const [comments, setComments] = useState<Comment[]>([])
   const [draft, setDraft] = useState('')
+  const [sending, setSending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [labels, setLabels] = useState<Record<number, string>>({})
 
-  const rows = useFormFields(([fields]) => {
-    const out: ThreadRow[] = []
-    for (let i = 0; ; i++) {
-      const textField = fields[`${path}.${i}.text`]
-      if (textField === undefined) break
-      out.push({
-        index: i,
-        text: (textField.value as string) ?? '',
-        author: (fields[`${path}.${i}.author`]?.value as number) ?? null,
-        date: (fields[`${path}.${i}.date`]?.value as string) ?? null,
-      })
-    }
-    return out
-  })
+  // Seed from the last persisted version. savedDocumentData only changes on a
+  // real save, so this also refreshes the thread after the main Save button.
+  useEffect(() => {
+    const saved = (savedDocumentData?.reviewComments as RawComment[]) ?? []
+    setComments(saved.map(normalize))
+  }, [savedDocumentData])
 
   const authorIds = useMemo(() => {
     const ids = new Set<number>()
-    rows.forEach((row) => {
-      if (typeof row.author === 'number') ids.add(row.author)
+    comments.forEach((comment) => {
+      if (comment.authorId != null && !comment.authorEmail) {
+        ids.add(comment.authorId)
+      }
     })
     return [...ids]
-  }, [rows])
+  }, [comments])
 
-  // Resolve author ids to their email once: form state only carries the id,
-  // and the current user is already known from useAuth.
+  // Resolve author ids that came back without a populated email.
   useEffect(() => {
     const missing = authorIds.filter(
-      (id) => !(id in labels) && id !== user?.id,
+      (authorId) => !(authorId in labels) && authorId !== user?.id,
     )
     if (missing.length === 0) return
     const params = new URLSearchParams()
     params.set('depth', '0')
     params.set('limit', '0')
-    missing.forEach((id, i) => {
-      params.set(`where[id][in][${i.toString()}]`, id.toString())
+    missing.forEach((authorId, i) => {
+      params.set(`where[id][in][${i.toString()}]`, authorId.toString())
     })
     fetch(`/api/users?${params.toString()}`, { credentials: 'include' })
       .then((res) => res.json())
@@ -105,20 +121,68 @@ export const ReviewCommentsThread: ArrayFieldClientComponent = ({
       .catch(() => undefined)
   }, [authorIds, labels, user?.id])
 
-  const labelFor = (author: number | null): string => {
-    if (author == null || author === user?.id) return user?.email ?? 'Moi'
-    return labels[author] ?? `Utilisateur ${author.toString()}`
+  const labelFor = (comment: Comment): string => {
+    if (comment.authorEmail) return comment.authorEmail
+    if (comment.authorId == null || comment.authorId === user?.id) {
+      return user?.email ?? 'Moi'
+    }
+    return labels[comment.authorId] ?? `Utilisateur ${comment.authorId.toString()}`
+  }
+
+  const persist = async (text: string) => {
+    const currentUserId = typeof user?.id === 'number' ? user.id : null
+    const optimistic: Comment = {
+      text,
+      authorId: currentUserId,
+      authorEmail: user?.email,
+      date: null,
+      pending: true,
+    }
+    const previous = comments
+    setComments((prev) => [...prev, optimistic])
+    setDraft('')
+    setSending(true)
+    setError(null)
+
+    // Arrays are replaced wholesale on update, so resend the saved rows
+    // (with their id/author/date preserved) plus the new one. The
+    // stampReviewComments hook fills author/date on the new row only.
+    const payloadRows = [
+      ...previous.map((comment) => ({
+        id: comment.id,
+        text: comment.text,
+        author: comment.authorId ?? undefined,
+        date: comment.date ?? undefined,
+      })),
+      { text },
+    ]
+
+    try {
+      // draft=true persists the comment on the working draft without forcing
+      // full-document validation (a comment must save even on an incomplete
+      // draft). The stampReviewComments hook fills author/date server-side.
+      const res = await fetch(`/api/programs/${id?.toString() ?? ''}?depth=1&draft=true`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ reviewComments: payloadRows }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status.toString()}`)
+      const result = (await res.json()) as { doc?: { reviewComments?: RawComment[] } }
+      setComments((result.doc?.reviewComments ?? []).map(normalize))
+    } catch {
+      setComments(previous)
+      setDraft(text)
+      setError("Le commentaire n'a pas pu être enregistré. Réessayez.")
+    } finally {
+      setSending(false)
+    }
   }
 
   const handleSend = () => {
     const text = draft.trim()
-    if (!text) return
-    addFieldRow({
-      path,
-      schemaPath: schemaPath ?? path,
-      subFieldState: { text: { value: text, initialValue: text, valid: true } },
-    })
-    setDraft('')
+    if (!text || !id || sending) return
+    void persist(text)
   }
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -128,6 +192,7 @@ export const ReviewCommentsThread: ArrayFieldClientComponent = ({
     }
   }
 
+  const canComment = Boolean(id)
   let lastDay: string | null = null
 
   return (
@@ -151,11 +216,11 @@ export const ReviewCommentsThread: ArrayFieldClientComponent = ({
           maxHeight: 360,
           overflowY: 'auto',
           padding: '0.75rem',
-          background: rows.length === 0 ? 'transparent' : '#f6f6f6',
+          background: comments.length === 0 ? 'transparent' : '#f6f6f6',
           borderRadius: 8,
         }}
       >
-        {rows.length === 0 && (
+        {comments.length === 0 && (
           <div
             style={{
               display: 'flex',
@@ -178,16 +243,16 @@ export const ReviewCommentsThread: ArrayFieldClientComponent = ({
           </div>
         )}
 
-        {rows.map((row) => {
-          const when = row.date ? new Date(row.date) : new Date()
+        {comments.map((comment, index) => {
+          const when = comment.date ? new Date(comment.date) : new Date()
           const day = dayFormatter.format(when)
           const showDay = day !== lastDay
           lastDay = day
-          const label = labelFor(row.author)
-          const avatarSeed = row.author ?? user?.id ?? 0
+          const label = labelFor(comment)
+          const avatarSeed = comment.authorId ?? user?.id ?? 0
 
           return (
-            <React.Fragment key={row.index}>
+            <React.Fragment key={comment.id ?? `pending-${index.toString()}`}>
               {showDay && (
                 <div
                   style={{
@@ -216,6 +281,7 @@ export const ReviewCommentsThread: ArrayFieldClientComponent = ({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    opacity: comment.pending ? 0.6 : 1,
                   }}
                 >
                   {initialsOf(label)}
@@ -233,8 +299,7 @@ export const ReviewCommentsThread: ArrayFieldClientComponent = ({
                       {label}
                     </span>
                     <span style={{ fontSize: '0.7rem', color: '#888' }}>
-                      {timeFormatter.format(when)}
-                      {row.date ? '' : ' · non enregistré'}
+                      {comment.pending ? 'envoi…' : timeFormatter.format(when)}
                     </span>
                   </div>
                   <div
@@ -246,9 +311,10 @@ export const ReviewCommentsThread: ArrayFieldClientComponent = ({
                       fontSize: '0.85rem',
                       whiteSpace: 'pre-wrap',
                       wordBreak: 'break-word',
+                      opacity: comment.pending ? 0.6 : 1,
                     }}
                   >
-                    {row.text}
+                    {comment.text}
                   </div>
                 </div>
               </div>
@@ -256,6 +322,18 @@ export const ReviewCommentsThread: ArrayFieldClientComponent = ({
           )
         })}
       </div>
+
+      {error && (
+        <div style={{ color: '#e1000f', fontSize: '0.75rem', marginTop: '0.4rem' }}>
+          {error}
+        </div>
+      )}
+
+      {!canComment && (
+        <div style={{ color: '#666', fontSize: '0.75rem', marginTop: '0.5rem', fontStyle: 'italic' }}>
+          Enregistrez le dispositif pour pouvoir ajouter des commentaires.
+        </div>
+      )}
 
       <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.5rem' }}>
         <textarea
@@ -266,6 +344,7 @@ export const ReviewCommentsThread: ArrayFieldClientComponent = ({
           onKeyDown={handleKeyDown}
           placeholder="Commentaire"
           rows={2}
+          disabled={!canComment || sending}
           style={{
             flex: 1,
             resize: 'vertical',
@@ -274,25 +353,32 @@ export const ReviewCommentsThread: ArrayFieldClientComponent = ({
             padding: '0.5rem',
             fontSize: '0.85rem',
             fontFamily: 'inherit',
+            background: canComment ? '#fff' : '#f0f0f0',
           }}
         />
         <button
           type="button"
           onClick={handleSend}
-          disabled={draft.trim().length === 0}
+          disabled={!canComment || sending || draft.trim().length === 0}
           style={{
             flex: '0 0 auto',
             alignSelf: 'flex-end',
-            background: draft.trim().length === 0 ? '#cacafb' : '#000091',
+            background:
+              !canComment || sending || draft.trim().length === 0
+                ? '#cacafb'
+                : '#000091',
             color: '#fff',
             border: 'none',
             borderRadius: 8,
             padding: '0.5rem 0.9rem',
             fontSize: '0.85rem',
-            cursor: draft.trim().length === 0 ? 'default' : 'pointer',
+            cursor:
+              !canComment || sending || draft.trim().length === 0
+                ? 'default'
+                : 'pointer',
           }}
         >
-          Envoyer
+          {sending ? '…' : 'Envoyer'}
         </button>
       </div>
     </div>
