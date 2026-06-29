@@ -4,7 +4,6 @@ import { beforeChangeWorkflow } from '@/hooks/programs/beforeChangeWorkflow'
 import { assignCreatorOnCreate } from '@/hooks/programs/assignCreatorOnCreate'
 import { assignCanonicalId } from '@/hooks/programs/assignCanonicalId'
 import { syncCanonicalOnPublish } from '@/hooks/programs/syncCanonicalOnPublish'
-import { stampReviewComments } from '@/hooks/programs/stampReviewComments'
 import { THEMES_OPTIONS } from '@/constants/themesOptions'
 import {
   ACTIVITY_SECTOR_OPTIONS,
@@ -50,12 +49,7 @@ export const Programs: CollectionConfig = {
     },
   },
   hooks: {
-    beforeChange: [
-      assignCanonicalId,
-      assignCreatorOnCreate,
-      stampReviewComments,
-      beforeChangeWorkflow,
-    ],
+    beforeChange: [assignCanonicalId, assignCreatorOnCreate, beforeChangeWorkflow],
     afterChange: [syncCanonicalOnPublish],
   },
   access: {
@@ -624,42 +618,20 @@ export const Programs: CollectionConfig = {
     },
 
     // --- Review comments (sidebar, under SEO) ---
+    // UI-only field: data lives in the `review-comments` collection. The
+    // thread component reads/creates comments there, so posting a comment never
+    // updates the program (no workflow transition, no validation, no version).
     {
       name: 'reviewComments',
-      type: 'array',
+      type: 'ui',
       label: 'Commentaires de relecture',
-      labels: { singular: 'un commentaire', plural: 'commentaires' },
       admin: {
         position: 'sidebar',
-        // Custom Field renders the array as a chat thread (avatars, author,
-        // timestamp, bubbles) with a comment input. Author/date are stamped
-        // server-side by the stampReviewComments hook.
         components: {
           Field:
             '@/components/programs/ReviewCommentsThread#ReviewCommentsThread',
         },
       },
-      fields: [
-        {
-          name: 'text',
-          type: 'textarea',
-          label: 'Commentaire',
-          required: true,
-        },
-        {
-          name: 'author',
-          type: 'relationship',
-          label: 'Auteur',
-          relationTo: 'users',
-          admin: { readOnly: true },
-        },
-        {
-          name: 'date',
-          type: 'date',
-          label: 'Le',
-          admin: { readOnly: true, date: { pickerAppearance: 'dayAndTime' } },
-        },
-      ],
     },
   ],
 };

@@ -10,6 +10,7 @@ import { Operators } from '@/collections/Operators'
 import { Programs } from '@/collections/Programs'
 import { Projects } from '@/collections/Projects'
 import { GeographicAreas } from '@/collections/GeographicAreas'
+import { ReviewComments } from '@/collections/ReviewComments'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -31,7 +32,15 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Users, Media, Operators, Programs, Projects, GeographicAreas],
+  collections: [
+    Users,
+    Media,
+    Operators,
+    Programs,
+    Projects,
+    GeographicAreas,
+    ReviewComments,
+  ],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {

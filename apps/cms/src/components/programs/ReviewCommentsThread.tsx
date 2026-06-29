@@ -1,24 +1,23 @@
 'use client'
 
-import type { ArrayFieldClientComponent } from 'payload'
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth, useDocumentInfo } from '@payloadcms/ui'
 
 type RawAuthor = number | { id: number; email?: string } | null | undefined
 
 type RawComment = {
-  id?: string
+  id: number
   text?: string
   author?: RawAuthor
-  date?: string | null
+  createdAt?: string
 }
 
 type Comment = {
-  id?: string
+  id: number | string
   text: string
   authorId: number | null
   authorEmail?: string
-  date: string | null
+  createdAt: string | null
   pending?: boolean
 }
 
@@ -65,25 +64,45 @@ const normalize = (raw: RawComment): Comment => {
     text: raw.text ?? '',
     authorId: isObject ? author.id : (author ?? null),
     authorEmail: isObject ? author.email : undefined,
-    date: raw.date ?? null,
+    createdAt: raw.createdAt ?? null,
   }
 }
 
-export const ReviewCommentsThread: ArrayFieldClientComponent = () => {
+export const ReviewCommentsThread: React.FC = () => {
   const { user } = useAuth()
-  const { id, savedDocumentData } = useDocumentInfo()
+  const { id } = useDocumentInfo()
   const [comments, setComments] = useState<Comment[]>([])
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [labels, setLabels] = useState<Record<number, string>>({})
 
-  // Seed from the last persisted version. savedDocumentData only changes on a
-  // real save, so this also refreshes the thread after the main Save button.
+  const canComment = Boolean(id)
+
+  const load = useCallback(async () => {
+    if (!id) {
+      setComments([])
+      return
+    }
+    const params = new URLSearchParams()
+    params.set('where[program][equals]', id.toString())
+    params.set('sort', 'createdAt')
+    params.set('depth', '1')
+    params.set('limit', '200')
+    try {
+      const res = await fetch(`/api/review-comments?${params.toString()}`, {
+        credentials: 'include',
+      })
+      const data = (await res.json()) as { docs?: RawComment[] }
+      setComments((data.docs ?? []).map(normalize))
+    } catch {
+      // keep whatever is shown; a transient read error shouldn't wipe the thread
+    }
+  }, [id])
+
   useEffect(() => {
-    const saved = (savedDocumentData?.reviewComments as RawComment[]) ?? []
-    setComments(saved.map(normalize))
-  }, [savedDocumentData])
+    void load()
+  }, [load])
 
   const authorIds = useMemo(() => {
     const ids = new Set<number>()
@@ -95,7 +114,6 @@ export const ReviewCommentsThread: ArrayFieldClientComponent = () => {
     return [...ids]
   }, [comments])
 
-  // Resolve author ids that came back without a populated email.
   useEffect(() => {
     const missing = authorIds.filter(
       (authorId) => !(authorId in labels) && authorId !== user?.id,
@@ -130,48 +148,29 @@ export const ReviewCommentsThread: ArrayFieldClientComponent = () => {
   }
 
   const persist = async (text: string) => {
-    const currentUserId = typeof user?.id === 'number' ? user.id : null
     const optimistic: Comment = {
+      id: `pending-${comments.length.toString()}`,
       text,
-      authorId: currentUserId,
+      authorId: typeof user?.id === 'number' ? user.id : null,
       authorEmail: user?.email,
-      date: null,
+      createdAt: null,
       pending: true,
     }
-    const previous = comments
     setComments((prev) => [...prev, optimistic])
     setDraft('')
     setSending(true)
     setError(null)
-
-    // Arrays are replaced wholesale on update, so resend the saved rows
-    // (with their id/author/date preserved) plus the new one. The
-    // stampReviewComments hook fills author/date on the new row only.
-    const payloadRows = [
-      ...previous.map((comment) => ({
-        id: comment.id,
-        text: comment.text,
-        author: comment.authorId ?? undefined,
-        date: comment.date ?? undefined,
-      })),
-      { text },
-    ]
-
     try {
-      // draft=true persists the comment on the working draft without forcing
-      // full-document validation (a comment must save even on an incomplete
-      // draft). The stampReviewComments hook fills author/date server-side.
-      const res = await fetch(`/api/programs/${id?.toString() ?? ''}?depth=1&draft=true`, {
-        method: 'PATCH',
+      const res = await fetch('/api/review-comments', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ reviewComments: payloadRows }),
+        body: JSON.stringify({ program: id, text }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status.toString()}`)
-      const result = (await res.json()) as { doc?: { reviewComments?: RawComment[] } }
-      setComments((result.doc?.reviewComments ?? []).map(normalize))
+      await load()
     } catch {
-      setComments(previous)
+      setComments((prev) => prev.filter((comment) => comment !== optimistic))
       setDraft(text)
       setError("Le commentaire n'a pas pu être enregistré. Réessayez.")
     } finally {
@@ -192,7 +191,6 @@ export const ReviewCommentsThread: ArrayFieldClientComponent = () => {
     }
   }
 
-  const canComment = Boolean(id)
   let lastDay: string | null = null
 
   return (
@@ -243,8 +241,8 @@ export const ReviewCommentsThread: ArrayFieldClientComponent = () => {
           </div>
         )}
 
-        {comments.map((comment, index) => {
-          const when = comment.date ? new Date(comment.date) : new Date()
+        {comments.map((comment) => {
+          const when = comment.createdAt ? new Date(comment.createdAt) : new Date()
           const day = dayFormatter.format(when)
           const showDay = day !== lastDay
           lastDay = day
@@ -252,7 +250,7 @@ export const ReviewCommentsThread: ArrayFieldClientComponent = () => {
           const avatarSeed = comment.authorId ?? user?.id ?? 0
 
           return (
-            <React.Fragment key={comment.id ?? `pending-${index.toString()}`}>
+            <React.Fragment key={comment.id}>
               {showDay && (
                 <div
                   style={{

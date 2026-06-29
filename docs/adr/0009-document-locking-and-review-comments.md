@@ -36,44 +36,44 @@ lockDocuments: {
 
 **Portée :** seule la collection `Programs` est concernée par la PR 5. Les autres collections conservent le comportement par défaut.
 
-### 2. Commentaires de relecture : champ `array` en sidebar
+### 2. Commentaires de relecture : collection dédiée `ReviewComments`
 
-**Décision :** Ajouter un champ `reviewComments` de type `array` dans la **sidebar**, positionné **sous la description SEO** :
+**Décision :** Les commentaires vivent dans une **collection dédiée** `review-comments` (une ligne = un commentaire), liée au dispositif par une relation, plutôt que dans un champ `array` embarqué sur `Programs`.
 
-| Sous-champ | Type | Comportement |
+| Champ | Type | Comportement |
 |---|---|---|
+| `program` | `relationship` → `programs` | Dispositif commenté, requis, indexé |
 | `text` | `textarea` | Saisi par le relecteur, requis |
-| `author` | `relationship` → `users` | Lecture seule, horodaté automatiquement |
-| `date` | `date` (`dayAndTime`) | Lecture seule, horodaté automatiquement |
+| `author` | `relationship` → `users` | Lecture seule, posé automatiquement à la création |
+| `createdAt` | timestamp natif | Posé automatiquement par Payload |
 
-**Présentation : fil de discussion.** Le rendu par défaut d'un champ `array` (lignes pliables) ne correspond pas à l'usage attendu (un échange de relecture). Le champ est donc rendu par un **composant Field custom** `ReviewCommentsThread` (`apps/cms/src/components/programs/ReviewCommentsThread.tsx`) qui affiche les commentaires comme un fil de messagerie : séparateurs de date, avatar à initiales, nom de l'auteur, horodatage, bulle de texte, et une zone de saisie « Commentaire » en bas (envoi à la touche Entrée ou via le bouton). Ce composant remplace entièrement l'UI native du champ, il faut donc régénérer l'`importMap`.
+La collection est masquée de la navigation admin (`admin.hidden`) : elle se pilote uniquement depuis la sidebar du dispositif. L'auteur est posé par le hook `beforeChange` `assignCommentAuthor` (`src/hooks/reviewComments/assignCommentAuthor.ts`) à partir de `req.user`. Accès : lecture et création pour tout utilisateur authentifié ; modification et suppression réservées aux admins.
 
-**Enregistrement immédiat.** Quand le dispositif possède déjà un `id`, cliquer sur « Envoyer » **persiste le commentaire directement** (mise à jour optimiste côté UI, puis `PATCH /api/programs/{id}?draft=true`), sans attendre le bouton « Enregistrer » du formulaire. Le paramètre `draft=true` évite la validation complète du formulaire (un commentaire doit pouvoir être enregistré même sur un brouillon incomplet) et écrit sur la version brouillon, là où se déroule la relecture. Comme un `array` est remplacé en bloc lors d'une mise à jour, le composant renvoie les lignes déjà enregistrées (id / auteur / date préservés) plus la nouvelle ; le hook `stampReviewComments` n'horodate que la nouvelle. Le fil est ré-amorcé depuis `savedDocumentData` (`useDocumentInfo`) et depuis la réponse du PATCH ; les noms d'auteurs non peuplés sont résolus via `/api/users`. Tant que le dispositif n'a pas d'`id` (jamais enregistré), la saisie est désactivée avec une invite à enregistrer le dispositif d'abord.
+**Pourquoi une collection et non un `array`.** Le besoin produit est l'**enregistrement immédiat** : cliquer sur « Envoyer » doit persister le commentaire tout de suite, sans attendre le bouton « Enregistrer » du formulaire. Avec un `array` sur `Programs`, persister un commentaire impose une mise à jour du dispositif (`PATCH /api/programs/{id}`), ce qui :
+- déclenche la **validation complète du formulaire** (échec sur un brouillon incomplet) ;
+- avec `?draft=true` pour contourner la validation, fait basculer `_status` à `draft` et **déclenche une transition de workflow parasite** (un dispositif `publié` repasse en « en cours de modification ») ;
+- génère une **nouvelle version** du dispositif à chaque commentaire.
 
-**Justification :**
-- Version **simple** voulue par le produit : un fil de commentaires plat, suffisant pour des retours de relecture, sans threading ni résolution.
-- La présentation « chat » (avatars, auteur, heure, bulles) reprend la maquette produit et rend la relecture lisible d'un coup d'œil.
-- La sidebar sous la description SEO maintient le fil à portée de regard pendant l'édition, à l'emplacement libéré par le retrait de « Historique des transitions » (ADR PR 4).
+Une collection séparée supprime ces trois effets de bord : créer un commentaire est un simple `POST /api/review-comments`, qui ne touche jamais le dispositif. Comportement vérifié : ajouter un commentaire à un dispositif `publié` laisse son statut inchangé.
 
-### 3. Horodatage automatique via le hook `stampReviewComments`
-
-**Décision :** Un hook `beforeChange` (`src/hooks/programs/stampReviewComments.ts`) renseigne `author` (utilisateur courant) et `date` (maintenant) sur les **nouveaux** commentaires uniquement.
+**Présentation : fil de discussion.** Le champ `reviewComments` sur `Programs` est un champ **`ui`** (sans colonne en base) positionné dans la **sidebar sous la description SEO**, rendu par le composant `ReviewCommentsThread` (`apps/cms/src/components/programs/ReviewCommentsThread.tsx`). Il affiche les commentaires comme un fil de messagerie (séparateurs de date, avatar à initiales, auteur, horodatage, bulle de texte, état vide illustré) et une zone de saisie « Commentaire » (envoi à la touche Entrée ou via le bouton). Il lit le fil via `GET /api/review-comments?where[program][equals]={id}` et envoie via `POST /api/review-comments` (mise à jour optimiste, puis rechargement). Les noms d'auteurs non peuplés sont résolus via `/api/users`. Tant que le dispositif n'a pas d'`id` (jamais enregistré), la saisie est désactivée avec une invite à enregistrer le dispositif d'abord. Ce composant ajoute une entrée à l'`importMap` (régénération requise).
 
 **Justification :**
-- `author` et `date` sont en lecture seule dans l'UI : un nouveau commentaire arrive donc au hook sans ces champs. Le hook ne remplit que les lignes dépourvues d'`author`, ce qui **préserve** l'auteur et la date d'origine des commentaires existants (aucune réécriture lors d'une édition ultérieure).
-- Le hook est inséré dans la chaîne `beforeChange` avant `beforeChangeWorkflow`, à l'image de `assignCreatorOnCreate`. Il n'interfère pas avec la logique de workflow.
+- Version **simple** voulue par le produit : un fil plat, sans threading ni résolution.
+- La présentation « chat » (avatars, auteur, heure, bulles) reprend la maquette produit.
+- La sidebar sous la description SEO maintient le fil à portée de regard, à l'emplacement libéré par le retrait de « Historique des transitions » (ADR PR 4).
 
 ---
 
 ## Conséquences
 
-- **Schéma SQLite** : le champ `array` crée de nouvelles tables (`programs_review_comments` et leur équivalent versionné). La base fixture commitée (`tee-poc.db`) est reseedée après le changement de schéma, conformément au workflow de branches.
-- **Pas d'impact canonical** : `reviewComments` est une donnée éditoriale interne, non mappée vers le format pivot (`libs/canonical`). Le store canonical est inchangé.
-- **Accès** : aucune restriction d'accès spécifique n'est posée sur `reviewComments` dans cette version simple ; tout utilisateur disposant du droit d'édition du dispositif peut ajouter un commentaire.
+- **Schéma SQLite** : la collection crée la table `review_comments`. La base fixture commitée (`tee-poc.db`) est reseedée après le changement de schéma, conformément au workflow de branches. Le seed des deux bases (`tee-poc.db` + `canonical.db`) est refait à neuf pour conserver des `canonicalId` cohérents entre les deux.
+- **Pas d'impact canonical** : un commentaire est une donnée éditoriale interne, non mappée vers le format pivot (`libs/canonical`). Le store canonical est inchangé.
+- **Pas d'impact workflow** : créer un commentaire ne met jamais à jour le dispositif, donc aucune transition ni version supplémentaire.
 
 ---
 
 ## Alternatives écartées
 
-- **Commentaires en collection dédiée (relation)** : plus extensible (threading, notifications), mais surdimensionné pour le besoin « version simple ». Un `array` embarqué suffit et reste versionné avec le dispositif.
+- **Champ `array` embarqué sur `Programs`** : plus proche de la formulation initiale (« champ array auteur/date/texte »), versionné avec le dispositif, mais incompatible avec l'enregistrement immédiat sans effets de bord (validation, transition de workflow parasite, churn de version). Écarté pour ces raisons.
 - **Verrouillage applicatif maison** : inutile, Payload 3 le fournit nativement et l'intègre aux API et à l'UI.
