@@ -25,3 +25,12 @@ export * from './canonical-program/canonical-program.schema'
 export * from './canonical-program/canonical-program.types'
 export * from './canonical-program/CanonicalProgram'
 export * from './canonical-program/CanonicalProgramValidator'
+export * from './canonical-program/CanonicalProgramRepository'
+export * from './canonical-program/CanonicalProgramService'
+
+// Observability (port + channels + routing)
+export * from './observability/CanonicalEvent'
+export * from './observability/CanonicalEventSink'
+export * from './observability/NullEventSink'
+export * from './observability/CompositeEventSink'
+export * from './observability/RoutingCanonicalEventSink'
