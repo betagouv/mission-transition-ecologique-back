@@ -80,11 +80,14 @@ Chaque valeur active des champs de montant/durée spécifiques :
 | `name` | text | required |
 | `coverageType` | select | required — `region` / `departement` / `commune` / `epci` / `autre` |
 | `inseeCode` | text | optional — code INSEE officiel |
+| `isOverseas` | checkbox | optional (défaut `false`) — marque une zone d'outre-mer (DROM, COM ou autre collectivité) |
 | `parentArea` | relationship → geographic-areas | hiérarchie (commune → EPCI → département → région) |
 
 **Accès :** collection masquée dans l'admin sauf pour `super-admin` (`admin.hidden`). L'édition centralisée évite la dérive des libellés.
 
-**Seed :** `apps/cms/src/scripts/seed/geographic-areas/` — 18 régions + 101 départements (fixtures avec code INSEE et lien `parentArea`). Lancé via `pnpm seed`.
+**Seed :** `apps/cms/src/scripts/seed/geographic-areas/` — 25 zones de type région (13 métropole + 12 outre-mer : 5 DROM + 7 COM) + 101 départements (96 métropole + 5 outre-mer), fixtures avec code INSEE, drapeau `isOverseas` et lien `parentArea`. Lancé via `pnpm seed`.
+
+**Drapeau `isOverseas` :** distingue métropole et outre-mer pour la sélection groupée du champ `geographicAreas` (voir composant `SelectAllAreasButtons` ci-dessous). Toute zone outre-mer ajoutée ultérieurement doit cocher ce champ.
 
 **Champ de feedback :** `geographicAreaFeedback` (text libre) sur `Programs` permet à l'éditeur de signaler une zone manquante sans bloquer la saisie.
 
@@ -94,14 +97,15 @@ Chaque valeur active des champs de montant/durée spécifiques :
 
 ### 4. Composants admin custom pour la saisie
 
-**Décision :** Deux composants React injectés dans `admin.components` :
+**Décision :** Trois composants React injectés dans `admin.components` :
 
 | Composant | Rôle |
 |---|---|
 | `NumberedRowLabel` | Auto-numérote les lignes d'un `array` Payload (ex : "Étape 1", "Lien 2", "Autre critère d'éligibilité 3"). Le libellé singulier est passé en `clientProps.singular` côté field config — un seul composant pour les trois usages (`steps`, `steps.links`, `otherCriteria`). |
 | `LinkedProjectsCounter` | Champ `type: 'ui'` qui affiche en live le nombre de projets matchant les `themes` sélectionnés (avant que l'éditeur ne choisisse `linkedProjects`) |
+| `SelectAllAreasButtons` | Champ `type: 'ui'` (réservé aux admins, aligné sur `ProgramFieldAccessPolicy.adminOnly`) affiché au-dessus de `geographicAreas` quand la couverture est `regional` / `departemental`. Boutons de sélection groupée : « métropole seule », « métropole + outre-mer », « vider ». Récupère les zones via `/api/geographic-areas` filtrées sur `coverageType` (+ `isOverseas` pour exclure l'outre-mer) et pousse les IDs dans le champ. |
 
-**Justification :** Sans `NumberedRowLabel`, les arrays Payload affichent des labels génériques ("Item 1") qui rendent la relecture pénible. La factorisation via `clientProps` évite la prolifération de composants thin-wrapper. `LinkedProjectsCounter` aide l'éditeur à anticiper la liste de projets à lier sans avoir à ouvrir un autre onglet.
+**Justification :** Sans `NumberedRowLabel`, les arrays Payload affichent des labels génériques ("Item 1") qui rendent la relecture pénible. La factorisation via `clientProps` évite la prolifération de composants thin-wrapper. `LinkedProjectsCounter` aide l'éditeur à anticiper la liste de projets à lier sans avoir à ouvrir un autre onglet. `SelectAllAreasButtons` évite de cocher 13 régions (ou 96 départements) une par une pour les dispositifs à large couverture, et gère explicitement le cas outre-mer.
 
 ---
 

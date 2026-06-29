@@ -45,6 +45,7 @@ export class GeographicAreasSeed {
       name: fixture.name,
       coverageType: fixture.coverageType,
       inseeCode: fixture.inseeCode,
+      isOverseas: fixture.isOverseas ?? false,
       ...(parentId !== undefined && { parentArea: parentId }),
     }
 

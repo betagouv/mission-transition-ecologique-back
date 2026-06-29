@@ -42,12 +42,26 @@ export class GeographicAreaResolver {
     const regionIdByName = new Map<string, number>()
     const departementIdByName = new Map<string, number>()
     for (const area of result.docs) {
-      if (area.coverageType === 'region') regionIdByName.set(area.name, area.id)
+      const key = GeographicAreaResolver.normalizeName(area.name)
+      if (area.coverageType === 'region') regionIdByName.set(key, area.id)
       else if (area.coverageType === 'departement')
-        departementIdByName.set(area.name, area.id)
+        departementIdByName.set(key, area.id)
     }
 
     return new GeographicAreaResolver(regionIdByName, departementIdByName)
+  }
+
+  /**
+   * Normalizes an area name so the source `secteur géographique` matches the
+   * seeded zones despite typographic variants (letter case, hyphens vs spaces).
+   * Example: "Saint-Pierre-Et-Miquelon" and "Wallis et Futuna" both match the
+   * official labels "Saint-Pierre-et-Miquelon" and "Wallis-et-Futuna".
+   */
+  private static normalizeName(name: string): string {
+    return name
+      .trim()
+      .toLowerCase()
+      .replace(/[\s-]+/g, ' ')
   }
 
   resolve(secteurGeographique: string[] | undefined): ResolvedGeographic {
@@ -61,10 +75,10 @@ export class GeographicAreaResolver {
       return { geographicCoverage: 'national', geographicAreas: [] }
     }
 
-    const isDepartemental = names.some(
-      (name) =>
-        this.departementIdByName.has(name) && !this.regionIdByName.has(name),
-    )
+    const isDepartemental = names.some((name) => {
+      const key = GeographicAreaResolver.normalizeName(name)
+      return this.departementIdByName.has(key) && !this.regionIdByName.has(key)
+    })
     const lookup = isDepartemental
       ? this.departementIdByName
       : this.regionIdByName
@@ -72,7 +86,7 @@ export class GeographicAreaResolver {
     const geographicAreas: number[] = []
     const unmatched: string[] = []
     for (const name of names) {
-      const id = lookup.get(name)
+      const id = lookup.get(GeographicAreaResolver.normalizeName(name))
       if (id !== undefined) geographicAreas.push(id)
       else unmatched.push(name)
     }
