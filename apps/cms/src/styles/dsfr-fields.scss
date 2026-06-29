@@ -126,6 +126,27 @@ label.field-label {
   }
 }
 
+// Relationship fields that can hold many values (e.g. geographic zones) must be
+// allowed to grow and wrap, instead of the fixed single-line `.rs__control`
+// height above: otherwise the chips overflow the bordered box and overlap the
+// next field. Capped with a vertical scroll so a very long list never blows up
+// the form layout.
+.field--geographic-areas {
+  .rs__control {
+    height: auto;
+    min-height: var(--tee-input-height) !important;
+    max-height: calc(var(--tee-input-height) * 4);
+    overflow-y: auto;
+    align-items: flex-start;
+    flex-wrap: wrap !important;
+    padding-block: var(--tee-space-1);
+  }
+
+  .rs__value-container {
+    flex-wrap: wrap !important;
+  }
+}
+
 .rs__menu {
   background: var(--tee-white) !important;
   border: 1px solid var(--tee-grey-300) !important;

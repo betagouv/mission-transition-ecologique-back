@@ -2,6 +2,7 @@ import type { CollectionConfig, FieldAccess } from 'payload'
 import { ProgramAccessPolicy } from '@/services/access/ProgramAccessPolicy'
 import { beforeChangeWorkflow } from '@/hooks/programs/beforeChangeWorkflow'
 import { assignCreatorOnCreate } from '@/hooks/programs/assignCreatorOnCreate'
+import { normalizeGeographicCoverage } from '@/hooks/programs/normalizeGeographicCoverage'
 import { THEMES_OPTIONS } from '@/constants/themesOptions'
 import { COMPANY_SIZE_OPTIONS } from '@/constants/companySizeOptions'
 import { ACTIVITY_SECTOR_OPTIONS } from '@/constants/activitySectorOptions'
@@ -9,6 +10,7 @@ import { CONTACT_METHOD_OPTIONS } from '@/constants/contactMethodOptions'
 import { AID_TYPE_OPTIONS } from '@/constants/aidTypeOptions'
 import { UserRole, type UserRoleValue } from '@/utils/user/UserRole'
 import { UrlValidator } from '@/utils/UrlValidator'
+import { ProgramFieldAccessPolicy } from '@/services/access/ProgramFieldAccessPolicy'
 
 export const Programs: CollectionConfig = {
   slug: 'programs',
@@ -34,6 +36,7 @@ export const Programs: CollectionConfig = {
     },
   },
   hooks: {
+    beforeValidate: [normalizeGeographicCoverage],
     beforeChange: [assignCreatorOnCreate, beforeChangeWorkflow],
   },
   access: {
@@ -385,19 +388,59 @@ export const Programs: CollectionConfig = {
           },
         },
         {
+          name: 'geographicCoverage',
+          type: 'select',
+          label: 'Couverture géographique',
+          options: [
+            { label: 'National', value: 'national' },
+            { label: 'Régional', value: 'regional' },
+            { label: 'Départemental', value: 'departemental' },
+          ],
+          admin: {
+            description:
+              "National : l'aide couvre tout le territoire, aucune zone à préciser. Régional / Départemental : sélectionnez les zones concernées ci-dessous.",
+          },
+          access: {
+            create: ProgramFieldAccessPolicy.adminOnly,
+            update: ProgramFieldAccessPolicy.adminOnly,
+          },
+        },
+        {
           name: 'geographicAreas',
           type: 'relationship',
-          label: "Zone géographique couverte par l'aide",
+          label: "Zones géographiques couvertes par l'aide",
           relationTo: 'geographic-areas',
           hasMany: true,
+          access: {
+            create: ProgramFieldAccessPolicy.adminOnly,
+            update: ProgramFieldAccessPolicy.adminOnly,
+          },
+          admin: {
+            className: 'field--geographic-areas',
+            condition: (data) =>
+              data?.geographicCoverage === 'regional' ||
+              data?.geographicCoverage === 'departemental',
+          },
+          filterOptions: ({ data }) => {
+            const coverage = (data as { geographicCoverage?: string })
+              ?.geographicCoverage
+            if (coverage === 'regional')
+              return { coverageType: { equals: 'region' } }
+            if (coverage === 'departemental')
+              return { coverageType: { equals: 'departement' } }
+            return false
+          },
         },
         {
           name: 'geographicAreaFeedback',
           type: 'text',
           label: 'Vous ne trouvez pas de zone géographique appropriée ?',
           admin: {
+            condition: (data) =>
+              data?.geographicCoverage === 'regional' ||
+              data?.geographicCoverage === 'departemental',
             description:
-              'Décrivez librement la zone manquante — un administrateur pourra ensuite la créer.',
+              'Décrivez librement la zone manquante, un administrateur pourra ensuite la créer.',
           },
         },
         {
@@ -555,10 +598,7 @@ export const Programs: CollectionConfig = {
       ],
       admin: { position: 'sidebar' },
       access: {
-        update: (({ req: { user } }) => {
-          if (!user) return false;
-          return UserRole.isAdmin(user);
-        }) satisfies FieldAccess,
+        update: ProgramFieldAccessPolicy.adminOnly,
       },
     },
     {
@@ -572,8 +612,7 @@ export const Programs: CollectionConfig = {
         description: 'Contributeurs autorisés à éditer ce dispositif.',
       },
       access: {
-        update: (({ req: { user } }) =>
-          UserRole.isAdmin(user)) satisfies FieldAccess,
+        update: ProgramFieldAccessPolicy.adminOnly,
       },
     },
 

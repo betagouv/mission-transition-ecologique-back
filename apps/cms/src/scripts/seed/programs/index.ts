@@ -5,6 +5,7 @@ import type { SourceProgram } from './types'
 import { OperatorImporter } from './OperatorImporter'
 import { ProgramMapper } from './ProgramMapper'
 import { ProgramImporter } from './ProgramImporter'
+import { GeographicAreaResolver } from './GeographicAreaResolver'
 
 export class ProgramsSeed {
   constructor(
@@ -20,7 +21,8 @@ export class ProgramsSeed {
     const operatorIdByName = await new OperatorImporter(this.payload).import(programs)
 
     const editorConfig = await editorConfigFactory.default({ config: this.payload.config })
-    const mapper = new ProgramMapper(editorConfig)
+    const geographicAreaResolver = await GeographicAreaResolver.fromPayload(this.payload)
+    const mapper = new ProgramMapper(editorConfig, geographicAreaResolver)
 
     process.stdout.write(`Operators ready. Importing ${programs.length.toString()} programs...\n`)
     const { created, updated, errors } = await new ProgramImporter(this.payload, mapper).import(programs, operatorIdByName)

@@ -18,7 +18,7 @@ export const GeographicAreas: CollectionConfig = {
     useAsTitle: 'name',
     defaultColumns: ['name', 'coverageType', 'inseeCode', 'parentArea'],
     hidden: ({ user }) =>
-      !UserRole.isSuperAdmin(user as unknown as { role: UserRoleValue } | null),
+      !UserRole.isAdmin(user as unknown as { role: UserRoleValue } | null),
   },
   fields: [
     {
