@@ -25,7 +25,13 @@
     width: 100%;
   }
 
-  // ---- Brand block (logo placeholder) ----
+  // ---- Brand block ----
+  // The logo was removed (issue #6); collapse the block when it has no content
+  // so the login card doesn't keep an empty top gap.
+  .login__brand:empty {
+    display: none;
+  }
+
   .login__brand {
     margin-bottom: var(--tee-space-8);
     text-align: center;
