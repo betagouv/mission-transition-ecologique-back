@@ -22,12 +22,12 @@ type Comment = {
 }
 
 const AVATAR_COLORS = [
-  '#000091',
-  '#0063cb',
-  '#27a658',
-  '#e1000f',
-  '#ff732c',
-  '#a558a0',
+  '#6c7fe0',
+  '#8b9cf0',
+  '#5468d4',
+  '#7d8fe8',
+  '#4f63cf',
+  '#9aa9ef',
 ]
 
 const initialsOf = (label: string): string => {
@@ -199,7 +199,7 @@ export const ReviewCommentsThread: React.FC = () => {
         style={{
           fontSize: '0.8rem',
           fontWeight: 600,
-          marginBottom: '0.5rem',
+          marginBottom: '0.75rem',
           color: '#3a3a3a',
         }}
       >
@@ -210,12 +210,9 @@ export const ReviewCommentsThread: React.FC = () => {
         style={{
           display: 'flex',
           flexDirection: 'column',
-          gap: '0.75rem',
-          maxHeight: 360,
+          gap: '1rem',
+          maxHeight: 380,
           overflowY: 'auto',
-          padding: '0.75rem',
-          background: comments.length === 0 ? 'transparent' : '#f6f6f6',
-          borderRadius: 8,
         }}
       >
         {comments.length === 0 && (
@@ -225,12 +222,12 @@ export const ReviewCommentsThread: React.FC = () => {
               flexDirection: 'column',
               alignItems: 'center',
               gap: '0.6rem',
-              padding: '1.5rem 0.5rem',
+              padding: '1.75rem 0.5rem',
               textAlign: 'center',
-              color: '#000091',
+              color: '#6a6af4',
             }}
           >
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="#000091" aria-hidden="true">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="#6a6af4" aria-hidden="true">
               <path d="M4 4h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H8l-4 4V5a1 1 0 0 1 1-1Z" />
             </svg>
             <div style={{ fontSize: '0.8rem', lineHeight: 1.5 }}>
@@ -254,66 +251,84 @@ export const ReviewCommentsThread: React.FC = () => {
               {showDay && (
                 <div
                   style={{
-                    alignSelf: 'center',
-                    fontSize: '0.7rem',
-                    color: '#666',
-                    background: '#e5e5e5',
-                    borderRadius: 12,
-                    padding: '0.1rem 0.6rem',
+                    position: 'relative',
+                    textAlign: 'center',
+                    margin: '0.25rem 0',
                   }}
                 >
-                  {day}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: 0,
+                      right: 0,
+                      height: 1,
+                      background: '#e5e5e5',
+                    }}
+                  />
+                  <span
+                    style={{
+                      position: 'relative',
+                      background: '#fff',
+                      border: '1px solid #e5e5e5',
+                      borderRadius: 14,
+                      padding: '0.15rem 0.75rem',
+                      fontSize: '0.72rem',
+                      color: '#5a5a5a',
+                    }}
+                  >
+                    {day}
+                  </span>
                 </div>
               )}
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.4rem',
+                  opacity: comment.pending ? 0.6 : 1,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div
+                    style={{
+                      flex: '0 0 auto',
+                      width: 30,
+                      height: 30,
+                      borderRadius: '50%',
+                      background: colorOf(avatarSeed),
+                      color: '#fff',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {initialsOf(label)}
+                  </div>
+                  <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#3a3a3a' }}>
+                    {label}
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: '#9a9a9a' }}>
+                    {comment.pending ? 'envoi…' : timeFormatter.format(when)}
+                  </span>
+                </div>
                 <div
                   style={{
-                    flex: '0 0 auto',
-                    width: 28,
-                    height: 28,
-                    borderRadius: '50%',
-                    background: colorOf(avatarSeed),
-                    color: '#fff',
-                    fontSize: '0.7rem',
-                    fontWeight: 700,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    opacity: comment.pending ? 0.6 : 1,
+                    background: '#fff',
+                    color: '#3a3a3a',
+                    border: '1px solid #e7e7e7',
+                    borderRadius: 12,
+                    boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)',
+                    padding: '0.6rem 0.75rem',
+                    fontSize: '0.85rem',
+                    lineHeight: 1.45,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
                   }}
                 >
-                  {initialsOf(label)}
-                </div>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      gap: '0.4rem',
-                      alignItems: 'baseline',
-                      marginBottom: 2,
-                    }}
-                  >
-                    <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>
-                      {label}
-                    </span>
-                    <span style={{ fontSize: '0.7rem', color: '#888' }}>
-                      {comment.pending ? 'envoi…' : timeFormatter.format(when)}
-                    </span>
-                  </div>
-                  <div
-                    style={{
-                      background: '#e3e3fd',
-                      color: '#161616',
-                      borderRadius: '0 8px 8px 8px',
-                      padding: '0.4rem 0.6rem',
-                      fontSize: '0.85rem',
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-word',
-                      opacity: comment.pending ? 0.6 : 1,
-                    }}
-                  >
-                    {comment.text}
-                  </div>
+                  {comment.text}
                 </div>
               </div>
             </React.Fragment>
@@ -333,7 +348,13 @@ export const ReviewCommentsThread: React.FC = () => {
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.5rem' }}>
+      <div
+        style={{
+          marginTop: '1rem',
+          paddingTop: '1rem',
+          borderTop: '2px solid #6a6af4',
+        }}
+      >
         <textarea
           value={draft}
           onChange={(event) => {
@@ -344,40 +365,39 @@ export const ReviewCommentsThread: React.FC = () => {
           rows={2}
           disabled={!canComment || sending}
           style={{
-            flex: 1,
+            width: '100%',
+            boxSizing: 'border-box',
             resize: 'vertical',
             borderRadius: 8,
-            border: '1px solid #ccc',
-            padding: '0.5rem',
+            border: '1px solid #ddd',
+            padding: '0.6rem 0.7rem',
             fontSize: '0.85rem',
             fontFamily: 'inherit',
-            background: canComment ? '#fff' : '#f0f0f0',
+            color: '#3a3a3a',
+            background: canComment ? '#fff' : '#f3f3f3',
           }}
         />
-        <button
-          type="button"
-          onClick={handleSend}
-          disabled={!canComment || sending || draft.trim().length === 0}
-          style={{
-            flex: '0 0 auto',
-            alignSelf: 'flex-end',
-            background:
-              !canComment || sending || draft.trim().length === 0
-                ? '#cacafb'
-                : '#000091',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 8,
-            padding: '0.5rem 0.9rem',
-            fontSize: '0.85rem',
-            cursor:
-              !canComment || sending || draft.trim().length === 0
-                ? 'default'
-                : 'pointer',
-          }}
-        >
-          {sending ? '…' : 'Envoyer'}
-        </button>
+        {draft.trim().length > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+            <button
+              type="button"
+              onClick={handleSend}
+              disabled={!canComment || sending}
+              style={{
+                background: sending ? '#cacafb' : '#6a6af4',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 8,
+                padding: '0.45rem 1rem',
+                fontSize: '0.82rem',
+                fontWeight: 500,
+                cursor: sending ? 'default' : 'pointer',
+              }}
+            >
+              {sending ? '…' : 'Envoyer'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
