@@ -26,6 +26,6 @@ export async function login({
 
   await page.waitForURL(`${serverURL}/admin`)
 
-  const dashboardArtifact = page.locator('span[title="Dashboard"]')
-  await expect(dashboardArtifact).toBeVisible()
+  // Locale-agnostic success signal: the login form is gone once authenticated.
+  await expect(page.locator('#field-password')).toHaveCount(0)
 }
