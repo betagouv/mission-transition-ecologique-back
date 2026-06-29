@@ -3,6 +3,7 @@ import { ProgramAccessPolicy } from '@/services/access/ProgramAccessPolicy'
 import { beforeChangeWorkflow } from '@/hooks/programs/beforeChangeWorkflow'
 import { assignCreatorOnCreate } from '@/hooks/programs/assignCreatorOnCreate'
 import { normalizeGeographicCoverage } from '@/hooks/programs/normalizeGeographicCoverage'
+import { trackLastModifiedBy } from '@/hooks/programs/trackLastModifiedBy'
 import { THEMES_OPTIONS } from '@/constants/themesOptions'
 import { COMPANY_SIZE_OPTIONS } from '@/constants/companySizeOptions'
 import { ACTIVITY_SECTOR_OPTIONS } from '@/constants/activitySectorOptions'
@@ -33,11 +34,26 @@ export const Programs: CollectionConfig = {
           '@/components/programs/WorkflowActionBar#WorkflowActionBar',
         Status: '@/components/programs/WorkflowStatusBadge#WorkflowStatusBadge',
       },
+      views: {
+        edit: {
+          // Custom versions list: same native experience (rows link to the
+          // native version diff view) augmented with workflow columns
+          // (Qui / Statut depuis / Statut vers).
+          versions: {
+            Component:
+              '@/components/programs/versions/ProgramVersionsView#ProgramVersionsView',
+          },
+        },
+      },
     },
   },
   hooks: {
     beforeValidate: [normalizeGeographicCoverage],
-    beforeChange: [assignCreatorOnCreate, beforeChangeWorkflow],
+    beforeChange: [
+      assignCreatorOnCreate,
+      trackLastModifiedBy,
+      beforeChangeWorkflow,
+    ],
   },
   access: {
     read: ProgramAccessPolicy.read,
@@ -557,11 +573,27 @@ export const Programs: CollectionConfig = {
       }),
     },
     {
+      name: 'lastModifiedBy',
+      type: 'relationship',
+      label: 'Dernière modification par',
+      relationTo: 'users',
+      hasMany: false,
+      admin: {
+        // Captured into each version snapshot to feed the "Qui" column of the
+        // custom versions view. Not shown in the form.
+        hidden: true,
+        readOnly: true,
+      },
+    },
+    {
       name: 'workflowHistory',
       type: 'array',
       label: 'Historique des transitions',
       admin: {
-        position: 'sidebar',
+        // Removed from the sidebar (ticket #6, point 10). The data is still
+        // written by `beforeChangeWorkflow` and stays available in the API and
+        // version snapshots.
+        hidden: true,
         readOnly: true,
         description: 'Historique automatique des changements de statut.',
       },

@@ -88,8 +88,9 @@ Les fichiers seed vivent dans `apps/cms/src/scripts/seed/` :
 - `src/utils/user/UserRole.ts` — classe `UserRole` (constantes, hiérarchie, méthodes `isSuperAdmin` / `isAdmin` / `isCreator`) + type `UserRoleValue`
 - `src/constants/` — options de select réutilisables, un fichier par jeu d'options (`themesOptions.ts`, `nafSectionsOptions.ts`, `aidTypeOptions.ts`, `companySizeOptions.ts`, `activitySectorOptions.ts`, `contactMethodOptions.ts`)
 - `src/services/workflow/` — `WorkflowTransitionPolicy` (logique de transitions, partagée client/serveur), `WorkflowAutomation` (point d'extension phase automatisée)
-- `src/hooks/programs/` — `beforeChangeWorkflow` (validation, sync `workflowStatus` ↔ `_status`, intégration `WorkflowAutomation`)
-- `src/components/programs/` — `WorkflowActionBar` (bouton contextuel), `WorkflowStatusBadge` (statut sidebar), `WorkflowStatusCell` (badge liste), `NumberedRowLabel` (label d'array auto-numéroté, `singular` passé via `clientProps`), `LinkedProjectsCounter` (champ `type: 'ui'` qui affiche en live le nombre de projets matchant les thèmes sélectionnés)
+- `src/hooks/programs/` — `beforeChangeWorkflow` (validation, sync `workflowStatus` ↔ `_status`, intégration `WorkflowAutomation`), `assignCreatorOnCreate`, `trackLastModifiedBy` (capture `lastModifiedBy = req.user.id` à chaque changement, lu par la vue Versions custom)
+- `src/components/programs/` — `WorkflowActionBar` (bouton contextuel), `WorkflowStatusBadge` (statut sidebar), `WorkflowStatusCell` (badge liste), `WorkflowStatusPill` (badge statut réutilisable), `NumberedRowLabel` (label d'array auto-numéroté, `singular` passé via `clientProps`), `LinkedProjectsCounter` (champ `type: 'ui'` qui affiche en live le nombre de projets matchant les thèmes sélectionnés)
+- `src/components/programs/versions/` — vue Versions custom du dispositif (override `admin.components.views.edit.versions`), vendorisée depuis la liste native Payload : `ProgramVersionsView` (serveur, `payload.findVersions`), `VersionsViewClient` (table cliente), `buildProgramVersionColumns` (colonnes Date / Qui / Statut depuis / Statut vers), `CreatedAtCell` (lien date vers la vue détail native = accordéon de diff)
 
 ### `libs/canonical` — `@tee-backoffice/canonical`
 
@@ -118,6 +119,7 @@ Ne lire un ADR que s'il est pertinent pour la tâche en cours.
 | `docs/adr/0005-programs-workflow-extended.md` | Workflow éditorial des programmes — 9 états, 3 rôles, `WorkflowTransitionPolicy`, `WorkflowAutomation`, `replacedBy` |
 | `docs/adr/0006-programs-form-refactor.md` | Refonte du formulaire `Programs` — sections collapsibles, conditionnels par `aidType`, suppression du double modèle d'éligibilité, collection `GeographicAreas`, composants admin custom |
 | `docs/adr/0007-canonical-pivot-format.md` | Format pivot interne (`libs/canonical`) — Canonical Data Model, zod source de vérité, clés `snake_case`, primitifs brandés, éligibilité refacto (`texte`/`structure` par critère), `CanonicalProgram` + `CanonicalProgramValidator`. Référence champs : `docs/context/canonical-pivot-format.md` |
+| `docs/adr/0008-programs-versions-view.md` | Sidebar et versions — masquage de `workflowHistory` de la sidebar, champ `lastModifiedBy`, vue Versions custom (Date / Qui / Statut depuis / Statut vers) vendorisée depuis la liste native |
 
 ## Commits
 
