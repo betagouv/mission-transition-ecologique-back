@@ -26,11 +26,11 @@ export const REGIONS: GeographicAreaFixture[] = [
   { inseeCode: '04', name: 'La Réunion', coverageType: 'region', isOverseas: true },
   { inseeCode: '06', name: 'Mayotte', coverageType: 'region', isOverseas: true },
   // Overseas collectivities (COM), modelled as regions to match source data.
-  { inseeCode: '975', name: 'Saint-Pierre-Et-Miquelon', coverageType: 'region', isOverseas: true },
+  { inseeCode: '975', name: 'Saint-Pierre-et-Miquelon', coverageType: 'region', isOverseas: true },
   { inseeCode: '977', name: 'Saint-Barthélemy', coverageType: 'region', isOverseas: true },
   { inseeCode: '978', name: 'Saint-Martin', coverageType: 'region', isOverseas: true },
   { inseeCode: '984', name: 'Terres australes et antarctiques françaises', coverageType: 'region', isOverseas: true },
-  { inseeCode: '986', name: 'Wallis et Futuna', coverageType: 'region', isOverseas: true },
+  { inseeCode: '986', name: 'Wallis-et-Futuna', coverageType: 'region', isOverseas: true },
   { inseeCode: '987', name: 'Polynésie française', coverageType: 'region', isOverseas: true },
   { inseeCode: '988', name: 'Nouvelle-Calédonie', coverageType: 'region', isOverseas: true },
 ]
