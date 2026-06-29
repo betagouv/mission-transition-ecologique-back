@@ -4,6 +4,7 @@ import { beforeChangeWorkflow } from '@/hooks/programs/beforeChangeWorkflow'
 import { assignCreatorOnCreate } from '@/hooks/programs/assignCreatorOnCreate'
 import { assignCanonicalId } from '@/hooks/programs/assignCanonicalId'
 import { syncCanonicalOnPublish } from '@/hooks/programs/syncCanonicalOnPublish'
+import { stampReviewComments } from '@/hooks/programs/stampReviewComments'
 import { THEMES_OPTIONS } from '@/constants/themesOptions'
 import {
   ACTIVITY_SECTOR_OPTIONS,
@@ -49,7 +50,12 @@ export const Programs: CollectionConfig = {
     },
   },
   hooks: {
-    beforeChange: [assignCanonicalId, assignCreatorOnCreate, beforeChangeWorkflow],
+    beforeChange: [
+      assignCanonicalId,
+      assignCreatorOnCreate,
+      stampReviewComments,
+      beforeChangeWorkflow,
+    ],
     afterChange: [syncCanonicalOnPublish],
   },
   access: {
@@ -61,6 +67,12 @@ export const Programs: CollectionConfig = {
   versions: {
     drafts: true,
     maxPerDoc: 100,
+  },
+  // Prevents two editors from clobbering each other's work: Payload locks the
+  // document for the active editor and releases it after `duration` of
+  // inactivity. Enabled by default; set explicitly to document the intent.
+  lockDocuments: {
+    duration: 300,
   },
   fields: [
     // --- Main ---
@@ -609,6 +621,46 @@ export const Programs: CollectionConfig = {
       type: 'textarea',
       label: 'Description SEO',
       admin: { position: 'sidebar' },
+    },
+
+    // --- Review comments (sidebar, under SEO) ---
+    {
+      name: 'reviewComments',
+      type: 'array',
+      label: 'Commentaires de relecture',
+      labels: { singular: 'un commentaire', plural: 'commentaires' },
+      admin: {
+        position: 'sidebar',
+        description:
+          'Retours des relecteurs. L’auteur et la date sont enregistrés automatiquement.',
+        components: {
+          RowLabel: {
+            path: '@/components/programs/NumberedRowLabel#NumberedRowLabel',
+            clientProps: { singular: 'Commentaire' },
+          },
+        },
+      },
+      fields: [
+        {
+          name: 'text',
+          type: 'textarea',
+          label: 'Commentaire',
+          required: true,
+        },
+        {
+          name: 'author',
+          type: 'relationship',
+          label: 'Auteur',
+          relationTo: 'users',
+          admin: { readOnly: true },
+        },
+        {
+          name: 'date',
+          type: 'date',
+          label: 'Le',
+          admin: { readOnly: true, date: { pickerAppearance: 'dayAndTime' } },
+        },
+      ],
     },
   ],
 };
