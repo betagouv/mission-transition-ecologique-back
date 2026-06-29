@@ -1,0 +1,41 @@
+import type { CollectionAfterChangeHook } from 'payload'
+import { ProgramCanonicalMapper } from '@/services/canonical/ProgramCanonicalMapper'
+import { getRichTextToMarkdown } from '@/services/canonical/rich-text/richTextToMarkdownProvider'
+import { getCanonicalProgramService } from '@/services/canonical/canonicalProgramService'
+import { getCanonicalEventSink } from '@/services/canonical/observability/canonicalEventSink'
+import type { Program } from '../../../payload-types'
+
+/**
+ * Mirrors a published program into the canonical store after every save. The
+ * canonical is the durable source of truth, so it is kept in sync on publish.
+ * Only published programs are persisted; drafts are out of scope. Outcomes
+ * (saved, dropped, failed) are emitted as events and never block the CMS write.
+ */
+export const syncCanonicalOnPublish: CollectionAfterChangeHook<Program> = async ({ doc, req }) => {
+  if (doc._status !== 'published') return doc
+
+  try {
+    // Re-fetch with relations populated so the mapper can resolve operators,
+    // geographic areas and the replacing program.
+    const full = await req.payload.findByID({
+      collection: 'programs',
+      id: doc.id,
+      depth: 1,
+      overrideAccess: true,
+    })
+
+    const markdown = await getRichTextToMarkdown(req.payload.config)
+    const input = new ProgramCanonicalMapper(markdown).map(full)
+    // The service emits the saved/dropped event; we only handle hard failures here.
+    await (await getCanonicalProgramService(req.payload.logger)).save(input)
+  } catch (error) {
+    getCanonicalEventSink(req.payload.logger).emit({
+      type: 'sync_failed',
+      severity: 'error',
+      slug: String(doc.slug ?? ''),
+      error: (error as Error).message,
+    })
+  }
+
+  return doc
+}

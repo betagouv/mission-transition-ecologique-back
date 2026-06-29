@@ -96,17 +96,19 @@ type NatureAideCrossFields = { types_aides?: TypeAide[]; duree?: Duree }
 type CycleVieCrossFields = { statut_dispositif?: StatutDispositif; remplace_par?: string }
 
 /**
- * `duree` is required when the aid is an etude or formation. Defensive check on
- * `types_aides` since this refine runs at the root level.
+ * `duree` is required for a `formation` (a training has a duration). `etude` is
+ * intentionally exempt: many real aids are financed studies (`étude` + a funding
+ * amount) carrying no duration. Defensive check on `types_aides` since this
+ * refine runs at the root level.
  */
 export const refineDuree = (data: NatureAideCrossFields, ctx: z.RefinementCtx): void => {
   const types = data.types_aides
-  const needsDuree = Array.isArray(types) && types.some((t) => t === 'etude' || t === 'formation')
+  const needsDuree = Array.isArray(types) && types.some((t) => t === 'formation')
   if (needsDuree && !data.duree) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ['duree'],
-      message: 'duree requise si types_aides contient etude ou formation',
+      message: 'duree requise si types_aides contient formation',
     })
   }
 }
