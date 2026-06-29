@@ -1,4 +1,4 @@
-# ADR 0008 — Sidebar et vue Versions des dispositifs
+# ADR 0009 — Sidebar et vue Versions des dispositifs
 
 **Date :** 2026-06-18
 **Statut :** Accepté
