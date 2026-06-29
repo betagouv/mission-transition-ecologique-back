@@ -30,7 +30,13 @@ export const VersionsViewClient: React.FC<Props> = ({
 }) => {
   const { data, handlePageChange, handlePerPageChange } = useListQuery()
   const searchParams = useSearchParams()
-  const limit = searchParams.get('limit')
+  const limitParam = searchParams.get('limit')
+  const parsedLimit = limitParam !== null ? Number(limitParam) : NaN
+  // Authoritative applied limit comes from `useListQuery`; only honour the URL
+  // param when it parses to a finite number.
+  const perPageLimit = Number.isFinite(parsedLimit)
+    ? parsedLimit
+    : (data?.limit ?? 10)
   const { i18n } = useTranslation()
   const versionCount = data?.totalDocs ?? 0
 
@@ -72,7 +78,7 @@ export const VersionsViewClient: React.FC<Props> = ({
                 </div>
                 <PerPage
                   handleChange={handlePerPageChange}
-                  limit={limit ? Number(limit) : 10}
+                  limit={perPageLimit}
                   limits={paginationLimits ?? []}
                 />
               </React.Fragment>

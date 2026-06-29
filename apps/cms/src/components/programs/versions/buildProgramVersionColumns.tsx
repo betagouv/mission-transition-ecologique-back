@@ -56,9 +56,9 @@ export const buildProgramVersionColumns = ({
     active: true,
     field: minimalField('date'),
     Heading: <span>Date</span>,
-    renderedCells: docs.map((doc, i) => (
+    renderedCells: docs.map((doc) => (
       <CreatedAtCell
-        key={i}
+        key={doc.id}
         collectionSlug={collectionSlug}
         docID={docID}
         rowData={{ id: doc.id, updatedAt: doc.updatedAt }}
@@ -70,8 +70,8 @@ export const buildProgramVersionColumns = ({
     active: true,
     field: minimalField('text'),
     Heading: <span>Qui</span>,
-    renderedCells: docs.map((doc, i) => (
-      <span key={i}>{resolveAuthorLabel(doc.version?.lastModifiedBy)}</span>
+    renderedCells: docs.map((doc) => (
+      <span key={doc.id}>{resolveAuthorLabel(doc.version?.lastModifiedBy)}</span>
     )),
   },
   {
@@ -80,7 +80,7 @@ export const buildProgramVersionColumns = ({
     field: minimalField('text'),
     Heading: <span>Statut depuis</span>,
     renderedCells: docs.map((doc, i) => (
-      <React.Fragment key={i}>
+      <React.Fragment key={doc.id}>
         {renderStatus(docs[i + 1]?.version?.workflowStatus)}
       </React.Fragment>
     )),
@@ -90,8 +90,8 @@ export const buildProgramVersionColumns = ({
     active: true,
     field: minimalField('text'),
     Heading: <span>Statut vers</span>,
-    renderedCells: docs.map((doc, i) => (
-      <React.Fragment key={i}>
+    renderedCells: docs.map((doc) => (
+      <React.Fragment key={doc.id}>
         {renderStatus(doc.version?.workflowStatus)}
       </React.Fragment>
     )),
@@ -101,6 +101,6 @@ export const buildProgramVersionColumns = ({
     active: true,
     field: minimalField('text'),
     Heading: <span>Identifiant</span>,
-    renderedCells: docs.map((doc, i) => <span key={i}>{doc.id}</span>),
+    renderedCells: docs.map((doc) => <span key={doc.id}>{doc.id}</span>),
   },
 ]
