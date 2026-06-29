@@ -2,5 +2,8 @@
   "name": "@tee-backoffice/cms",
   "version": "0.0.1",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "@paralleldrive/cuid2": "^3.3.0"
+  }
 }
