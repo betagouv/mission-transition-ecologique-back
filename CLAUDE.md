@@ -92,6 +92,14 @@ Les fichiers seed vivent dans `apps/cms/src/scripts/seed/` :
 - `src/components/programs/` — `WorkflowActionBar` (bouton contextuel), `WorkflowStatusBadge` (statut sidebar), `WorkflowStatusCell` (badge liste), `WorkflowStatusPill` (badge statut réutilisable), `NumberedRowLabel` (label d'array auto-numéroté, `singular` passé via `clientProps`), `LinkedProjectsCounter` (champ `type: 'ui'` qui affiche en live le nombre de projets matchant les thèmes sélectionnés)
 - `src/components/programs/versions/` — vue Versions custom du dispositif (override `admin.components.views.edit.versions`), vendorisée depuis la liste native Payload : `ProgramVersionsView` (serveur, `payload.findVersions`), `VersionsViewClient` (table cliente), `buildProgramVersionColumns` (colonnes Date / Qui / Statut depuis / Statut vers), `CreatedAtCell` (lien date vers la vue détail native = accordéon de diff)
 
+### `libs/canonical` — `@tee-backoffice/canonical`
+
+Format **pivot** interne (Canonical Data Model) : TypeScript pur + zod, sans dépendance framework. Source de vérité = zod, types inférés (`z.infer`), clés en français `snake_case` (= format wire). Voir ADR 0007.
+
+- `src/shared/` — `primitives.ts` (primitifs brandés : `Cuid2`, `Siren`, `NafCode`, dates ISO, `Intervalle`…), `cog.ts` (dictionnaire unique des niveaux COG `COG_NIVEAUX` + `CogNiveau`/`COG_PREFIXES`), `schema/` (`cog.ts` : `cogCodeSchema`/`CogCode`, garde de forme souple ; `operator.ts` : `operateurSchema`/`operateursSchema`)
+- `src/canonical-program/` — `enums.ts`, `canonical-program.schema.ts` (racine, `merge` + `superRefine`), `canonical-program.types.ts` (`CanonicalProgramData`), `CanonicalProgram` (value object), `CanonicalProgramValidator` (point d'entrée de validation), `fields/` (identite, contenu, aide, eligibilite), `variants/`, `additional-data/`
+- `tests/` — `unit/` (specs `*.spec.ts`) et `fixtures/` (golden fixtures `valid-minimal`, `valid-full`)
+
 ## Documentation de référence
 
 - `docs/sources/` — **NE PAS MODIFIER** — documentation brute (brainstorming produit)
@@ -110,7 +118,8 @@ Ne lire un ADR que s'il est pertinent pour la tâche en cours.
 | `docs/adr/0004-programs-workflow.md` | ⚠️ Obsolète — superseded par ADR 0005 |
 | `docs/adr/0005-programs-workflow-extended.md` | Workflow éditorial des programmes — 9 états, 3 rôles, `WorkflowTransitionPolicy`, `WorkflowAutomation`, `replacedBy` |
 | `docs/adr/0006-programs-form-refactor.md` | Refonte du formulaire `Programs` — sections collapsibles, conditionnels par `aidType`, suppression du double modèle d'éligibilité, collection `GeographicAreas`, composants admin custom |
-| `docs/adr/0007-programs-versions-view.md` | Sidebar et versions — masquage de `workflowHistory` de la sidebar, champ `lastModifiedBy`, vue Versions custom (Date / Qui / Statut depuis / Statut vers) vendorisée depuis la liste native |
+| `docs/adr/0007-canonical-pivot-format.md` | Format pivot interne (`libs/canonical`) — Canonical Data Model, zod source de vérité, clés `snake_case`, primitifs brandés, éligibilité refacto (`texte`/`structure` par critère), `CanonicalProgram` + `CanonicalProgramValidator`. Référence champs : `docs/context/canonical-pivot-format.md` |
+| `docs/adr/0008-programs-versions-view.md` | Sidebar et versions — masquage de `workflowHistory` de la sidebar, champ `lastModifiedBy`, vue Versions custom (Date / Qui / Statut depuis / Statut vers) vendorisée depuis la liste native |
 
 ## Commits
 
@@ -141,6 +150,10 @@ Exemples : `feat(cms): add User collection` — `fix(cms): resolve SQLite index 
 - **D — Dependency Inversion** : dépendre des abstractions (interfaces/types), pas des implémentations concrètes. Injecter les dépendances plutôt que les instancier en dur.
 
 Les classes utilitaires partagées vont dans `src/utils/`.
+
+## Règles d'équipe
+
+> Conventions de commentaires : voir `.claude/rules/code-comments.md` (rule auto-appliquée sur tout fichier `.ts`/`.tsx`).
 
 ## Règles importantes
 

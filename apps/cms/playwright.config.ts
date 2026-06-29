@@ -28,8 +28,15 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'pnpm dev',
-    reuseExistingServer: true,
-    url: 'http://localhost:3000',
+    // Run from this package: there is no `dev` script in apps/cms, so invoke
+    // next directly. In CI, serve the production build (the job runs `pnpm build`
+    // first) for a faster, prod-like start; locally use dev for quick iteration.
+    // Probe the login page (returns 200) rather than '/' (a redirect).
+    command: process.env.CI
+      ? 'pnpm exec next start -p 3000'
+      : 'pnpm exec next dev -p 3000',
+    url: 'http://localhost:3000/admin/login',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
   },
 })
