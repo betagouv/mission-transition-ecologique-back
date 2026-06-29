@@ -17,7 +17,6 @@ export class ProjectsSeed {
     const projects = JSON.parse(readFileSync(this.projectsPath, 'utf-8')) as SourceProject[]
     process.stdout.write(`Found ${projects.length.toString()} projects in source file.\n`)
 
-    // Build programIdBySlug map
     const programsResult = await this.payload.find({
       collection: 'programs',
       limit: 0,

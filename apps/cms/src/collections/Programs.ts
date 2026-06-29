@@ -82,9 +82,7 @@ export const Programs: CollectionConfig = {
     maxPerDoc: 100,
   },
   fields: [
-    // ===================================================================
-    // MAIN
-    // ===================================================================
+    // --- Main ---
     {
       name: 'title',
       type: 'text',
@@ -217,9 +215,7 @@ export const Programs: CollectionConfig = {
       },
     },
 
-    // ===================================================================
-    // ÉTAPES POUR EN BÉNÉFICIER
-    // ===================================================================
+    // --- How to benefit ---
     {
       type: 'collapsible',
       label: 'Étapes pour en bénéficier',
@@ -291,9 +287,7 @@ export const Programs: CollectionConfig = {
       ],
     },
 
-    // ===================================================================
-    // CONTACT
-    // ===================================================================
+    // --- Contact ---
     {
       type: 'collapsible',
       label: 'Mode de contact en cas de question',
@@ -342,9 +336,7 @@ export const Programs: CollectionConfig = {
       ],
     },
 
-    // ===================================================================
-    // PROJET
-    // ===================================================================
+    // --- Project ---
     {
       type: 'collapsible',
       label: 'Projet',
@@ -381,9 +373,7 @@ export const Programs: CollectionConfig = {
       ],
     },
 
-    // ===================================================================
-    // ÉLIGIBILITÉ
-    // ===================================================================
+    // --- Eligibility ---
     {
       type: 'collapsible',
       label: 'Éligibilité',
@@ -545,9 +535,7 @@ export const Programs: CollectionConfig = {
       label: 'Informations complémentaires',
     },
 
-    // ===================================================================
-    // SIDEBAR
-    // ===================================================================
+    // --- Sidebar ---
     {
       name: 'slug',
       type: 'text',
@@ -661,9 +649,7 @@ export const Programs: CollectionConfig = {
       },
     },
 
-    // ===================================================================
-    // SEO (sidebar, kept)
-    // ===================================================================
+    // --- SEO (sidebar) ---
     {
       name: 'metaTitle',
       type: 'text',

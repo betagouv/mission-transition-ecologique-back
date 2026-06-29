@@ -1,11 +1,15 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
     "skipLibCheck": true,
     "strict": true,
     "target": "ES2022",
     "isolatedModules": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitOverride": true,
-    "noImplicitReturns": true
+    "noImplicitReturns": true,
+    "paths": {
+      "@tee-backoffice/canonical": ["libs/canonical/src/index.ts"]
+    }
   }
 }

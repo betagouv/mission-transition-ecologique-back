@@ -26,6 +26,8 @@ export async function login({
 
   await page.waitForURL(`${serverURL}/admin`)
 
-  // Locale-agnostic success signal: the login form is gone once authenticated.
-  await expect(page.locator('#field-password')).toHaveCount(0)
+  // Locale-independent dashboard marker: the admin UI runs in French, so match
+  // the step-nav home link by class rather than its translated title.
+  const dashboardArtifact = page.locator('a.step-nav__home')
+  await expect(dashboardArtifact).toBeVisible()
 }

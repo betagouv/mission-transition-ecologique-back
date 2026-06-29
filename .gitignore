@@ -57,6 +57,12 @@ apps/cms/media/
 *.db-shm
 *.db-wal
 test.db
+# test/dev databases (integration + e2e)
+tee-*.db
+
+# Playwright
+apps/cms/playwright-report/
+apps/cms/test-results/
 
 # Local-only working directory (per-developer scratch, never committed)
 /local/
@@ -70,3 +76,5 @@ test-output
 memory/MEMORY.local.md
 local/**
 docs/sources/exports/**
+
+vitest.config.*.timestamp*
