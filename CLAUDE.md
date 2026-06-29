@@ -132,8 +132,8 @@ Ne lire un ADR que s'il est pertinent pour la tâche en cours.
 | `docs/adr/0005-programs-workflow-extended.md` | Workflow éditorial des programmes — 9 états, 3 rôles, `WorkflowTransitionPolicy`, `WorkflowAutomation`, `replacedBy` |
 | `docs/adr/0006-programs-form-refactor.md` | Refonte du formulaire `Programs` — sections collapsibles, conditionnels par `aidType`, suppression du double modèle d'éligibilité, collection `GeographicAreas`, composants admin custom |
 | `docs/adr/0007-canonical-pivot-format.md` | Format pivot interne (`libs/canonical`) — Canonical Data Model, zod source de vérité, clés `snake_case`, primitifs brandés, éligibilité refacto (`texte`/`structure` par critère), `CanonicalProgram` + `CanonicalProgramValidator`. Référence champs : `docs/context/canonical-pivot-format.md` |
-| `docs/adr/0008-programs-versions-view.md` | Sidebar et versions — masquage de `workflowHistory` de la sidebar, champ `lastModifiedBy`, vue Versions custom (Date / Qui / Statut depuis / Statut vers) vendorisée depuis la liste native |
 | `docs/adr/0008-canonical-persistence-ddd.md` | Persistance du canonical + architecture DDD/DI : canonical = source de vérité durable (anti-lock-in), store libSQL/Drizzle indépendant de Payload (`libs/canonical-store`), port `CanonicalProgramRepository` + service domaine `CanonicalProgramService`, composition root et injection dans `apps/cms`, sync au publish (hook unique, seed inclus), observabilité des drops (port `CanonicalEventSink` + canaux pluggables logger/Sentry/email/Slack, routage), migration Postgres future |
+| `docs/adr/0009-programs-versions-view.md` | Sidebar et versions — masquage de `workflowHistory` de la sidebar, champ `lastModifiedBy`, vue Versions custom (Date / Qui / Statut depuis / Statut vers) vendorisée depuis la liste native |
 
 ## Commits
 
