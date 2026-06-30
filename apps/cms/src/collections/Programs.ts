@@ -69,6 +69,12 @@ export const Programs: CollectionConfig = {
     drafts: true,
     maxPerDoc: 100,
   },
+  // Prevents two editors from clobbering each other's work: Payload locks the
+  // document for the active editor and releases it after `duration` of
+  // inactivity. Enabled by default; set explicitly to document the intent.
+  lockDocuments: {
+    duration: 300,
+  },
   fields: [
     // --- Main ---
     {
@@ -716,6 +722,23 @@ export const Programs: CollectionConfig = {
           UserRole.isAdmin(user)) satisfies FieldAccess,
         update: (({ req: { user } }) =>
           UserRole.isAdmin(user)) satisfies FieldAccess,
+      },
+    },
+
+    // --- Review comments (sidebar, under SEO) ---
+    // UI-only field: data lives in the `review-comments` collection. The
+    // thread component reads/creates comments there, so posting a comment never
+    // updates the program (no workflow transition, no validation, no version).
+    {
+      name: 'reviewComments',
+      type: 'ui',
+      label: 'Commentaires de relecture',
+      admin: {
+        position: 'sidebar',
+        components: {
+          Field:
+            '@/components/programs/ReviewCommentsThread#ReviewCommentsThread',
+        },
       },
     },
   ],
