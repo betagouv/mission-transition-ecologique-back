@@ -112,6 +112,19 @@ Format **pivot** interne (Canonical Data Model) : TypeScript pur + zod, sans dé
 - `createCanonicalProgramRepository()` (`src/createCanonicalProgramRepository.ts`) : factory zéro-config qui résout elle-même `CANONICAL_DATABASE_URI` et retourne un repository prêt à l'emploi. Le store porte ainsi la localisation de sa DB ; le CMS ne la connaît pas. Défaut **ancré au workspace** (`libs/canonical-store/canonical.db`, la DB commitée vivant à côté du package) : résolu en remontant du CWD jusqu'au marqueur `pnpm-workspace.yaml` (et non via `import.meta.url`, que les transforms de test/bundler n'exposent pas toujours en URL `file:`), donc indépendant du répertoire de lancement (seed, dev, start). Les tests ouvrent un store `:memory:` explicite via `DrizzleCanonicalProgramRepository.create`.
 - Même convention que `libs/canonical` : `package.json` `"type": "module"`, résolution par `paths` de `tsconfig.base.json`.
 
+### `libs/format-adapters` — `@tee-backoffice/format-adapters`
+
+Adaptateurs de **projection** par format cible (classes pures, testables) : lisent le canonical (store) et produisent un format externe. Ne dépend que de `libs/canonical`.
+
+- `src/shared/` — helpers réutilisés par tous les formats : `ThemeMapper`, `TypeAideMapper`, `NafSectionResolver`, `RegionNameResolver`, `ExportPolicy.isPublished`, `ExportLogger`/`ConsoleExportLogger`.
+- `src/tee/` — round-trip `programs.json` : `TeeImporter` (`programs.json` → pivot), `TeeExporter` (pivot → `programs.json`, self-check aller-retour).
+- `src/agir/` — **triple export AGIR**. `AgirVocabulary` (chaînes AGIR centralisées), mappers `AgirSourceMapper`/`AgirStatutMapper`/`AgirEtatMapper`/`AgirTypeDispositifMapper`, filtre `AgirExportPolicy` (publié + statut exportable), exporters `AgirListeExporter` (index + 2 URLs, base URL injectée), `AgirDetailExporter` (`DetailDispositif`, proposition 1 R2DA), `AdemePivotExporter` (`AdemePivot`, proposition 2 = canonical wire + deltas ADEME, liste blanche `.strict()`). Types + garde-fous zod `agir-detail.schema.ts`/`ademe-pivot.schema.ts`. Voir `docs/context/agir-export-format.md`.
+- `src/__fixtures__/canonical-programs.ts` — golden fixtures (`minimal`/`full` + `draft`/`indisponible`/`archived` pour les filtres).
+- Mêmes conventions : `package.json` `"type": "module"`, résolution par `paths`.
+
+Les **endpoints AGIR** vivent dans `apps/cms/src/endpoints/agir/agirEndpoints.ts` (publics, lecture store canonical, enregistrés via `endpoints` dans `payload.config.ts`) : ils transportent uniquement, sans logique de format. Base URL des liens dérivée de `req.origin`. 
+Warning, if a reverse proxy is setup, this will need to change.
+
 ## Documentation de référence
 
 - `docs/sources/` — **NE PAS MODIFIER** — documentation brute (brainstorming produit)
