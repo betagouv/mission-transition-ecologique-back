@@ -25,7 +25,7 @@ export const WORKFLOW_STATUS_LABELS: Record<WorkflowStatus, string> = {
   publie: 'Publié',
   'en-cours-modification': 'En cours de modification',
   importe: 'Importé',
-  annule: 'Annulé',
+  annule: 'Supprimé',
   archive: 'Archivé',
   remplace: 'Remplacé',
 }
@@ -34,7 +34,7 @@ export const TRANSITION_LABELS: Partial<Record<WorkflowStatus, string>> = {
   'en-relecture': 'Demander la relecture',
   'en-cours-publication': 'Publier',
   'en-cours-modification': 'Modifier',
-  annule: 'Annuler',
+  annule: 'Supprimer',
   archive: 'Archiver',
   remplace: 'Remplacer',
 }

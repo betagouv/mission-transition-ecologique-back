@@ -34,6 +34,13 @@ export const Programs: CollectionConfig = {
       edit: {
         PublishButton:
           '@/components/programs/WorkflowActionBar#WorkflowActionBar',
+        SaveDraftButton:
+          '@/components/programs/WorkflowHiddenControl#WorkflowHiddenControl',
+        UnpublishButton:
+          '@/components/programs/WorkflowHiddenControl#WorkflowHiddenControl',
+        editMenuItems: [
+          '@/components/programs/WorkflowEditMenuItems#WorkflowEditMenuItems',
+        ],
         Status: '@/components/programs/WorkflowStatusBadge#WorkflowStatusBadge',
       },
       views: {
@@ -584,7 +591,7 @@ export const Programs: CollectionConfig = {
         { label: 'Publié', value: 'publie' },
         { label: 'En cours de modification', value: 'en-cours-modification' },
         { label: 'Importé', value: 'importe' },
-        { label: 'Annulé', value: 'annule' },
+        { label: 'Supprimé', value: 'annule' },
         { label: 'Archivé', value: 'archive' },
         { label: 'Remplacé', value: 'remplace' },
       ],

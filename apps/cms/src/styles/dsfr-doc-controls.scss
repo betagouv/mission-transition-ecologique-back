@@ -1,0 +1,14 @@
+// Programs "⋮" menu (issue #6): the "Supprimer" entry must be our workflow
+// transition (see WorkflowEditMenuItems), not Payload's hard delete.
+//
+// Payload renders the menu content in a portal at <body> level, so it cannot be
+// scoped via a `.collection-edit--programs` ancestor. Instead we scope with
+// `:has()` on our own menu item: only the popup that contains the workflow item
+// (i.e. Programs) hides the redundant native "Create new" (#action-create) and
+// "Delete" (#action-delete). Native "Duplicate" and our "Supprimer" stay.
+.popup__content:has(.tee-workflow-menu-item) {
+  #action-create,
+  #action-delete {
+    display: none;
+  }
+}
