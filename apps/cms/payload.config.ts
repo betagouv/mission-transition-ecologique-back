@@ -11,6 +11,7 @@ import { Programs } from '@/collections/Programs'
 import { Projects } from '@/collections/Projects'
 import { GeographicAreas } from '@/collections/GeographicAreas'
 import { ReviewComments } from '@/collections/ReviewComments'
+import { agirEndpoints } from '@/endpoints/agir/agirEndpoints'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -45,6 +46,7 @@ export default buildConfig({
     GeographicAreas,
     ReviewComments,
   ],
+  endpoints: agirEndpoints,
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {
