@@ -99,9 +99,13 @@ export class ProgramCanonicalMapper {
     | 'variantes'
     | 'autres_donnees'
   > {
+    // `workflowStatus` is required with a default in Payload; the generated type
+    // is nullable only because select fields always are. Fall back to the field
+    // default so the lookups stay total.
+    const workflowStatus = program.workflowStatus ?? 'en-creation'
     return {
-      statut_edition: WORKFLOW_STATUS_TO_EDITION[program.workflowStatus],
-      statut_dispositif: WORKFLOW_STATUS_TO_DISPOSITIF[program.workflowStatus],
+      statut_edition: WORKFLOW_STATUS_TO_EDITION[workflowStatus],
+      statut_dispositif: WORKFLOW_STATUS_TO_DISPOSITIF[workflowStatus],
       date_ouverture: toIsoDate(program.validityStart),
       date_cloture: toIsoDate(program.validityEnd),
       remplace_par: this.mapRemplacePar(program),
