@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { CanonicalProgramValidator } from '@tee-backoffice/canonical'
 import { ProgramCanonicalMapper } from '@/services/canonical/ProgramCanonicalMapper'
 import type { RichTextToMarkdown } from '@/services/canonical/rich-text/RichTextToMarkdown'
-import type { Program } from '../../payload-types'
+import type { GeographicArea, Program } from '../../payload-types'
 import {
   CUID,
   StubRichTextToMarkdown,
@@ -194,6 +194,270 @@ describe('ProgramCanonicalMapper', () => {
       )
       expect(data.statut_dispositif).toBe('remplace')
       expect(data.remplace_par).toBe('z9y8x7w6v5u4t3s2r1q0ponm')
+    })
+  })
+
+  describe('variants', () => {
+    const ileDeFrance: GeographicArea = {
+      id: 1,
+      name: 'Île-de-France',
+      coverageType: 'region',
+      inseeCode: '11',
+      updatedAt: TIMESTAMP,
+      createdAt: TIMESTAMP,
+    }
+
+    it('derives a bounded effectif from a company-size condition', () => {
+      const data = mapAndValidate(
+        buildProgram({
+          variants: [
+            {
+              conditions: [{ conditionType: 'companySize', companySizeValue: ['0-9'] }],
+              modifications: [{ field: 'montant', newValue: '3 000 € HT' }],
+            },
+          ],
+        }),
+      )
+      expect(data.variantes?.[0].conditions.effectif).toEqual({ min: 0, max: 9 })
+    })
+
+    it('leaves the effectif open-ended for the top bucket', () => {
+      const data = mapAndValidate(
+        buildProgram({
+          variants: [
+            {
+              conditions: [{ conditionType: 'companySize', companySizeValue: ['5000+'] }],
+              modifications: [{ field: 'montant', newValue: '10 000 € HT' }],
+            },
+          ],
+        }),
+      )
+      expect(data.variantes?.[0].conditions.effectif).toEqual({ min: 5000 })
+    })
+
+    it('builds COG region codes from a geographic-area condition', () => {
+      const data = mapAndValidate(
+        buildProgram({
+          variants: [
+            {
+              conditions: [
+                { conditionType: 'geographicArea', geographicAreaValue: [ileDeFrance] },
+              ],
+              modifications: [{ field: 'urlSource', newValue: 'https://example.org/idf' }],
+            },
+          ],
+        }),
+      )
+      expect(data.variantes?.[0].conditions.regions).toEqual(['REG-11'])
+    })
+
+    it('combines size and area conditions (AND) into effectif and regions', () => {
+      const data = mapAndValidate(
+        buildProgram({
+          variants: [
+            {
+              conditions: [
+                { conditionType: 'companySize', companySizeValue: ['0-9'] },
+                { conditionType: 'geographicArea', geographicAreaValue: [ileDeFrance] },
+              ],
+              modifications: [{ field: 'montant', newValue: '3 000 € HT' }],
+            },
+          ],
+        }),
+      )
+      expect(data.variantes?.[0].conditions).toEqual({
+        effectif: { min: 0, max: 9 },
+        regions: ['REG-11'],
+      })
+    })
+
+    it('maps a montant modification labelled by aid type', () => {
+      const data = mapAndValidate(
+        buildProgram({
+          aidType: 'pret',
+          loanAmount: 'De 10 000 € à 75 000 €',
+          variants: [
+            {
+              conditions: [{ conditionType: 'companySize', companySizeValue: ['0-9'] }],
+              modifications: [{ field: 'montant', newValue: '5 000 €' }],
+            },
+          ],
+        }),
+      )
+      expect(data.variantes?.[0].modifications.montant).toEqual({
+        type: 'Montant du prêt',
+        valeur: '5 000 €',
+      })
+    })
+
+    it('maps a duree modification, falling back to a generic label without an aid-type duration', () => {
+      const data = mapAndValidate(
+        buildProgram({
+          variants: [
+            {
+              conditions: [{ conditionType: 'companySize', companySizeValue: ['0-9'] }],
+              modifications: [{ field: 'duree', newValue: '6 mois' }],
+            },
+          ],
+        }),
+      )
+      expect(data.variantes?.[0].modifications.duree).toEqual({ type: 'Durée', valeur: '6 mois' })
+    })
+
+    it('maps an urlSource modification to url_source', () => {
+      const data = mapAndValidate(
+        buildProgram({
+          variants: [
+            {
+              conditions: [{ conditionType: 'companySize', companySizeValue: ['0-9'] }],
+              modifications: [{ field: 'urlSource', newValue: 'https://example.org/variant' }],
+            },
+          ],
+        }),
+      )
+      expect(data.variantes?.[0].modifications.url_source).toBe('https://example.org/variant')
+    })
+
+    it('maps a contact operator modification (relationship) to operateurs.contact', () => {
+      const data = mapAndValidate(
+        buildProgram({
+          variants: [
+            {
+              conditions: [{ conditionType: 'companySize', companySizeValue: ['0-9'] }],
+              modifications: [
+                {
+                  field: 'contactOperateur',
+                  contactOperator: {
+                    id: 2,
+                    name: 'CCI ou CMA',
+                    updatedAt: TIMESTAMP,
+                    createdAt: TIMESTAMP,
+                  },
+                },
+              ],
+            },
+          ],
+        }),
+      )
+      expect(data.variantes?.[0].modifications.operateurs?.contact).toEqual({ nom: 'CCI ou CMA' })
+    })
+
+    it('maps several "autres opérateurs" (relationship hasMany) into operateurs.autres', () => {
+      const data = mapAndValidate(
+        buildProgram({
+          variants: [
+            {
+              conditions: [{ conditionType: 'companySize', companySizeValue: ['0-9'] }],
+              modifications: [
+                {
+                  field: 'autresOperateurs',
+                  otherOperators: [
+                    { id: 3, name: 'CMA Auvergne-Rhône-Alpes', updatedAt: TIMESTAMP, createdAt: TIMESTAMP },
+                    { id: 4, name: 'CCI Lyon Métropole', updatedAt: TIMESTAMP, createdAt: TIMESTAMP },
+                  ],
+                },
+              ],
+            },
+          ],
+        }),
+      )
+      expect(data.variantes?.[0].modifications.operateurs?.autres).toEqual([
+        { nom: 'CMA Auvergne-Rhône-Alpes' },
+        { nom: 'CCI Lyon Métropole' },
+      ])
+    })
+
+    it('maps an éligibilité-taille modification to eligibilite.effectif.texte', () => {
+      const data = mapAndValidate(
+        buildProgram({
+          variants: [
+            {
+              conditions: [{ conditionType: 'companySize', companySizeValue: ['0-9'] }],
+              modifications: [
+                { field: 'eligibiliteEffectif', newValue: "Jusqu'à 50 salariés" },
+              ],
+            },
+          ],
+        }),
+      )
+      expect(data.variantes?.[0].modifications.eligibilite?.effectif?.texte).toEqual([
+        "Jusqu'à 50 salariés",
+      ])
+    })
+
+    it('maps an autres-critères modification to eligibilite.autres_criteres.texte', () => {
+      const data = mapAndValidate(
+        buildProgram({
+          variants: [
+            {
+              conditions: [{ conditionType: 'companySize', companySizeValue: ['0-9'] }],
+              modifications: [
+                { field: 'autresCriteres', newValue: 'Moins de 10M€ de CA' },
+              ],
+            },
+          ],
+        }),
+      )
+      expect(data.variantes?.[0].modifications.eligibilite?.autres_criteres?.texte).toEqual([
+        'Moins de 10M€ de CA',
+      ])
+    })
+
+    it('ignores areas without a structured COG code', () => {
+      const data = mapAndValidate(
+        buildProgram({
+          variants: [
+            {
+              conditions: [
+                { conditionType: 'companySize', companySizeValue: ['0-9'] },
+                {
+                  conditionType: 'geographicArea',
+                  geographicAreaValue: [
+                    { id: 9, name: 'Zone libre', coverageType: 'autre', inseeCode: null, updatedAt: TIMESTAMP, createdAt: TIMESTAMP },
+                    { id: 10, name: 'Sans code', coverageType: 'commune', inseeCode: null, updatedAt: TIMESTAMP, createdAt: TIMESTAMP },
+                  ],
+                },
+              ],
+              modifications: [{ field: 'montant', newValue: '3 000 €' }],
+            },
+          ],
+        }),
+      )
+      expect(data.variantes?.[0].conditions.regions).toBeUndefined()
+      expect(data.variantes?.[0].conditions.effectif).toEqual({ min: 0, max: 9 })
+    })
+
+    it('omits a variant without any valid condition', () => {
+      const data = mapAndValidate(
+        buildProgram({
+          variants: [
+            {
+              conditions: [{ conditionType: 'companySize', companySizeValue: ['other'] }],
+              modifications: [{ field: 'montant', newValue: '3 000 €' }],
+            },
+          ],
+        }),
+      )
+      expect(data.variantes).toBeUndefined()
+    })
+
+    it('omits a variant without any valid modification', () => {
+      const data = mapAndValidate(
+        buildProgram({
+          variants: [
+            {
+              conditions: [{ conditionType: 'companySize', companySizeValue: ['0-9'] }],
+              modifications: [{ field: 'montant', newValue: '   ' }],
+            },
+          ],
+        }),
+      )
+      expect(data.variantes).toBeUndefined()
+    })
+
+    it('returns undefined when no variant is valid', () => {
+      const data = mapAndValidate(buildProgram({ variants: [] }))
+      expect(data.variantes).toBeUndefined()
     })
   })
 })

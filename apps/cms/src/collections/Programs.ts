@@ -9,6 +9,10 @@ import {
   ACTIVITY_SECTOR_OPTIONS,
   COMPANY_SIZE_OPTIONS,
 } from '@/constants/eligibilityOptions'
+import {
+  CONDITION_TYPE_OPTIONS,
+  MODIFIABLE_FIELD_OPTIONS,
+} from '@/constants/variantOptions'
 import { UserRole, type UserRoleValue } from '@/utils/user/UserRole'
 
 const CONTACT_METHOD_OPTIONS = [
@@ -24,6 +28,16 @@ const AID_TYPE_OPTIONS = [
   { label: 'Formation', value: 'formation' },
   { label: 'Diagnostic ou étude', value: 'diagnostic-etude' },
 ] as const
+
+// Modifiable fields whose new value is plain text (the others, operators, use a
+// relationship picker into the Operators collection).
+const TEXT_VALUE_MODIFICATION_FIELDS = [
+  'montant',
+  'duree',
+  'urlSource',
+  'eligibiliteEffectif',
+  'autresCriteres',
+]
 
 export const Programs: CollectionConfig = {
   slug: 'programs',
@@ -460,6 +474,226 @@ export const Programs: CollectionConfig = {
       name: 'additionalInfo',
       type: 'richText',
       label: 'Informations complémentaires',
+    },
+
+    // --- Variants ---
+    {
+      type: 'collapsible',
+      label: "Conditions d'éligibilité variables selon le type de profil",
+      admin: {
+        initCollapsed: true,
+        components: {
+          Label: '@/components/programs/VariantsSectionLabel#VariantsSectionLabel',
+        },
+      },
+      fields: [
+        {
+          name: 'variantsIntro',
+          type: 'ui',
+          label: '',
+          admin: {
+            components: {
+              Field: '@/components/programs/VariantsSectionIntro#VariantsSectionIntro',
+            },
+          },
+        },
+        {
+          name: 'variants',
+          type: 'array',
+          labels: { singular: 'un variant', plural: 'Variants' },
+          admin: {
+            components: {
+              RowLabel: {
+                path: '@/components/programs/NumberedRowLabel#NumberedRowLabel',
+                clientProps: { singular: 'Variable' },
+              },
+            },
+          },
+          fields: [
+            {
+              name: 'conditions',
+              type: 'array',
+              minRows: 1,
+              labels: { singular: 'une condition', plural: 'conditions' },
+              label: "1. À quelles entreprises s'applique cette variante ?",
+              admin: {
+                description:
+                  'Au moins une condition est requise. Ajoutez-en plusieurs si elles doivent toutes être vraies à la fois.',
+                components: {
+                  RowLabel: {
+                    path: '@/components/programs/NumberedRowLabel#NumberedRowLabel',
+                    clientProps: { singular: 'Condition' },
+                  },
+                },
+              },
+              fields: [
+                {
+                  name: 'etConnector',
+                  type: 'ui',
+                  label: '',
+                  admin: {
+                    components: {
+                      Field:
+                        '@/components/programs/VariantEtConnector#VariantEtConnector',
+                    },
+                  },
+                },
+                {
+                  // Anonymous row: keeps "Type de condition" and "Valeur de la
+                  // condition" side by side as in the mockup. A row carries no
+                  // name, so child field paths are unchanged for the UI fields.
+                  type: 'row',
+                  fields: [
+                    {
+                      name: 'conditionType',
+                      type: 'select',
+                      label: 'Type de condition',
+                      required: true,
+                      options: [...CONDITION_TYPE_OPTIONS],
+                      admin: { width: '50%' },
+                    },
+                    {
+                      // Stored as JSON (a single column), not a `select hasMany`,
+                      // on purpose: a multi-value field nested two arrays deep
+                      // breaks Payload's version sub-table FK (it inserts the
+                      // text row uuid into an integer parent_id). JSON keeps the
+                      // multi-select on one column; the custom component renders
+                      // the same chip picker as a native select.
+                      name: 'companySizeValue',
+                      type: 'json',
+                      label: 'Valeur de la condition',
+                      admin: {
+                        width: '50%',
+                        condition: (_data, siblingData) =>
+                          siblingData?.conditionType === 'companySize',
+                        components: {
+                          Field:
+                            '@/components/programs/CompanySizeMultiSelect#CompanySizeMultiSelect',
+                        },
+                      },
+                    },
+                    {
+                      name: 'geographicAreaValue',
+                      type: 'relationship',
+                      label: 'Valeur de la condition',
+                      relationTo: 'geographic-areas',
+                      hasMany: true,
+                      admin: {
+                        width: '50%',
+                        condition: (_data, siblingData) =>
+                          siblingData?.conditionType === 'geographicArea',
+                      },
+                    },
+                  ],
+                },
+                {
+                  name: 'conditionReminder',
+                  type: 'ui',
+                  label: '',
+                  admin: {
+                    components: {
+                      Field:
+                        '@/components/programs/VariantConditionReminder#VariantConditionReminder',
+                    },
+                  },
+                },
+              ],
+            },
+            {
+              name: 'modifications',
+              type: 'array',
+              minRows: 1,
+              labels: {
+                singular: 'un champ à modifier',
+                plural: 'champs à modifier',
+              },
+              label: '2. Que faut-il modifier pour ces entreprises ?',
+              admin: {
+                description:
+                  'La nouvelle valeur remplace la valeur générique, uniquement pour les entreprises mentionnées ci-dessus.',
+                components: {
+                  RowLabel: {
+                    path: '@/components/programs/NumberedRowLabel#NumberedRowLabel',
+                    clientProps: { singular: 'Champ à modifier' },
+                  },
+                },
+              },
+              fields: [
+                {
+                  type: 'row',
+                  fields: [
+                    {
+                      name: 'field',
+                      type: 'select',
+                      label: 'Champ à modifier',
+                      required: true,
+                      options: [...MODIFIABLE_FIELD_OPTIONS],
+                      admin: { width: '50%' },
+                    },
+                    {
+                      name: 'newValue',
+                      type: 'text',
+                      label: 'Nouvelle valeur',
+                      admin: {
+                        width: '50%',
+                        condition: (_data, siblingData) =>
+                          TEXT_VALUE_MODIFICATION_FIELDS.includes(
+                            siblingData?.field as string,
+                          ),
+                      },
+                    },
+                    {
+                      name: 'contactOperator',
+                      type: 'relationship',
+                      relationTo: 'operators',
+                      label: 'Nouvel opérateur de contact',
+                      admin: {
+                        width: '50%',
+                        condition: (_data, siblingData) =>
+                          siblingData?.field === 'contactOperateur',
+                      },
+                    },
+                    {
+                      name: 'otherOperators',
+                      type: 'relationship',
+                      relationTo: 'operators',
+                      hasMany: true,
+                      label: 'Nouveaux opérateurs',
+                      admin: {
+                        width: '50%',
+                        condition: (_data, siblingData) =>
+                          siblingData?.field === 'autresOperateurs',
+                      },
+                    },
+                  ],
+                },
+                {
+                  name: 'modReminder',
+                  type: 'ui',
+                  label: '',
+                  admin: {
+                    components: {
+                      Field:
+                        '@/components/programs/VariantModificationReminder#VariantModificationReminder',
+                    },
+                  },
+                },
+              ],
+            },
+            {
+              name: 'ruleSummary',
+              type: 'ui',
+              label: '',
+              admin: {
+                components: {
+                  Field:
+                    '@/components/programs/VariantRuleSummary#VariantRuleSummary',
+                },
+              },
+            },
+          ],
+        },
+      ],
     },
 
     // --- Sidebar ---
