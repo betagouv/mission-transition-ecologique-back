@@ -91,22 +91,26 @@ describe('ProgramCanonicalMapper', () => {
   })
 
   describe('contact question', () => {
-    it('keeps the first selected method that carries its value', () => {
+    it('maps the selected url method with its value', () => {
       const data = mapAndValidate(
         buildProgram({
-          contactMethods: ['url', 'email'],
+          contactMethod: 'url',
           contactPageUrl: 'https://example.org/contact',
-          contactEmail: 'contact@ademe.fr',
         }),
       )
       expect(data.contact_question).toEqual({ type: 'url', valeur: 'https://example.org/contact' })
     })
 
-    it('falls through when the first method lacks its value', () => {
-      const data = mapAndValidate(
-        buildProgram({ contactMethods: ['email', 'advisor'], contactEmail: '' }),
-      )
+    it('maps the advisor method without a value', () => {
+      const data = mapAndValidate(buildProgram({ contactMethod: 'advisor' }))
       expect(data.contact_question).toEqual({ type: 'conseiller_entreprise' })
+    })
+
+    it('emits nothing when the selected method lacks its value', () => {
+      const data = mapAndValidate(
+        buildProgram({ contactMethod: 'email', contactEmail: '' }),
+      )
+      expect(data.contact_question).toBeUndefined()
     })
   })
 

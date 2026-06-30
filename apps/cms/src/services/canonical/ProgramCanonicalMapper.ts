@@ -153,18 +153,17 @@ export class ProgramCanonicalMapper {
   }
 
   private mapContactQuestion(program: Program): ContactQuestion | undefined {
-    // First selected method wins (per product decision); fall through when the
-    // chosen method lacks its required value rather than emitting invalid data.
-    for (const method of program.contactMethods ?? []) {
-      if (method === 'advisor') return { type: 'conseiller_entreprise' }
-      if (method === 'email') {
-        const valeur = clean(program.contactEmail)
-        if (valeur) return { type: 'email', valeur }
-      }
-      if (method === 'url') {
-        const valeur = clean(program.contactPageUrl)
-        if (valeur) return { type: 'url', valeur }
-      }
+    // Single contact method (one value); emit nothing when the chosen method
+    // lacks its required value rather than producing invalid data.
+    const method = program.contactMethod
+    if (method === 'advisor') return { type: 'conseiller_entreprise' }
+    if (method === 'email') {
+      const valeur = clean(program.contactEmail)
+      if (valeur) return { type: 'email', valeur }
+    }
+    if (method === 'url') {
+      const valeur = clean(program.contactPageUrl)
+      if (valeur) return { type: 'url', valeur }
     }
     return undefined
   }

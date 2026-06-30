@@ -48,7 +48,7 @@ interface ActivitySectorMapping {
 type ContactMethod = 'email' | 'url' | 'advisor'
 
 interface ContactMapping {
-  contactMethods: ContactMethod[]
+  contactMethod: ContactMethod | undefined
   contactEmail: string | undefined
   contactPageUrl: string | undefined
 }
@@ -145,7 +145,7 @@ export class ProgramMapper {
       url: trimmedUrl,
       ...amounts,
       steps,
-      contactMethods: contact.contactMethods,
+      contactMethod: contact.contactMethod,
       contactEmail: contact.contactEmail,
       contactPageUrl: contact.contactPageUrl,
       validityStart: FrenchDateParser.parse(program['début de validité']),
@@ -207,19 +207,19 @@ export class ProgramMapper {
     const trimmed = contactQuestion.trim()
     if (trimmed.startsWith('mailto:')) {
       return {
-        contactMethods: ['email'],
+        contactMethod: 'email',
         contactEmail: trimmed.slice('mailto:'.length),
         contactPageUrl: undefined,
       }
     }
     if (/^https?:\/\//.test(trimmed)) {
       return {
-        contactMethods: ['url'],
+        contactMethod: 'url',
         contactEmail: undefined,
         contactPageUrl: trimmed,
       }
     }
-    return { contactMethods: [], contactEmail: undefined, contactPageUrl: undefined }
+    return { contactMethod: undefined, contactEmail: undefined, contactPageUrl: undefined }
   }
 
   private mapCompanySizes(values: string[]): CompanySizeMapping {

@@ -216,6 +216,29 @@ export const Programs: CollectionConfig = {
           "Exemple : Bénéficiez de l'accompagnement d'un expert CCI pour vous aider à évaluer la vulnérabilité climatique de votre entreprise (30 à 60 mots).",
       },
     },
+    {
+      type: 'row',
+      fields: [
+        {
+          name: 'validityStart',
+          type: 'date',
+          label: 'Date de début de validité',
+          admin: {
+            width: '50%',
+            date: { pickerAppearance: 'dayOnly', displayFormat: 'dd/MM/yyyy' },
+          },
+        },
+        {
+          name: 'validityEnd',
+          type: 'date',
+          label: 'Date de fin de validité',
+          admin: {
+            width: '50%',
+            date: { pickerAppearance: 'dayOnly', displayFormat: 'dd/MM/yyyy' },
+          },
+        },
+      ],
+    },
 
     // --- How to benefit ---
     {
@@ -297,10 +320,9 @@ export const Programs: CollectionConfig = {
       admin: { initCollapsed: false },
       fields: [
         {
-          name: 'contactMethods',
+          name: 'contactMethod',
           type: 'select',
           label: 'Mode de contact',
-          hasMany: true,
           options: [...CONTACT_METHOD_OPTIONS],
         },
         {
@@ -308,9 +330,7 @@ export const Programs: CollectionConfig = {
           type: 'email',
           label: 'Adresse mail du conseiller',
           admin: {
-            condition: (data) =>
-              Array.isArray(data?.contactMethods) &&
-              (data.contactMethods as string[]).includes('email'),
+            condition: (data) => data?.contactMethod === 'email',
           },
         },
         {
@@ -318,26 +338,8 @@ export const Programs: CollectionConfig = {
           type: 'text',
           label: 'URL',
           admin: {
-            condition: (data) =>
-              Array.isArray(data?.contactMethods) &&
-              (data.contactMethods as string[]).includes('url'),
+            condition: (data) => data?.contactMethod === 'url',
             description: 'Exemple : https://...',
-          },
-        },
-        {
-          name: 'validityStart',
-          type: 'date',
-          label: 'Date de début de validité',
-          admin: {
-            date: { pickerAppearance: 'dayOnly', displayFormat: 'dd/MM/yyyy' },
-          },
-        },
-        {
-          name: 'validityEnd',
-          type: 'date',
-          label: 'Date de fin de validité',
-          admin: {
-            date: { pickerAppearance: 'dayOnly', displayFormat: 'dd/MM/yyyy' },
           },
         },
       ],
@@ -433,10 +435,6 @@ export const Programs: CollectionConfig = {
             description:
               "National : l'aide couvre tout le territoire, aucune zone à préciser. Régional / Départemental : sélectionnez les zones concernées ci-dessous.",
           },
-          access: {
-            create: ProgramFieldAccessPolicy.adminOnly,
-            update: ProgramFieldAccessPolicy.adminOnly,
-          },
         },
         {
           name: 'selectAllAreasButtons',
@@ -458,10 +456,6 @@ export const Programs: CollectionConfig = {
           label: "Zones géographiques couvertes par l'aide",
           relationTo: 'geographic-areas',
           hasMany: true,
-          access: {
-            create: ProgramFieldAccessPolicy.adminOnly,
-            update: ProgramFieldAccessPolicy.adminOnly,
-          },
           admin: {
             className: 'field--geographic-areas',
             condition: (data) =>
