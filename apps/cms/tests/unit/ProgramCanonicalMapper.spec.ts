@@ -91,22 +91,26 @@ describe('ProgramCanonicalMapper', () => {
   })
 
   describe('contact question', () => {
-    it('keeps the first selected method that carries its value', () => {
+    it('maps the selected url method with its value', () => {
       const data = mapAndValidate(
         buildProgram({
-          contactMethods: ['url', 'email'],
+          contactMethod: 'url',
           contactPageUrl: 'https://example.org/contact',
-          contactEmail: 'contact@ademe.fr',
         }),
       )
       expect(data.contact_question).toEqual({ type: 'url', valeur: 'https://example.org/contact' })
     })
 
-    it('falls through when the first method lacks its value', () => {
-      const data = mapAndValidate(
-        buildProgram({ contactMethods: ['email', 'advisor'], contactEmail: '' }),
-      )
+    it('maps the advisor method without a value', () => {
+      const data = mapAndValidate(buildProgram({ contactMethod: 'advisor' }))
       expect(data.contact_question).toEqual({ type: 'conseiller_entreprise' })
+    })
+
+    it('emits nothing when the selected method lacks its value', () => {
+      const data = mapAndValidate(
+        buildProgram({ contactMethod: 'email', contactEmail: '' }),
+      )
+      expect(data.contact_question).toBeUndefined()
     })
   })
 
@@ -143,23 +147,60 @@ describe('ProgramCanonicalMapper', () => {
   })
 
   describe('eligibility', () => {
-    it('omits the effectif structure when every size bucket is selected', () => {
+    it('omits the effectif when the size is "all" (no constraint)', () => {
+      const data = mapAndValidate(buildProgram({ companySize: 'all' }))
+      expect(data.eligibilite?.effectif).toBeUndefined()
+    })
+
+    it('maps a size bucket to its label and bounds', () => {
+      const data = mapAndValidate(buildProgram({ companySize: '0-9' }))
+      expect(data.eligibilite?.effectif).toEqual({
+        texte: ['0 à 9 salariés'],
+        structure: { min: 0, max: 9 },
+      })
+    })
+
+    it('leaves the interval open-ended for the top bucket', () => {
+      const data = mapAndValidate(buildProgram({ companySize: '5000+' }))
+      expect(data.eligibilite?.effectif?.structure).toEqual({ min: 5000 })
+    })
+
+    it('maps a specific min/max headcount to an explicit interval', () => {
+      const data = mapAndValidate(
+        buildProgram({ companySize: 'specific', companySizeMin: 3, companySizeMax: 49 }),
+      )
+      expect(data.eligibilite?.effectif).toEqual({
+        texte: ['De 3 à 49 salariés'],
+        structure: { min: 3, max: 49 },
+      })
+    })
+
+    it('omits the sector when it is "all"', () => {
+      const data = mapAndValidate(buildProgram({ activitySector: 'all' }))
+      expect(data.eligibilite?.secteur_activite).toBeUndefined()
+    })
+
+    it('maps NAF sections to inclusions and editorial labels', () => {
+      const data = mapAndValidate(
+        buildProgram({ activitySector: 'naf-sections', nafSections: ['A', 'I'] }),
+      )
+      expect(data.eligibilite?.secteur_activite?.structure?.inclusions).toEqual(['A', 'I'])
+      expect(data.eligibilite?.secteur_activite?.texte).toEqual([
+        'A : Agriculture, sylviculture et pêche',
+        'I : Hébergement et restauration',
+      ])
+    })
+
+    it('maps a specific sector to a description and an associated NAF code', () => {
       const data = mapAndValidate(
         buildProgram({
-          companySizes: ['0-9', '10-19', '20-49', '50-249', '250-499', '500-4999', '5000+'],
+          activitySector: 'specific',
+          activitySectorDescription: 'Tertiaire',
+          nafCode: '62.01Z',
         }),
       )
-      expect(data.eligibilite?.effectif?.structure).toBeUndefined()
-    })
-
-    it('derives a bounded interval from a subset of buckets', () => {
-      const data = mapAndValidate(buildProgram({ companySizes: ['0-9', '10-19'] }))
-      expect(data.eligibilite?.effectif?.structure).toEqual({ min: 0, max: 19 })
-    })
-
-    it('leaves the interval open-ended when the top bucket is selected', () => {
-      const data = mapAndValidate(buildProgram({ companySizes: ['500-4999', '5000+'] }))
-      expect(data.eligibilite?.effectif?.structure).toEqual({ min: 500 })
+      expect(data.eligibilite?.secteur_activite?.texte).toEqual(['Tertiaire'])
+      expect(data.eligibilite?.secteur_activite?.structure?.inclusions).toEqual(['62.01Z'])
     })
 
     it('builds COG codes from geographic areas', () => {

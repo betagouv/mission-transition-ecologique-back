@@ -19,6 +19,22 @@ describe('UrlValidator', () => {
     })
   })
 
+  describe('required fields reject empty values', () => {
+    const validateRequired = (value: string | null | undefined) =>
+      UrlValidator.validate(value, { required: true } as never)
+
+    it('rejects null, undefined, empty and whitespace-only when required', () => {
+      expect(validateRequired(null)).toBe('Ce champ est requis.')
+      expect(validateRequired(undefined)).toBe('Ce champ est requis.')
+      expect(validateRequired('')).toBe('Ce champ est requis.')
+      expect(validateRequired('   ')).toBe('Ce champ est requis.')
+    })
+
+    it('still accepts a well-formed URL when required', () => {
+      expect(validateRequired('https://example.org')).toBe(true)
+    })
+  })
+
   describe('well-formed http(s) and mailto URLs are accepted', () => {
     it('accepts http and https URLs', () => {
       expect(validate('http://example.org')).toBe(true)

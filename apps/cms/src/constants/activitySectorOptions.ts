@@ -1,11 +1,10 @@
+/**
+ * Activity-sector select (single choice, three values). `all` is the default
+ * (no sector restriction); `naf-sections` reveals the NAF section checkboxes;
+ * `specific` reveals a free description plus an associated NAF code.
+ */
 export const ACTIVITY_SECTOR_OPTIONS = [
   { label: "Tous secteurs d'activité", value: 'all' },
-  { label: 'Agriculture', value: 'agriculture' },
-  { label: 'Industrie', value: 'industrie' },
-  { label: 'Tertiaire', value: 'tertiaire' },
-  { label: 'Commerce', value: 'commerce' },
-  { label: 'Artisanat', value: 'artisanat' },
-  { label: 'Tourisme', value: 'tourisme' },
-  { label: 'Autre secteur spécifique', value: 'other' },
-  { label: 'Code NAF spécifique associé', value: 'naf-code' },
+  { label: 'Section du code NAF', value: 'naf-sections' },
+  { label: "Autres secteurs d'activité spécifiques", value: 'specific' },
 ] as const

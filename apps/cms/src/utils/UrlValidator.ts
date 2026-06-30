@@ -2,11 +2,14 @@ import type { TextFieldSingleValidation } from 'payload'
 import { z } from 'zod'
 
 /**
- * Reusable validator for optional URL text fields.
+ * Reusable validator for URL text fields.
  *
- * Empty values are accepted (the field stays optional); when a value is
- * provided it must be a well-formed http(s) URL or a mailto: link. Other
- * schemes (ftp:, javascript:, ...) are rejected.
+ * A custom `validate` replaces Payload's built-in `required` check, so this
+ * honors the field's `required` flag explicitly: on a required field an empty
+ * value is rejected (otherwise it would silently pass, e.g. when requesting a
+ * review). On an optional field empty stays accepted. When a value is provided
+ * it must be a well-formed http(s) URL or a mailto: link; other schemes
+ * (ftp:, javascript:, ...) are rejected.
  */
 export class UrlValidator {
   static readonly ALLOWED_PROTOCOLS = ['http:', 'https:', 'mailto:'] as const
@@ -15,6 +18,7 @@ export class UrlValidator {
     'URL invalide. Exemple attendu : https://...'
   private static readonly PROTOCOL_MESSAGE =
     'L’URL doit commencer par http://, https:// ou mailto:.'
+  private static readonly REQUIRED_MESSAGE = 'Ce champ est requis.'
 
   private static readonly schema = z.string().superRefine((value, ctx) => {
     let parsed: URL
@@ -44,9 +48,11 @@ export class UrlValidator {
     }
   })
 
-  static readonly validate: TextFieldSingleValidation = (value) => {
+  static readonly validate: TextFieldSingleValidation = (value, options) => {
     const trimmed = value?.trim()
-    if (trimmed == null || trimmed === '') return true
+    if (trimmed == null || trimmed === '') {
+      return options?.required ? UrlValidator.REQUIRED_MESSAGE : true
+    }
 
     const result = UrlValidator.schema.safeParse(trimmed)
     return result.success

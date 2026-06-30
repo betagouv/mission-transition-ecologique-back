@@ -99,7 +99,7 @@ export const Projects: CollectionConfig = {
       type: 'select',
       label: "Secteurs d'activité (NAF)",
       hasMany: true,
-      options: NAF_SECTIONS_OPTIONS,
+      options: [...NAF_SECTIONS_OPTIONS],
     },
     {
       name: 'highlightPriority',

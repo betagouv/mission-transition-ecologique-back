@@ -33,7 +33,15 @@ export class ProgramAccessPolicy {
     if (UserRole.isAdmin(user)) return true
 
     if (UserRole.isCreator(user)) {
-      return { assignedContributors: { contains: user.id } }
+      // Once published the whole form locks for creators: Payload renders the
+      // document read-only when this Where excludes it. Only an admin can reopen
+      // editing by moving the program back to "en-cours-modification".
+      return {
+        and: [
+          { assignedContributors: { contains: user.id } },
+          { workflowStatus: { not_equals: 'publie' } },
+        ],
+      }
     }
 
     return false
