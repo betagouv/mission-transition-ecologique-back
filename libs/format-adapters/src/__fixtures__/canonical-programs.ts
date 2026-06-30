@@ -82,6 +82,18 @@ const fullInput = {
 /** Unpublished draft (edit status before `pret_prod`) — excluded from public exports. */
 const draftInput = { ...minimalInput, slug: 'aide-en-creation', statut_edition: 'en_creation' }
 
+/** Published but temporarily unavailable — exported to AGIR with a distinct etat/statut. */
+const indisponibleInput = {
+  ...minimalInput,
+  slug: 'aide-temporairement-indisponible',
+  statut_dispositif: 'temporairement_indisponible',
+}
+
+/** Published but archived program — excluded from AGIR (non-exportable status). */
+const archivedInput = { ...minimalInput, slug: 'aide-archivee', statut_dispositif: 'archive' }
+
 export const minimalProgram = build(minimalInput)
 export const fullProgram = build(fullInput)
 export const draftProgram = build(draftInput)
+export const indisponibleProgram = build(indisponibleInput)
+export const archivedProgram = build(archivedInput)
