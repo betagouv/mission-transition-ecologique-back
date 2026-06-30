@@ -1,4 +1,4 @@
-# ADR 0009 — Verrouillage de document et commentaires de relecture
+# ADR 0010 — Verrouillage de document et commentaires de relecture
 
 **Date :** 2026-06-29
 **Statut :** Accepté
