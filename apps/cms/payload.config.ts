@@ -10,6 +10,7 @@ import { Operators } from '@/collections/Operators'
 import { Programs } from '@/collections/Programs'
 import { Projects } from '@/collections/Projects'
 import { GeographicAreas } from '@/collections/GeographicAreas'
+import { agirEndpoints } from '@/endpoints/agir/agirEndpoints'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -32,6 +33,7 @@ export default buildConfig({
     },
   },
   collections: [Users, Media, Operators, Programs, Projects, GeographicAreas],
+  endpoints: agirEndpoints,
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {
