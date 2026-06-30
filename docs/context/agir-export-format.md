@@ -1,8 +1,9 @@
 # Export AGIR — triple format (index + détail R2DA + pivot ADEME)
 
-> Contexte métier du **chantier 1** (API AGIR). La projection vit dans
-> `libs/format-adapters/src/agir/` ; les endpoints publics dans
-> `apps/cms/src/endpoints/agir/`. Source de lecture = **store canonical**
+> Contexte de la tansmission de données vers AGIR. 
+> Le convertisseur vit dans `libs/format-adapters/src/agir/`;
+> les endpoints publics dans `apps/cms/src/endpoints/agir/`. 
+> Source des données = **store canonical**
 > (`CanonicalProgramRepository`), jamais les collections Payload.
 
 ## Endpoints (publics, lecture seule, JSON)
@@ -23,11 +24,7 @@ Règles communes :
 - `404` si slug inconnu ou non exportable, `200` + corps JSON sinon.
 - Pas de pagination au MVP (volume faible).
 
-Les endpoints ne portent **aucune logique de format** : ils transportent (lecture
-store → exporter de la lib → `Response.json`). La base URL des liens de l'index
-est injectée via `AGIR_PUBLIC_BASE_URL` (défaut `http://localhost:3000`).
-
-## Vocabulaire AGIR — ⚠️ chaînes à confirmer
+## Vocabulaire AGIR — ⚠️ choix à confirmer
 
 Centralisé dans `AgirVocabulary` (un seul fichier pour ajuster). Valeurs
 **placeholder** tant qu'AGIR n'a pas tranché :
@@ -198,10 +195,7 @@ Le pivot est quasi exhaustif. Points ouverts (par choix, pas par oubli) :
 - **Taxonomies non mappées** : `themes` (FR interne) et `types_aides` (enum
   interne) sont livrés tels quels, faute de correspondance vers une nomenclature
   ADEME/AGIR (non fournie à ce stade).
-- **`remplace_par` retiré** : la traçabilité « remplacé par X » disparaît
-  (impact faible : les dispositifs remplacés ne sortent pas).
-- **`autres_donnees` (hors `ademe_id_dsp`) non exporté** : volontaire
-  (anti-fuite de données internes).
+- **`remplace_par` retiré** .
 
 ## Recommandations — champs à proposer à AGIR (Détail R2DA)
 

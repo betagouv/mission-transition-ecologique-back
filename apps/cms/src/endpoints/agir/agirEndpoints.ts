@@ -17,11 +17,6 @@ import { getCanonicalProgramRepository } from '@/services/canonical/canonicalRep
  * `/api/agir/programs/:slug/detail`, `/api/agir/programs/:slug/pivot`.
  */
 
-/** Public base URL the index links are built from. Configured per environment. */
-function baseUrl(): string {
-  return process.env.AGIR_PUBLIC_BASE_URL ?? process.env.PAYLOAD_PUBLIC_SERVER_URL ?? 'http://localhost:3000'
-}
-
 function notFound(): Response {
   return Response.json({ error: 'Dispositif introuvable' }, { status: 404 })
 }
@@ -37,7 +32,8 @@ async function findExportable(req: PayloadRequest, slug: string): Promise<Canoni
 const listeHandler = async (req: PayloadRequest): Promise<Response> => {
   const repository = await getCanonicalProgramRepository(req.payload.logger)
   const programs = await repository.findAll()
-  return Response.json(new AgirListeExporter({ baseUrl: baseUrl() }).exportMany(programs))
+  // Index links are absolute, built from the origin the client reached us on.
+  return Response.json(new AgirListeExporter({ baseUrl: req.origin }).exportMany(programs))
 }
 
 const detailHandler = async (req: PayloadRequest): Promise<Response> => {

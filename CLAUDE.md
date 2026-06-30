@@ -122,7 +122,8 @@ Adaptateurs de **projection** par format cible (classes pures, testables) : lise
 - `src/__fixtures__/canonical-programs.ts` — golden fixtures (`minimal`/`full` + `draft`/`indisponible`/`archived` pour les filtres).
 - Mêmes conventions : `package.json` `"type": "module"`, résolution par `paths`.
 
-Les **endpoints AGIR** vivent dans `apps/cms/src/endpoints/agir/agirEndpoints.ts` (publics, lecture store canonical, enregistrés via `endpoints` dans `payload.config.ts`) : ils transportent uniquement, sans logique de format. Base URL des liens via `AGIR_PUBLIC_BASE_URL`.
+Les **endpoints AGIR** vivent dans `apps/cms/src/endpoints/agir/agirEndpoints.ts` (publics, lecture store canonical, enregistrés via `endpoints` dans `payload.config.ts`) : ils transportent uniquement, sans logique de format. Base URL des liens dérivée de `req.origin`. 
+Warning, if a reverse proxy is setup, this will need to change.
 
 ## Documentation de référence
 
