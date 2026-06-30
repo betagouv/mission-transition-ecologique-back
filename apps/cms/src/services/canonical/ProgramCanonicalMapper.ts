@@ -10,17 +10,17 @@ import type { GeographicArea, Program } from '../../../payload-types'
 import type { RichTextToMarkdown } from './rich-text/RichTextToMarkdown'
 import { clean, operatorName, toIsoDate } from './mapperHelpers'
 import {
-  ACTIVITY_SECTOR_LABELS,
   AID_TYPE_TO_CANONICAL,
   COMPANY_SIZE_BOUNDS,
   COMPANY_SIZE_LABELS,
   COVERAGE_TYPE_TO_COG_PREFIX,
   DUREE_BY_AID_TYPE,
   MONTANT_BY_AID_TYPE,
-  NUMERIC_COMPANY_SIZE_COUNT,
+  NAF_SECTION_LABELS,
   THEME_TO_CANONICAL,
   WORKFLOW_STATUS_TO_DISPOSITIF,
   WORKFLOW_STATUS_TO_EDITION,
+  isCompanySizeBucket,
 } from './canonicalMappings'
 
 // Eligibility built against the INPUT type: structure codes are plain strings
@@ -217,52 +217,50 @@ export class ProgramCanonicalMapper {
   }
 
   private mapEffectif(program: Program): EligibiliteInput['effectif'] | undefined {
-    const sizes = program.companySizes ?? []
-    if (sizes.length === 0) return undefined
+    const size = program.companySize
+    // 'all' (or unset) means no headcount constraint.
+    if (!size || size === 'all') return undefined
 
-    const texte = sizes.map((size) =>
-      size === 'other' ? (clean(program.companySizeOther) ?? COMPANY_SIZE_LABELS.other) : COMPANY_SIZE_LABELS[size],
-    )
+    if (size === 'specific') {
+      const min = program.companySizeMin ?? undefined
+      const max = program.companySizeMax ?? undefined
+      if (min == null && max == null) return undefined
+      const structure = {
+        ...(min != null ? { min } : {}),
+        ...(max != null ? { max } : {}),
+      }
+      return { texte: [this.headcountLabel(min, max)], structure }
+    }
 
-    const numeric = sizes.filter((size) => size !== 'other')
-    // All numeric buckets selected = no real constraint, so emit no structure.
-    const structure =
-      numeric.length === 0 || numeric.length === NUMERIC_COMPANY_SIZE_COUNT
-        ? undefined
-        : this.deriveInterval(numeric)
+    if (isCompanySizeBucket(size)) {
+      return { texte: [COMPANY_SIZE_LABELS[size]], structure: COMPANY_SIZE_BOUNDS[size] }
+    }
 
-    return { texte, ...(structure ? { structure } : {}) }
+    return undefined
   }
 
-  private deriveInterval(
-    sizes: Exclude<NonNullable<Program['companySizes']>[number], 'other'>[],
-  ): { min?: number; max?: number } | undefined {
-    const bounds = sizes.map((size) => COMPANY_SIZE_BOUNDS[size])
-    const mins = bounds.map((b) => b.min).filter((m): m is number => m !== undefined)
-    const min = mins.length > 0 ? Math.min(...mins) : undefined
-    // An open-ended bucket (no max) makes the whole interval open-ended.
-    const hasOpenEnd = bounds.some((b) => b.max === undefined)
-    const maxes = bounds.map((b) => b.max).filter((m): m is number => m !== undefined)
-    const max = hasOpenEnd || maxes.length === 0 ? undefined : Math.max(...maxes)
-
-    if (min === undefined && max === undefined) return undefined
-    return { ...(min !== undefined ? { min } : {}), ...(max !== undefined ? { max } : {}) }
+  private headcountLabel(min: number | undefined, max: number | undefined): string {
+    if (min != null && max != null) return `De ${min} à ${max} salariés`
+    if (min != null) return `${min} salariés et plus`
+    return `Jusqu'à ${max} salariés`
   }
 
   private mapSecteurActivite(program: Program): EligibiliteInput['secteur_activite'] | undefined {
-    const sectors = program.activitySectors ?? []
-    // 'all' alone means no sector restriction.
-    if (sectors.length === 0 || (sectors.length === 1 && sectors[0] === 'all')) return undefined
+    const sector = program.activitySector
+    // 'all' (or unset) means no sector restriction.
+    if (!sector || sector === 'all') return undefined
 
-    const texte = sectors
-      .filter((sector) => sector !== 'all')
-      .map((sector) => {
-        if (sector === 'other') return clean(program.activitySectorOther) ?? ACTIVITY_SECTOR_LABELS.other
-        if (sector === 'naf-code') return clean(program.nafCodeOther) ?? ACTIVITY_SECTOR_LABELS['naf-code']
-        return ACTIVITY_SECTOR_LABELS[sector]
-      })
+    if (sector === 'naf-sections') {
+      const sections = program.nafSections ?? []
+      if (sections.length === 0) return undefined
+      const texte = sections.map((code) => NAF_SECTION_LABELS[code])
+      return { texte, structure: { inclusions: [...sections] } }
+    }
 
-    const nafCode = sectors.includes('naf-code') ? clean(program.nafCodeOther) : undefined
+    // 'specific': free description + an optional associated NAF code.
+    const description = clean(program.activitySectorDescription)
+    const nafCode = clean(program.nafCode)
+    const texte = description ? [description] : []
     const structure = nafCode ? { inclusions: [nafCode] } : undefined
 
     if (texte.length === 0 && !structure) return undefined

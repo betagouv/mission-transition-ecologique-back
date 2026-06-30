@@ -9,10 +9,12 @@ import { syncCanonicalOnPublish } from '@/hooks/programs/syncCanonicalOnPublish'
 import { THEMES_OPTIONS } from '@/constants/themesOptions'
 import { COMPANY_SIZE_OPTIONS } from '@/constants/companySizeOptions'
 import { ACTIVITY_SECTOR_OPTIONS } from '@/constants/activitySectorOptions'
+import { NAF_SECTIONS_OPTIONS } from '@/constants/nafSectionsOptions'
 import { CONTACT_METHOD_OPTIONS } from '@/constants/contactMethodOptions'
 import { AID_TYPE_OPTIONS } from '@/constants/aidTypeOptions'
 import { UserRole, type UserRoleValue } from '@/utils/user/UserRole'
 import { UrlValidator } from '@/utils/UrlValidator'
+import { IntegerValidator } from '@/utils/IntegerValidator'
 import { RelationshipValidator } from '@/utils/RelationshipValidator'
 import { ProgramFieldAccessPolicy } from '@/services/access/ProgramFieldAccessPolicy'
 
@@ -398,31 +400,43 @@ export const Programs: CollectionConfig = {
       admin: { initCollapsed: false },
       fields: [
         {
-          name: 'companySizes',
+          name: 'companySize',
           type: 'select',
           label: "Taille d'entreprise",
-          hasMany: true,
           options: [...COMPANY_SIZE_OPTIONS],
-          defaultValue: [
-            '0-9',
-            '10-19',
-            '20-49',
-            '50-249',
-            '250-499',
-            '500-4999',
-            '5000+',
-          ],
+          defaultValue: 'all',
         },
         {
-          name: 'companySizeOther',
-          type: 'text',
-          label: 'Éligibilité taille spécifique',
+          type: 'row',
           admin: {
-            condition: (data) =>
-              Array.isArray(data?.companySizes) &&
-              (data.companySizes as string[]).includes('other'),
-            description: 'Exemple : PME au sens européen.',
+            condition: (data) => data?.companySize === 'specific',
           },
+          fields: [
+            {
+              name: 'companySizeMin',
+              type: 'number',
+              label: 'Taille minimum',
+              min: 0,
+              validate: IntegerValidator.nonNegative,
+              admin: {
+                width: '50%',
+                step: 1,
+                description: 'Nombre de salariés minimum.',
+              },
+            },
+            {
+              name: 'companySizeMax',
+              type: 'number',
+              label: 'Taille maximum',
+              min: 0,
+              validate: IntegerValidator.nonNegative,
+              admin: {
+                width: '50%',
+                step: 1,
+                description: 'Nombre de salariés maximum.',
+              },
+            },
+          ],
         },
         {
           name: 'geographicCoverage',
@@ -487,31 +501,38 @@ export const Programs: CollectionConfig = {
           },
         },
         {
-          name: 'activitySectors',
+          name: 'activitySector',
           type: 'select',
           label: "Secteur d'activité",
-          hasMany: true,
           options: [...ACTIVITY_SECTOR_OPTIONS],
-          defaultValue: ['all'],
+          defaultValue: 'all',
         },
         {
-          name: 'activitySectorOther',
-          type: 'text',
-          label: 'Autre secteur spécifique',
+          name: 'nafSections',
+          type: 'select',
+          label: 'Sections du code NAF',
+          hasMany: true,
+          options: [...NAF_SECTIONS_OPTIONS],
           admin: {
-            condition: (data) =>
-              Array.isArray(data?.activitySectors) &&
-              (data.activitySectors as string[]).includes('other'),
+            condition: (data) => data?.activitySector === 'naf-sections',
+            description: 'Cochez les sections concernées.',
           },
         },
         {
-          name: 'nafCodeOther',
+          name: 'activitySectorDescription',
           type: 'text',
-          label: 'Code NAF spécifique associé',
+          label: "Description du secteur d'activité spécifique",
           admin: {
-            condition: (data) =>
-              Array.isArray(data?.activitySectors) &&
-              (data.activitySectors as string[]).includes('naf-code'),
+            condition: (data) => data?.activitySector === 'specific',
+          },
+        },
+        {
+          name: 'nafCode',
+          type: 'text',
+          label: "Code NAF du secteur d'activité associé",
+          admin: {
+            condition: (data) => data?.activitySector === 'specific',
+            description: 'Format : une section (A) ou un code précis (01.11Z).',
           },
         },
         {
