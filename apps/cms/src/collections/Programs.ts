@@ -13,6 +13,7 @@ import { CONTACT_METHOD_OPTIONS } from '@/constants/contactMethodOptions'
 import { AID_TYPE_OPTIONS } from '@/constants/aidTypeOptions'
 import { UserRole, type UserRoleValue } from '@/utils/user/UserRole'
 import { UrlValidator } from '@/utils/UrlValidator'
+import { RelationshipValidator } from '@/utils/RelationshipValidator'
 import { ProgramFieldAccessPolicy } from '@/services/access/ProgramFieldAccessPolicy'
 
 export const Programs: CollectionConfig = {
@@ -99,6 +100,7 @@ export const Programs: CollectionConfig = {
       label: 'Opérateur principal',
       relationTo: 'operators',
       required: true,
+      validate: RelationshipValidator.required,
       filterOptions: ({ user }) => {
         if (!user) return true
         if (UserRole.isAdmin(user as { role: UserRoleValue })) return true
