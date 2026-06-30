@@ -37,6 +37,16 @@ export class TypeAideMapper {
     return types.join('|')
   }
 
+  /** Display label (accented FR) for a single aid type. */
+  static toFrLabel(type: TypeAide): string {
+    return TypeAideMapper.FR_LABEL[type]
+  }
+
+  /** Display labels (accented FR), in input order. */
+  static toFrLabels(types: readonly TypeAide[]): string[] {
+    return types.map((type) => TypeAideMapper.toFrLabel(type))
+  }
+
   // ⚠️ ONE-SHOT IMPORT (Baserow → Payload): the inverse table + fromNatureAideLabel
   // below exist only for the historical import. Delete with the import path after
   // migration — see README cleanup checklist.
