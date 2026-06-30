@@ -18,10 +18,15 @@ export class OperatorImporter {
   private buildSlugToNameMap(programs: SourceProgram[]): Map<string, string> {
     const slugToName = new Map<string, string>()
     for (const program of programs) {
+      const variantOperators = (program['champs conditionnels'] ?? []).flatMap((variant) => [
+        variant['opérateur de contact'],
+        ...(variant['autres opérateurs'] ?? []),
+      ])
       const allNames = [
         program['opérateur de contact'],
         ...(program['autres opérateurs'] ?? []),
-      ].filter(Boolean)
+        ...variantOperators,
+      ].filter((name): name is string => Boolean(name))
       for (const name of allNames) {
         slugToName.set(Slugify.slugify(name), name)
       }

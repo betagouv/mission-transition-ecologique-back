@@ -1,6 +1,7 @@
 import type { editorConfigFactory } from '@payloadcms/richtext-lexical'
 import { convertMarkdownToLexical } from '@payloadcms/richtext-lexical'
 import type { SourceProgram } from './types'
+import { VariantMapper } from './VariantMapper'
 import { FrenchDateParser } from '@/utils/FrenchDateParser'
 
 type AidType =
@@ -80,9 +81,15 @@ const ACTIVITY_SECTOR_KEYWORDS: { value: ActivitySector; matchers: RegExp[] }[] 
 ]
 
 export class ProgramMapper {
+  private readonly variantMapper = new VariantMapper()
+
   constructor(private readonly editorConfig: EditorConfig) {}
 
-  map(program: SourceProgram, operatorIdByName: Map<string, number>) {
+  map(
+    program: SourceProgram,
+    operatorIdByName: Map<string, number>,
+    regionIdByName: Map<string, number>,
+  ) {
     const operatorId = operatorIdByName.get(program['opérateur de contact'])
     if (!operatorId) return null
 
@@ -144,6 +151,7 @@ export class ProgramMapper {
       activitySectors: sectors,
       activitySectorOther: sectorOther,
       otherCriteria,
+      variants: this.variantMapper.map(program, operatorIdByName, regionIdByName),
       workflowStatus: hasValidUrl ? ('publie' as const) : ('en-creation' as const),
       _status: hasValidUrl ? ('published' as const) : ('draft' as const),
       metaTitle: program.metaTitre,

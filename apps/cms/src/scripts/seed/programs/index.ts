@@ -5,6 +5,7 @@ import type { SourceProgram } from './types'
 import { OperatorImporter } from './OperatorImporter'
 import { ProgramMapper } from './ProgramMapper'
 import { ProgramImporter } from './ProgramImporter'
+import { VariantMapper } from './VariantMapper'
 
 export class ProgramsSeed {
   constructor(
@@ -18,13 +19,31 @@ export class ProgramsSeed {
     process.stdout.write(`Found ${programs.length.toString()} programs in source file.\n`)
 
     const operatorIdByName = await new OperatorImporter(this.payload).import(programs)
+    const regionIdByName = await this.fetchRegions()
 
     const editorConfig = await editorConfigFactory.default({ config: this.payload.config })
     const mapper = new ProgramMapper(editorConfig)
 
     process.stdout.write(`Operators ready. Importing ${programs.length.toString()} programs...\n`)
-    const { created, updated, errors } = await new ProgramImporter(this.payload, mapper).import(programs, operatorIdByName)
+    const { created, updated, errors } = await new ProgramImporter(this.payload, mapper).import(
+      programs,
+      operatorIdByName,
+      regionIdByName,
+    )
 
     process.stdout.write(`Seed complete — ${created.toString()} created, ${updated.toString()} updated, ${errors.toString()} errors.\n`)
+  }
+
+  /** Region name (normalized) -> id, so variant conditions resolve their zones. */
+  private async fetchRegions(): Promise<Map<string, number>> {
+    const result = await this.payload.find({
+      collection: 'geographic-areas',
+      where: { coverageType: { equals: 'region' } },
+      limit: 1000,
+      depth: 0,
+    })
+    return new Map(
+      result.docs.map((doc) => [VariantMapper.normalizeRegionName(doc.name), doc.id]),
+    )
   }
 }

@@ -68,8 +68,12 @@ Conséquence : `companySizeValue` est stocké en **`json`** (une colonne, pas de
 - La valeur générique barrée n'est pas résolue pour `eligibiliteEffectif` / `autresCriteres` (texte dérivé) : le résumé écrit alors « prend la valeur X ».
 - Validation « champ requis » conditionnelle non implémentée (typage strict de la signature `validate` de Payload trop coûteux) ; le mapper ignore proprement les valeurs vides et le service canonical ne persiste qu'un canonical valide.
 
+## Seed
+
+`VariantMapper` (`apps/cms/src/scripts/seed/programs/`) traduit les `champs conditionnels` de `docs/sources/programs.json` en `variants` : noms de régions → zones géographiques (résolus par nom), `effectif >=`/`<=` → buckets de taille, opérateurs nommés → relations `operators` (créés par `OperatorImporter`, étendu aux opérateurs de variantes). `pnpm seed` peuple ainsi 29 variantes sur 7 dispositifs.
+
 ## Conséquences
 
-- Les 7/7 dispositifs à `champs conditionnels` de la source sont reproductibles.
+- Les 7/7 dispositifs à `champs conditionnels` de la source sont reproductibles, et le seed les crée réellement.
 - Le store canonical reçoit les variantes au publish via le hook `syncCanonicalOnPublish` (chemin inchangé).
 - Toute future imbrication multi-valeur à deux niveaux d'array doit suivre le contournement (JSON ou relation, jamais `select hasMany`).

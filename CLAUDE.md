@@ -58,7 +58,7 @@ pnpm seed                                  # seed complet : operators + programs
 Les fichiers seed vivent dans `apps/cms/src/scripts/seed/` :
 - `run.ts` — entrypoint `pnpm seed` (initialisation Payload + orchestration).
 - `geographic-areas/` — `GeographicAreasSeed` (régions + départements, fixtures dans `fixtures.ts`).
-- `programs/` — `ProgramsSeed`, `OperatorImporter`, `ProgramMapper`, `ProgramImporter`. `ProgramMapper` écrit les dispositifs à URL valide en `_status: 'published'`, ce qui déclenche le hook `syncCanonicalOnPublish` : le store canonical est donc peuplé pendant cette étape, sans seed canonical séparé.
+- `programs/` — `ProgramsSeed`, `OperatorImporter`, `ProgramMapper`, `ProgramImporter`, `VariantMapper`. `ProgramMapper` écrit les dispositifs à URL valide en `_status: 'published'`, ce qui déclenche le hook `syncCanonicalOnPublish` : le store canonical est donc peuplé pendant cette étape, sans seed canonical séparé. `VariantMapper` traduit les `champs conditionnels` de la source en `variants` (régions → zones géographiques, seuils d'effectif → tailles, opérateurs nommés → relations `operators`) ; `OperatorImporter` crée aussi les opérateurs cités dans les variantes.
 - `projects/` — `ProjectsSeed`, `ProjectMapper`, `ProjectImporter`, `LinkedProjectsUpdater`.
 - `users/` — `UsersSeed`.
 
