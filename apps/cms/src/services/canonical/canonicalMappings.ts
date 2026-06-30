@@ -13,7 +13,7 @@ import {
  */
 
 type AidType = Program['aidType']
-type WorkflowStatus = Program['workflowStatus']
+type WorkflowStatus = NonNullable<Program['workflowStatus']>
 type PayloadTheme = NonNullable<Program['themes']>[number]
 type CompanySize = NonNullable<Program['companySizes']>[number]
 type CoverageType = GeographicArea['coverageType']
