@@ -590,6 +590,12 @@ export const Programs: CollectionConfig = {
       ],
       admin: {
         position: 'sidebar',
+        // The workflow status is driven by the WorkflowActionBar buttons; only
+        // super-admins keep the raw select for manual overrides.
+        condition: (_data, _siblingData, { user }) =>
+          UserRole.isSuperAdmin(
+            user as { role: UserRoleValue } | null | undefined,
+          ),
         components: {
           Cell: '@/components/programs/WorkflowStatusCell#WorkflowStatusCell',
         },
@@ -683,7 +689,16 @@ export const Programs: CollectionConfig = {
       admin: {
         position: 'sidebar',
         description: 'Contributeurs autorisés à éditer ce dispositif.',
+        // No drawer to edit the linked user from within the program form.
+        allowEdit: false,
+        // Admins always edit this field; creators only see a read-only display
+        // (access.update is false for them) when contributors are assigned.
+        condition: (data, _siblingData, { user }) =>
+          UserRole.isAdmin(user as { role: UserRoleValue } | null | undefined) ||
+          (Array.isArray(data?.assignedContributors) &&
+            data.assignedContributors.length > 0),
       },
+      // The condition only hides the field in the UI; access locks API writes.
       access: {
         update: ProgramFieldAccessPolicy.adminOnly,
       },
