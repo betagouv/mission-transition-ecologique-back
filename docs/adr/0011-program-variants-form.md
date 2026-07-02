@@ -50,7 +50,7 @@ Les champs multi-valeurs s'**accumulent** sur plusieurs lignes de modification. 
 
 ### Composants admin (`apps/cms/src/components/programs/`)
 
-`VariantsSectionLabel`, `VariantsSectionIntro`, `VariantEtConnector`, `VariantConditionReminder`, `VariantModificationReminder`, `VariantRuleSummary`, `CompanySizeMultiSelect`, plus les helpers `variantFieldPath.ts`, `useGeographicAreaNames.ts`, `useOperatorNames.ts`.
+`VariantsSectionIntro`, `VariantEtConnector`, `VariantConditionReminder`, `VariantModificationReminder`, `VariantRuleSummary`, `CompanySizeMultiSelect`, plus les helpers `variantFieldPath.ts`, `useGeographicAreaNames.ts`, `useOperatorNames.ts`. Le titre de l'accordéon reprend le label natif Payload (comme « Éligibilité ») : pas de composant `Label` custom.
 
 ## Contournement d'un bug Payload (important)
 
