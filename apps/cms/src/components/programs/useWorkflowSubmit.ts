@@ -52,7 +52,7 @@ export function useWorkflowSubmit(): UseWorkflowSubmit {
     if (action.requiresReplacement) {
       const replacementId = window.prompt(
         'ID du programme remplaçant (champ "id" du programme cible) :',
-      )
+      )?.trim()
       if (!replacementId) return
       void draftSubmit({ workflowStatus: action.to, replacedBy: replacementId })
       return

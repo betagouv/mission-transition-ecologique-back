@@ -45,7 +45,10 @@ export const beforeChangeWorkflow: CollectionBeforeChangeHook = ({
     )
   }
 
-  if (WorkflowTransitionPolicy.requiresReplacement(nextStatusInput) && !data.replacedBy) {
+  // Trim to reject whitespace-only ids that would pass a plain truthiness check
+  const replacedBy = typeof data.replacedBy === 'string' ? data.replacedBy.trim() : data.replacedBy
+  if (replacedBy !== data.replacedBy) data.replacedBy = replacedBy
+  if (WorkflowTransitionPolicy.requiresReplacement(nextStatusInput) && !replacedBy) {
     throw new APIError(
       'Un programme remplaçant doit être renseigné (champ "Remplacé par") pour passer à l’état "Remplacé".',
       400,
