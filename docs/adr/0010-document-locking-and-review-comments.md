@@ -44,10 +44,10 @@ lockDocuments: {
 |---|---|---|
 | `program` | `relationship` → `programs` | Dispositif commenté, requis, indexé |
 | `text` | `textarea` | Saisi par le relecteur, requis |
-| `author` | `relationship` → `users` | Lecture seule, posé automatiquement à la création |
+| `author` | `relationship` → `users` | Lecture seule, **requis**, posé automatiquement à la création |
 | `createdAt` | timestamp natif | Posé automatiquement par Payload |
 
-La collection est masquée de la navigation admin (`admin.hidden`) : elle se pilote uniquement depuis la sidebar du dispositif. L'auteur est posé par le hook `beforeChange` `assignCommentAuthor` (`src/hooks/reviewComments/assignCommentAuthor.ts`) à partir de `req.user`. Accès : lecture et création pour tout utilisateur authentifié ; modification et suppression réservées aux admins.
+La collection est masquée de la navigation admin (`admin.hidden`) : elle se pilote uniquement depuis la sidebar du dispositif. L'auteur est posé par le hook `beforeValidate` `assignCommentAuthor` (`src/hooks/reviewComments/assignCommentAuthor.ts`) à partir de `req.user`, en ignorant toute valeur `author` fournie par le client. Le hook s'exécute en `beforeValidate` (et non `beforeChange`) pour poser l'auteur **avant** la validation du champ `required`, et lève `Forbidden` si `req.user` est absent : un commentaire ne peut donc jamais être persisté sans auteur. Accès : lecture et création pour tout utilisateur authentifié ; modification et suppression réservées aux admins. Comportement couvert par `apps/cms/tests/int/review-comments.int.spec.ts`.
 
 **Pourquoi une collection et non un `array`.** Le besoin produit est l'**enregistrement immédiat** : cliquer sur « Envoyer » doit persister le commentaire tout de suite, sans attendre le bouton « Enregistrer » du formulaire. Avec un `array` sur `Programs`, persister un commentaire impose une mise à jour du dispositif (`PATCH /api/programs/{id}`), ce qui :
 - déclenche la **validation complète du formulaire** (échec sur un brouillon incomplet) ;

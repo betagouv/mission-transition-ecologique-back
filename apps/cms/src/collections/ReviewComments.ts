@@ -27,7 +27,7 @@ export const ReviewComments: CollectionConfig = {
     delete: AuthAccessPolicy.isAdmin,
   },
   hooks: {
-    beforeChange: [assignCommentAuthor],
+    beforeValidate: [assignCommentAuthor],
   },
   fields: [
     {
@@ -49,6 +49,7 @@ export const ReviewComments: CollectionConfig = {
       type: 'relationship',
       label: 'Auteur',
       relationTo: 'users',
+      required: true,
       admin: { readOnly: true },
       access: {
         update: (() => false) satisfies FieldAccess,
