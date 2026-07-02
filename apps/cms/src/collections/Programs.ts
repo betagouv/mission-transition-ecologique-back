@@ -585,7 +585,7 @@ export const Programs: CollectionConfig = {
       type: 'collapsible',
       label: "Conditions d'éligibilité variables selon le type de profil",
       admin: {
-        initCollapsed: true,
+        initCollapsed: false,
       },
       fields: [
         {
