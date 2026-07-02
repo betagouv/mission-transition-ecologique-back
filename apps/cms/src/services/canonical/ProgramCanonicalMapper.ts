@@ -8,6 +8,8 @@ import type {
 } from '@tee-backoffice/canonical'
 import type { GeographicArea, Program } from '../../../payload-types'
 import type { RichTextToMarkdown } from './rich-text/RichTextToMarkdown'
+import { COMPANY_SIZE_TO_INTERVAL } from '@/constants/variantOptions'
+import type { CompanySizeBucket } from '@/constants/companySizeOptions'
 import { clean, operatorName, toIsoDate } from './mapperHelpers'
 import {
   AID_TYPE_TO_CANONICAL,
@@ -26,6 +28,17 @@ import {
 // Eligibility built against the INPUT type: structure codes are plain strings
 // here (NafCode/CogCode brands are applied by validation, not by the mapper).
 type EligibiliteInput = NonNullable<CanonicalProgramInput['eligibilite']>
+
+// Variants built against the INPUT type for the same reason (regions stay plain
+// strings; brands are applied by validation, not by the mapper).
+type VarianteInput = NonNullable<CanonicalProgramInput['variantes']>[number]
+type VarianteConditionsInput = VarianteInput['conditions']
+type VarianteModificationsInput = VarianteInput['modifications']
+type VarianteRow = NonNullable<Program['variants']>[number]
+type ConditionRow = NonNullable<VarianteRow['conditions']>[number]
+// The base eligibility field is now a single `companySize`; variant conditions
+// carry their own list of size buckets (JSON column), so type on the bucket set.
+type NumericCompanySize = CompanySizeBucket
 
 /**
  * Transforms a Payload `Program` into a raw `CanonicalProgramInput`, ready to be
@@ -47,6 +60,7 @@ export class ProgramCanonicalMapper {
       ...this.mapAide(program),
       eligibilite: this.mapEligibilite(program),
       themes: this.mapThemes(program),
+      variantes: this.mapVariantes(program),
     }
   }
 
@@ -245,6 +259,22 @@ export class ProgramCanonicalMapper {
     return `Jusqu'à ${max} salariés`
   }
 
+  private deriveInterval(
+    sizes: NumericCompanySize[],
+    boundsBySize: Record<NumericCompanySize, { min?: number; max?: number }> = COMPANY_SIZE_BOUNDS,
+  ): { min?: number; max?: number } | undefined {
+    const bounds = sizes.map((size) => boundsBySize[size])
+    const mins = bounds.map((b) => b.min).filter((m): m is number => m !== undefined)
+    const min = mins.length > 0 ? Math.min(...mins) : undefined
+    // An open-ended bucket (no max) makes the whole interval open-ended.
+    const hasOpenEnd = bounds.some((b) => b.max === undefined)
+    const maxes = bounds.map((b) => b.max).filter((m): m is number => m !== undefined)
+    const max = hasOpenEnd || maxes.length === 0 ? undefined : Math.max(...maxes)
+
+    if (min === undefined && max === undefined) return undefined
+    return { ...(min !== undefined ? { min } : {}), ...(max !== undefined ? { max } : {}) }
+  }
+
   private mapSecteurActivite(program: Program): EligibiliteInput['secteur_activite'] | undefined {
     const sector = program.activitySector
     // 'all' (or unset) means no sector restriction.
@@ -296,5 +326,111 @@ export class ProgramCanonicalMapper {
       .map((criterion) => clean(criterion.value))
       .filter((value): value is string => Boolean(value))
     return texte.length > 0 ? { texte } : undefined
+  }
+
+  private mapVariantes(program: Program): VarianteInput[] | undefined {
+    const variantes = (program.variants ?? [])
+      .map((variant) => this.mapVariante(program, variant))
+      .filter((variante): variante is VarianteInput => variante !== undefined)
+    return variantes.length > 0 ? variantes : undefined
+  }
+
+  private mapVariante(program: Program, variant: VarianteRow): VarianteInput | undefined {
+    const conditions = this.mapVarianteConditions(variant.conditions ?? [])
+    if (!conditions) return undefined
+    const modifications = this.mapVarianteModifications(program, variant.modifications ?? [])
+    if (!modifications) return undefined
+    return { conditions, modifications }
+  }
+
+  private mapVarianteConditions(rows: ConditionRow[]): VarianteConditionsInput | undefined {
+    const effectif = this.mapVarianteEffectif(rows)
+    const regions = this.mapVarianteRegions(rows)
+    if (!effectif && !regions) return undefined
+    return { ...(effectif ? { effectif } : {}), ...(regions ? { regions } : {}) }
+  }
+
+  private mapVarianteEffectif(rows: ConditionRow[]): { min?: number; max?: number } | undefined {
+    const buckets = rows
+      .filter((row) => row.conditionType === 'companySize')
+      // companySizeValue is a JSON column: coerce the loose value to string codes.
+      .flatMap((row) => (Array.isArray(row.companySizeValue) ? row.companySizeValue : []))
+      .filter((bucket): bucket is string => typeof bucket === 'string')
+      // JSON column may hold unknown/legacy codes; keep only known non-'other' buckets
+      // so deriveInterval never dereferences an undefined bounds entry.
+      .filter(
+        (bucket): bucket is NumericCompanySize =>
+          bucket !== 'other' && bucket in COMPANY_SIZE_TO_INTERVAL,
+      )
+    // Variant path derives its interval from the variant-domain bounds source.
+    return buckets.length > 0 ? this.deriveInterval(buckets, COMPANY_SIZE_TO_INTERVAL) : undefined
+  }
+
+  private mapVarianteRegions(rows: ConditionRow[]): string[] | undefined {
+    const codes = rows
+      .filter((row) => row.conditionType === 'geographicArea')
+      .flatMap((row) => row.geographicAreaValue ?? [])
+      .filter((area): area is GeographicArea => typeof area === 'object' && area !== null)
+      .map((area) => this.toCogCode(area))
+      .filter((code): code is string => code !== undefined)
+    const unique = [...new Set(codes)]
+    return unique.length > 0 ? unique : undefined
+  }
+
+  private mapVarianteModifications(
+    program: Program,
+    rows: NonNullable<VarianteRow['modifications']>,
+  ): VarianteModificationsInput | undefined {
+    const modifications: VarianteModificationsInput = {}
+    // Multi-value targets accumulate across rows (one operator / one bullet each).
+    const autresOperateurs: { nom: string }[] = []
+    const effectifTexte: string[] = []
+    const autresCriteresTexte: string[] = []
+
+    for (const row of rows) {
+      // Operator targets read a relationship picker; the others read newValue.
+      // Last write wins when several rows target the same single-value field.
+      if (row.field === 'contactOperateur') {
+        const nom = operatorName(row.contactOperator)
+        if (nom) modifications.operateurs = { ...modifications.operateurs, contact: { nom } }
+        continue
+      }
+      if (row.field === 'autresOperateurs') {
+        for (const op of row.otherOperators ?? []) {
+          const nom = operatorName(op)
+          if (nom) autresOperateurs.push({ nom })
+        }
+        continue
+      }
+      const valeur = clean(row.newValue)
+      if (!valeur) continue
+      switch (row.field) {
+        case 'montant':
+          modifications.montant = { type: MONTANT_BY_AID_TYPE[program.aidType].label, valeur }
+          break
+        case 'duree':
+          modifications.duree = { type: DUREE_BY_AID_TYPE[program.aidType]?.label ?? 'Durée', valeur }
+          break
+        case 'urlSource':
+          modifications.url_source = valeur
+          break
+        case 'eligibiliteEffectif':
+          effectifTexte.push(valeur)
+          break
+        case 'autresCriteres':
+          autresCriteresTexte.push(valeur)
+          break
+      }
+    }
+
+    if (autresOperateurs.length > 0) {
+      modifications.operateurs = { ...modifications.operateurs, autres: autresOperateurs }
+    }
+    const eligibilite: NonNullable<VarianteModificationsInput['eligibilite']> = {}
+    if (effectifTexte.length > 0) eligibilite.effectif = { texte: effectifTexte }
+    if (autresCriteresTexte.length > 0) eligibilite.autres_criteres = { texte: autresCriteresTexte }
+    if (Object.keys(eligibilite).length > 0) modifications.eligibilite = eligibilite
+
+    return Object.keys(modifications).length > 0 ? modifications : undefined
   }
 }

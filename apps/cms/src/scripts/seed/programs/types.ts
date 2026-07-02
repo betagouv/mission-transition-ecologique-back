@@ -11,6 +11,18 @@ export interface SourceEligibilityConditions {
   "autres critères d'éligibilité"?: string[]
 }
 
+export interface SourceVariant {
+  'une de ces conditions'?: string[]
+  'toutes ces conditions'?: string[]
+  'opérateur de contact'?: string
+  'autres opérateurs'?: string[]
+  url?: string
+  'Montant du dispositif'?: string
+  'Durée du dispositif'?: string
+  'Eligibilité taille'?: string
+  "autres critères d'éligibilité"?: string[]
+}
+
 export interface SourceProgram {
   id: string
   titre: string
@@ -33,6 +45,7 @@ export interface SourceProgram {
   "montant de l'avantage fiscal"?: string
   objectifs?: SourceObjective[]
   "conditions d'éligibilité"?: SourceEligibilityConditions
+  'champs conditionnels'?: SourceVariant[]
   metaTitre?: string
   metaDescription?: string
 }
