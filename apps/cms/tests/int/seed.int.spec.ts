@@ -8,11 +8,12 @@ import { fileURLToPath } from 'url'
 import { GeographicAreasSeed } from '@/scripts/seed/geographic-areas'
 import { DEPARTEMENTS, REGIONS } from '@/scripts/seed/geographic-areas/fixtures'
 import { ProgramsSeed } from '@/scripts/seed/programs'
+import { GeographicAreaResolver } from '@/scripts/seed/programs/GeographicAreaResolver'
 
 const fixturesDir = fileURLToPath(new URL('../fixtures', import.meta.url))
 const programsFixture = resolve(fixturesDir, 'programs.json')
 
-const FIXTURE_PROGRAMS = 22
+const FIXTURE_PROGRAMS = 23
 const FIXTURE_OPERATORS = 8
 const EXPECTED_GEOGRAPHIC_AREAS = REGIONS.length + DEPARTEMENTS.length
 
@@ -61,6 +62,34 @@ describe('ProgramsSeed', () => {
       return root?.children?.some((node) => ['list', 'heading'].includes(node.type))
     })
     expect(hasStructuredNodes).toBe(true)
+  })
+
+  it('step descriptions are valid lexical editor states (not flat text)', async () => {
+    const result = await payload.find({ collection: 'programs', limit: FIXTURE_PROGRAMS })
+    const programWithSteps = result.docs.find(
+      (program) => Array.isArray(program.steps) && program.steps.length > 0,
+    )
+    expect(programWithSteps).toBeDefined()
+    for (const step of programWithSteps?.steps ?? []) {
+      expect(step.description).toMatchObject({
+        root: expect.objectContaining({
+          type: 'root',
+          children: expect.any(Array),
+        }),
+      })
+    }
+  })
+
+  it('keeps a program with an invalid step link in draft', async () => {
+    const result = await payload.find({
+      collection: 'programs',
+      where: { slug: { equals: 'fixture-broken-step-link' } },
+      limit: 1,
+    })
+    const program = result.docs[0]
+    expect(program).toBeDefined()
+    expect(program?._status).toBe('draft')
+    expect(program?.workflowStatus).toBe('en-creation')
   })
 
   it('covers all 5 aid types', async () => {
@@ -135,4 +164,47 @@ describe('GeographicAreasSeed', () => {
     const after = await payload.find({ collection: 'geographic-areas', limit: 0 })
     expect(after.totalDocs).toBe(before.totalDocs)
   }, 60_000)
+})
+
+describe('GeographicAreaResolver', () => {
+  let resolver: GeographicAreaResolver
+
+  beforeAll(async () => {
+    const payloadConfig = await config
+    payload = await getPayload({ config: payloadConfig })
+
+    await new GeographicAreasSeed(payload).run()
+    resolver = await GeographicAreaResolver.fromPayload(payload)
+  }, 60_000)
+
+  it('maps the national sentinel to national coverage with no zones', () => {
+    const result = resolver.resolve(["France et territoires d'outre-mer"])
+    expect(result.geographicCoverage).toBe('national')
+    expect(result.geographicAreas).toEqual([])
+    expect(result.geographicAreaFeedback).toBeUndefined()
+  })
+
+  it('maps a region name to regional coverage with the matching area id', () => {
+    const result = resolver.resolve(['Bretagne'])
+    expect(result.geographicCoverage).toBe('regional')
+    expect(result.geographicAreas).toHaveLength(1)
+    expect(result.geographicAreaFeedback).toBeUndefined()
+  })
+
+  it('maps a department-only name to departemental coverage with the matching area id', () => {
+    const result = resolver.resolve(['Ain'])
+    expect(result.geographicCoverage).toBe('departemental')
+    expect(result.geographicAreas).toHaveLength(1)
+    expect(result.geographicAreaFeedback).toBeUndefined()
+  })
+
+  it('reports unmatched names in the feedback field', () => {
+    const result = resolver.resolve(['Pays Imaginaire'])
+    expect(result.geographicAreaFeedback).toContain('Pays Imaginaire')
+    expect(result.geographicAreas).toEqual([])
+  })
+
+  it('returns an empty result for undefined input', () => {
+    expect(resolver.resolve(undefined)).toEqual({})
+  })
 })

@@ -80,11 +80,14 @@ Chaque valeur active des champs de montant/durée spécifiques :
 | `name` | text | required |
 | `coverageType` | select | required — `region` / `departement` / `commune` / `epci` / `autre` |
 | `inseeCode` | text | optional — code INSEE officiel |
+| `isOverseas` | checkbox | optional (défaut `false`) — marque une zone d'outre-mer (DROM, COM ou autre collectivité) |
 | `parentArea` | relationship → geographic-areas | hiérarchie (commune → EPCI → département → région) |
 
 **Accès :** collection masquée dans l'admin sauf pour `super-admin` (`admin.hidden`). L'édition centralisée évite la dérive des libellés.
 
-**Seed :** `apps/cms/src/scripts/seed/geographic-areas/` — 18 régions + 101 départements (fixtures avec code INSEE et lien `parentArea`). Lancé via `pnpm seed`.
+**Seed :** `apps/cms/src/scripts/seed/geographic-areas/` — 25 zones de type région (13 métropole + 12 outre-mer : 5 DROM + 7 COM) + 101 départements (96 métropole + 5 outre-mer), fixtures avec code INSEE, drapeau `isOverseas` et lien `parentArea`. Lancé via `pnpm seed`.
+
+**Drapeau `isOverseas` :** distingue métropole et outre-mer pour la sélection groupée du champ `geographicAreas` (voir composant `SelectAllAreasButtons` ci-dessous). Toute zone outre-mer ajoutée ultérieurement doit cocher ce champ.
 
 **Champ de feedback :** `geographicAreaFeedback` (text libre) sur `Programs` permet à l'éditeur de signaler une zone manquante sans bloquer la saisie.
 
@@ -94,14 +97,15 @@ Chaque valeur active des champs de montant/durée spécifiques :
 
 ### 4. Composants admin custom pour la saisie
 
-**Décision :** Deux composants React injectés dans `admin.components` :
+**Décision :** Trois composants React injectés dans `admin.components` :
 
 | Composant | Rôle |
 |---|---|
 | `NumberedRowLabel` | Auto-numérote les lignes d'un `array` Payload (ex : "Étape 1", "Lien 2", "Autre critère d'éligibilité 3"). Le libellé singulier est passé en `clientProps.singular` côté field config — un seul composant pour les trois usages (`steps`, `steps.links`, `otherCriteria`). |
 | `LinkedProjectsCounter` | Champ `type: 'ui'` qui affiche en live le nombre de projets matchant les `themes` sélectionnés (avant que l'éditeur ne choisisse `linkedProjects`) |
+| `SelectAllAreasButtons` | Champ `type: 'ui'` (réservé aux admins, aligné sur `ProgramFieldAccessPolicy.adminOnly`) affiché au-dessus de `geographicAreas` quand la couverture est `regional` / `departemental`. Boutons de sélection groupée : « métropole seule », « métropole + outre-mer », « vider ». Récupère les zones via `/api/geographic-areas` filtrées sur `coverageType` (+ `isOverseas` pour exclure l'outre-mer) et pousse les IDs dans le champ. |
 
-**Justification :** Sans `NumberedRowLabel`, les arrays Payload affichent des labels génériques ("Item 1") qui rendent la relecture pénible. La factorisation via `clientProps` évite la prolifération de composants thin-wrapper. `LinkedProjectsCounter` aide l'éditeur à anticiper la liste de projets à lier sans avoir à ouvrir un autre onglet.
+**Justification :** Sans `NumberedRowLabel`, les arrays Payload affichent des labels génériques ("Item 1") qui rendent la relecture pénible. La factorisation via `clientProps` évite la prolifération de composants thin-wrapper. `LinkedProjectsCounter` aide l'éditeur à anticiper la liste de projets à lier sans avoir à ouvrir un autre onglet. `SelectAllAreasButtons` évite de cocher 13 régions (ou 96 départements) une par une pour les dispositifs à large couverture, et gère explicitement le cas outre-mer.
 
 ---
 
@@ -140,11 +144,23 @@ Mapping legacy `programs.json` → nouveau schéma — perte assumée :
 - `nombre d'années d'activité` fusionné dans `otherCriteria`.
 - `aide temporairement indisponible`, `activable en autonomie`, `eligibilityData.company.excludeMicroentrepreneur` : ignorés (champs retirés du schéma — décision PO).
 - `illustration`, `eligibilityData.company.allowedNafSections / minEmployees / maxEmployees`, `eligibilityData.priorityObjectives`, `publicodes` : ignorés (non couverts par le nouveau schéma).
-- Quelques dispositifs sans `url` source restent en draft (le champ `url` est `required` ; complétion manuelle via l'admin).
+- Le seed ne publie un dispositif (`_status: published`, `workflowStatus: publie`) que si son `url` principal **et** tous ses liens d'étapes sont valides (`UrlValidator.isValid`, appelé dans `ProgramMapper`) ; sinon il reste en draft / `en-creation`. Cela rend visibles à l'éditeur les dispositifs sans `url` source comme ceux dont un lien est cassé (ex : `file:///` ou URL imbriquée dans la source), pour complétion manuelle via l'admin. Le seed écrit en `draft: true`, donc la validation des champs n'est pas levée à l'import : c'est ce calcul de statut qui assure la visibilité.
 
 Le seed reste idempotent (upsert par `slug`) — relancer `pnpm seed` après une mise à jour des sources ne crée pas de doublons.
 
 Les outils one-shot d'export/restore depuis l'ancienne base (utilisés pendant la phase de migration) restent dans `local/PR-program-refacto/scripts/` (gitignored). Voir `local/PR-program-refacto/README.md`.
+
+### 7. Ajustements UX/UI (ticket #6, PR 1)
+
+**Décision :** Affiner la saisie du formulaire suite aux retours produit de la semaine du 15 juin.
+
+- **Dates de validité** (`validityStart` / `validityEnd`) : `displayFormat: 'dd/MM/yyyy'` ajouté pour afficher l'année au format JJ/MM/AAAA.
+- **Étapes** : `steps[].description` passe de `text` à `richText` (saisie multiligne et enrichie). Le seed convertit la source via `convertMarkdownToLexical` (`ProgramMapper.toRichText`).
+- **Étapes, liens** : ordre des sous-champs inversé, `linkLabel` (Titre du lien) avant `url`.
+- **Validation des URL** : `UrlValidator.validate` (`src/utils/UrlValidator.ts`, basé sur zod) appliqué au lien principal `url` et aux liens d'étapes `steps[].links[].url`. Schémas autorisés : `http:`, `https:` et `mailto:` (les liens de contact des étapes sont des `mailto:`) ; les autres schémas (`ftp:`, `javascript:`…) sont rejetés. Pour `http(s)`, l'hôte doit être réel (`localhost` ou un domaine avec point), ce qui écarte les chemins `file:///` collés derrière `https://` (parsés avec l'hôte `file`). Valeur vide tolérée, espaces de bord ignorés via `trim`.
+- **Projets liés** (`linkedProjects`) : `admin.sortOptions: 'title'` (liste alphabétique de tous les projets, sans filtrage par thématique) et `admin.allowCreate: false` (le workflow projet reste séparé du workflow dispositif).
+- **SEO** (`metaTitle` / `metaDescription`) : réservé aux administrateurs sur deux niveaux complémentaires : `admin.condition` masque les champs en UI pour le rôle `creator`, et `access.create` / `access.update` (`UserRole.isAdmin`) verrouillent l'écriture côté API, la condition ne protégeant que l'affichage. Même pattern que `assignedContributors` et `_status`.
+- **Typographie richText** : règle CSS dans `dsfr-fields.scss` forçant Marianne (`--tee-font-family-sans`) sur l'éditeur Lexical, pour l'aligner sur les autres champs.
 
 ---
 

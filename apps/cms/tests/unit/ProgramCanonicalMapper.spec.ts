@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { CanonicalProgramValidator } from '@tee-backoffice/canonical'
 import { ProgramCanonicalMapper } from '@/services/canonical/ProgramCanonicalMapper'
 import type { RichTextToMarkdown } from '@/services/canonical/rich-text/RichTextToMarkdown'
-import type { Program } from '../../payload-types'
+import type { GeographicArea, Program } from '../../payload-types'
 import {
   CUID,
   StubRichTextToMarkdown,
@@ -91,22 +91,26 @@ describe('ProgramCanonicalMapper', () => {
   })
 
   describe('contact question', () => {
-    it('keeps the first selected method that carries its value', () => {
+    it('maps the selected url method with its value', () => {
       const data = mapAndValidate(
         buildProgram({
-          contactMethods: ['url', 'email'],
+          contactMethod: 'url',
           contactPageUrl: 'https://example.org/contact',
-          contactEmail: 'contact@ademe.fr',
         }),
       )
       expect(data.contact_question).toEqual({ type: 'url', valeur: 'https://example.org/contact' })
     })
 
-    it('falls through when the first method lacks its value', () => {
-      const data = mapAndValidate(
-        buildProgram({ contactMethods: ['email', 'advisor'], contactEmail: '' }),
-      )
+    it('maps the advisor method without a value', () => {
+      const data = mapAndValidate(buildProgram({ contactMethod: 'advisor' }))
       expect(data.contact_question).toEqual({ type: 'conseiller_entreprise' })
+    })
+
+    it('emits nothing when the selected method lacks its value', () => {
+      const data = mapAndValidate(
+        buildProgram({ contactMethod: 'email', contactEmail: '' }),
+      )
+      expect(data.contact_question).toBeUndefined()
     })
   })
 
@@ -116,13 +120,13 @@ describe('ProgramCanonicalMapper', () => {
         buildProgram({
           steps: [
             {
-              description: 'Complétez le formulaire',
+              description: richText('Complétez le formulaire'),
               links: [
                 { url: 'https://example.org/form', linkLabel: 'Formulaire' },
                 { url: 'https://example.org/incomplete', linkLabel: '' },
               ],
             },
-            { description: '' },
+            { description: richText('') },
           ],
         }),
       )
@@ -143,23 +147,60 @@ describe('ProgramCanonicalMapper', () => {
   })
 
   describe('eligibility', () => {
-    it('omits the effectif structure when every size bucket is selected', () => {
+    it('omits the effectif when the size is "all" (no constraint)', () => {
+      const data = mapAndValidate(buildProgram({ companySize: 'all' }))
+      expect(data.eligibilite?.effectif).toBeUndefined()
+    })
+
+    it('maps a size bucket to its label and bounds', () => {
+      const data = mapAndValidate(buildProgram({ companySize: '0-9' }))
+      expect(data.eligibilite?.effectif).toEqual({
+        texte: ['0 à 9 salariés'],
+        structure: { min: 0, max: 9 },
+      })
+    })
+
+    it('leaves the interval open-ended for the top bucket', () => {
+      const data = mapAndValidate(buildProgram({ companySize: '5000+' }))
+      expect(data.eligibilite?.effectif?.structure).toEqual({ min: 5000 })
+    })
+
+    it('maps a specific min/max headcount to an explicit interval', () => {
+      const data = mapAndValidate(
+        buildProgram({ companySize: 'specific', companySizeMin: 3, companySizeMax: 49 }),
+      )
+      expect(data.eligibilite?.effectif).toEqual({
+        texte: ['De 3 à 49 salariés'],
+        structure: { min: 3, max: 49 },
+      })
+    })
+
+    it('omits the sector when it is "all"', () => {
+      const data = mapAndValidate(buildProgram({ activitySector: 'all' }))
+      expect(data.eligibilite?.secteur_activite).toBeUndefined()
+    })
+
+    it('maps NAF sections to inclusions and editorial labels', () => {
+      const data = mapAndValidate(
+        buildProgram({ activitySector: 'naf-sections', nafSections: ['A', 'I'] }),
+      )
+      expect(data.eligibilite?.secteur_activite?.structure?.inclusions).toEqual(['A', 'I'])
+      expect(data.eligibilite?.secteur_activite?.texte).toEqual([
+        'A : Agriculture, sylviculture et pêche',
+        'I : Hébergement et restauration',
+      ])
+    })
+
+    it('maps a specific sector to a description and an associated NAF code', () => {
       const data = mapAndValidate(
         buildProgram({
-          companySizes: ['0-9', '10-19', '20-49', '50-249', '250-499', '500-4999', '5000+'],
+          activitySector: 'specific',
+          activitySectorDescription: 'Tertiaire',
+          nafCode: '62.01Z',
         }),
       )
-      expect(data.eligibilite?.effectif?.structure).toBeUndefined()
-    })
-
-    it('derives a bounded interval from a subset of buckets', () => {
-      const data = mapAndValidate(buildProgram({ companySizes: ['0-9', '10-19'] }))
-      expect(data.eligibilite?.effectif?.structure).toEqual({ min: 0, max: 19 })
-    })
-
-    it('leaves the interval open-ended when the top bucket is selected', () => {
-      const data = mapAndValidate(buildProgram({ companySizes: ['500-4999', '5000+'] }))
-      expect(data.eligibilite?.effectif?.structure).toEqual({ min: 500 })
+      expect(data.eligibilite?.secteur_activite?.texte).toEqual(['Tertiaire'])
+      expect(data.eligibilite?.secteur_activite?.structure?.inclusions).toEqual(['62.01Z'])
     })
 
     it('builds COG codes from geographic areas', () => {
@@ -194,6 +235,270 @@ describe('ProgramCanonicalMapper', () => {
       )
       expect(data.statut_dispositif).toBe('remplace')
       expect(data.remplace_par).toBe('z9y8x7w6v5u4t3s2r1q0ponm')
+    })
+  })
+
+  describe('variants', () => {
+    const ileDeFrance: GeographicArea = {
+      id: 1,
+      name: 'Île-de-France',
+      coverageType: 'region',
+      inseeCode: '11',
+      updatedAt: TIMESTAMP,
+      createdAt: TIMESTAMP,
+    }
+
+    it('derives a bounded effectif from a company-size condition', () => {
+      const data = mapAndValidate(
+        buildProgram({
+          variants: [
+            {
+              conditions: [{ conditionType: 'companySize', companySizeValue: ['0-9'] }],
+              modifications: [{ field: 'montant', newValue: '3 000 € HT' }],
+            },
+          ],
+        }),
+      )
+      expect(data.variantes?.[0].conditions.effectif).toEqual({ min: 0, max: 9 })
+    })
+
+    it('leaves the effectif open-ended for the top bucket', () => {
+      const data = mapAndValidate(
+        buildProgram({
+          variants: [
+            {
+              conditions: [{ conditionType: 'companySize', companySizeValue: ['5000+'] }],
+              modifications: [{ field: 'montant', newValue: '10 000 € HT' }],
+            },
+          ],
+        }),
+      )
+      expect(data.variantes?.[0].conditions.effectif).toEqual({ min: 5000 })
+    })
+
+    it('builds COG region codes from a geographic-area condition', () => {
+      const data = mapAndValidate(
+        buildProgram({
+          variants: [
+            {
+              conditions: [
+                { conditionType: 'geographicArea', geographicAreaValue: [ileDeFrance] },
+              ],
+              modifications: [{ field: 'urlSource', newValue: 'https://example.org/idf' }],
+            },
+          ],
+        }),
+      )
+      expect(data.variantes?.[0].conditions.regions).toEqual(['REG-11'])
+    })
+
+    it('combines size and area conditions (AND) into effectif and regions', () => {
+      const data = mapAndValidate(
+        buildProgram({
+          variants: [
+            {
+              conditions: [
+                { conditionType: 'companySize', companySizeValue: ['0-9'] },
+                { conditionType: 'geographicArea', geographicAreaValue: [ileDeFrance] },
+              ],
+              modifications: [{ field: 'montant', newValue: '3 000 € HT' }],
+            },
+          ],
+        }),
+      )
+      expect(data.variantes?.[0].conditions).toEqual({
+        effectif: { min: 0, max: 9 },
+        regions: ['REG-11'],
+      })
+    })
+
+    it('maps a montant modification labelled by aid type', () => {
+      const data = mapAndValidate(
+        buildProgram({
+          aidType: 'pret',
+          loanAmount: 'De 10 000 € à 75 000 €',
+          variants: [
+            {
+              conditions: [{ conditionType: 'companySize', companySizeValue: ['0-9'] }],
+              modifications: [{ field: 'montant', newValue: '5 000 €' }],
+            },
+          ],
+        }),
+      )
+      expect(data.variantes?.[0].modifications.montant).toEqual({
+        type: 'Montant du prêt',
+        valeur: '5 000 €',
+      })
+    })
+
+    it('maps a duree modification, falling back to a generic label without an aid-type duration', () => {
+      const data = mapAndValidate(
+        buildProgram({
+          variants: [
+            {
+              conditions: [{ conditionType: 'companySize', companySizeValue: ['0-9'] }],
+              modifications: [{ field: 'duree', newValue: '6 mois' }],
+            },
+          ],
+        }),
+      )
+      expect(data.variantes?.[0].modifications.duree).toEqual({ type: 'Durée', valeur: '6 mois' })
+    })
+
+    it('maps an urlSource modification to url_source', () => {
+      const data = mapAndValidate(
+        buildProgram({
+          variants: [
+            {
+              conditions: [{ conditionType: 'companySize', companySizeValue: ['0-9'] }],
+              modifications: [{ field: 'urlSource', newValue: 'https://example.org/variant' }],
+            },
+          ],
+        }),
+      )
+      expect(data.variantes?.[0].modifications.url_source).toBe('https://example.org/variant')
+    })
+
+    it('maps a contact operator modification (relationship) to operateurs.contact', () => {
+      const data = mapAndValidate(
+        buildProgram({
+          variants: [
+            {
+              conditions: [{ conditionType: 'companySize', companySizeValue: ['0-9'] }],
+              modifications: [
+                {
+                  field: 'contactOperateur',
+                  contactOperator: {
+                    id: 2,
+                    name: 'CCI ou CMA',
+                    updatedAt: TIMESTAMP,
+                    createdAt: TIMESTAMP,
+                  },
+                },
+              ],
+            },
+          ],
+        }),
+      )
+      expect(data.variantes?.[0].modifications.operateurs?.contact).toEqual({ nom: 'CCI ou CMA' })
+    })
+
+    it('maps several "autres opérateurs" (relationship hasMany) into operateurs.autres', () => {
+      const data = mapAndValidate(
+        buildProgram({
+          variants: [
+            {
+              conditions: [{ conditionType: 'companySize', companySizeValue: ['0-9'] }],
+              modifications: [
+                {
+                  field: 'autresOperateurs',
+                  otherOperators: [
+                    { id: 3, name: 'CMA Auvergne-Rhône-Alpes', updatedAt: TIMESTAMP, createdAt: TIMESTAMP },
+                    { id: 4, name: 'CCI Lyon Métropole', updatedAt: TIMESTAMP, createdAt: TIMESTAMP },
+                  ],
+                },
+              ],
+            },
+          ],
+        }),
+      )
+      expect(data.variantes?.[0].modifications.operateurs?.autres).toEqual([
+        { nom: 'CMA Auvergne-Rhône-Alpes' },
+        { nom: 'CCI Lyon Métropole' },
+      ])
+    })
+
+    it('maps an éligibilité-taille modification to eligibilite.effectif.texte', () => {
+      const data = mapAndValidate(
+        buildProgram({
+          variants: [
+            {
+              conditions: [{ conditionType: 'companySize', companySizeValue: ['0-9'] }],
+              modifications: [
+                { field: 'eligibiliteEffectif', newValue: "Jusqu'à 50 salariés" },
+              ],
+            },
+          ],
+        }),
+      )
+      expect(data.variantes?.[0].modifications.eligibilite?.effectif?.texte).toEqual([
+        "Jusqu'à 50 salariés",
+      ])
+    })
+
+    it('maps an autres-critères modification to eligibilite.autres_criteres.texte', () => {
+      const data = mapAndValidate(
+        buildProgram({
+          variants: [
+            {
+              conditions: [{ conditionType: 'companySize', companySizeValue: ['0-9'] }],
+              modifications: [
+                { field: 'autresCriteres', newValue: 'Moins de 10M€ de CA' },
+              ],
+            },
+          ],
+        }),
+      )
+      expect(data.variantes?.[0].modifications.eligibilite?.autres_criteres?.texte).toEqual([
+        'Moins de 10M€ de CA',
+      ])
+    })
+
+    it('ignores areas without a structured COG code', () => {
+      const data = mapAndValidate(
+        buildProgram({
+          variants: [
+            {
+              conditions: [
+                { conditionType: 'companySize', companySizeValue: ['0-9'] },
+                {
+                  conditionType: 'geographicArea',
+                  geographicAreaValue: [
+                    { id: 9, name: 'Zone libre', coverageType: 'autre', inseeCode: null, updatedAt: TIMESTAMP, createdAt: TIMESTAMP },
+                    { id: 10, name: 'Sans code', coverageType: 'commune', inseeCode: null, updatedAt: TIMESTAMP, createdAt: TIMESTAMP },
+                  ],
+                },
+              ],
+              modifications: [{ field: 'montant', newValue: '3 000 €' }],
+            },
+          ],
+        }),
+      )
+      expect(data.variantes?.[0].conditions.regions).toBeUndefined()
+      expect(data.variantes?.[0].conditions.effectif).toEqual({ min: 0, max: 9 })
+    })
+
+    it('omits a variant without any valid condition', () => {
+      const data = mapAndValidate(
+        buildProgram({
+          variants: [
+            {
+              conditions: [{ conditionType: 'companySize', companySizeValue: ['other'] }],
+              modifications: [{ field: 'montant', newValue: '3 000 €' }],
+            },
+          ],
+        }),
+      )
+      expect(data.variantes).toBeUndefined()
+    })
+
+    it('omits a variant without any valid modification', () => {
+      const data = mapAndValidate(
+        buildProgram({
+          variants: [
+            {
+              conditions: [{ conditionType: 'companySize', companySizeValue: ['0-9'] }],
+              modifications: [{ field: 'montant', newValue: '   ' }],
+            },
+          ],
+        }),
+      )
+      expect(data.variantes).toBeUndefined()
+    })
+
+    it('returns undefined when no variant is valid', () => {
+      const data = mapAndValidate(buildProgram({ variants: [] }))
+      expect(data.variantes).toBeUndefined()
     })
   })
 })

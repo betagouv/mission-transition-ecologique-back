@@ -4,7 +4,7 @@
 //   1. fonts             : @font-face Marianne
 //   2. tokens            : shared `--tee-*` variables
 //   3. payload-overrides : override Payload CSS variables
-//   4. visual modules    : geometry, buttons, fields, nav, login, badges, logo
+//   4. visual modules    : geometry, buttons, fields, nav, login, badges
 //
 // *Non-layered* styles: Payload declares its own in `@layer payload-default`,
 // so our rules win without `!important` — except for react-select, which
@@ -19,4 +19,4 @@
 @import '../../styles/dsfr-nav.scss';
 @import '../../styles/dsfr-login.scss';
 @import '../../styles/dsfr-badges.scss';
-@import '../../styles/dsfr-logo.scss';
+@import '../../styles/dsfr-doc-controls.scss';

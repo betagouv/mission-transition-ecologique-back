@@ -12,6 +12,14 @@ export const Users: CollectionConfig = {
   fields: [
     // Email added by default
     {
+      name: 'name',
+      type: 'text',
+      label: 'Nom',
+      admin: {
+        description: 'Nom affiché (ex. dans les commentaires de relecture).',
+      },
+    },
+    {
       name: 'role',
       type: 'select',
       label: 'Rôle',
