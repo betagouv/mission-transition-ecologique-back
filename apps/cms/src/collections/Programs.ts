@@ -586,6 +586,9 @@ export const Programs: CollectionConfig = {
       label: "Conditions d'éligibilité variables selon le type de profil",
       admin: {
         initCollapsed: false,
+        components: {
+          Label: '@/components/programs/VariantsSectionLabel#VariantsSectionLabel',
+        },
       },
       fields: [
         {
