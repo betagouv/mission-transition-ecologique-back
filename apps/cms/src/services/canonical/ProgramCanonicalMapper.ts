@@ -337,7 +337,12 @@ export class ProgramCanonicalMapper {
       // companySizeValue is a JSON column: coerce the loose value to string codes.
       .flatMap((row) => (Array.isArray(row.companySizeValue) ? row.companySizeValue : []))
       .filter((bucket): bucket is string => typeof bucket === 'string')
-      .filter((bucket): bucket is NumericCompanySize => bucket !== 'other')
+      // JSON column may hold unknown/legacy codes; keep only known non-'other' buckets
+      // so deriveInterval never dereferences an undefined bounds entry.
+      .filter(
+        (bucket): bucket is NumericCompanySize =>
+          bucket !== 'other' && bucket in COMPANY_SIZE_TO_INTERVAL,
+      )
     // Variant path derives its interval from the variant-domain bounds source.
     return buckets.length > 0 ? this.deriveInterval(buckets, COMPANY_SIZE_TO_INTERVAL) : undefined
   }

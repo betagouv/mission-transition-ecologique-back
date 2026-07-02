@@ -500,12 +500,12 @@ export const Programs: CollectionConfig = {
         {
           name: 'variants',
           type: 'array',
-          labels: { singular: 'un variant', plural: 'Variants' },
+          labels: { singular: 'variant', plural: 'variants' },
           admin: {
             components: {
               RowLabel: {
                 path: '@/components/programs/NumberedRowLabel#NumberedRowLabel',
-                clientProps: { singular: 'Variable' },
+                clientProps: { singular: 'Variant' },
               },
             },
           },

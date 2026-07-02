@@ -21,7 +21,7 @@ export const VariantsSectionIntro: React.FC = () => (
     <div style={{ fontWeight: 700, marginBottom: '0.25rem' }}>Les variantes</div>
     <p style={{ margin: 0, color: '#555', fontSize: '0.875rem', lineHeight: 1.5 }}>
       Les variantes permettent d&apos;adapter automatiquement certains champs du dispositif selon
-      le profil de l&apos;entreprise (taille, zone, secteur...), sans dupliquer le dispositif
+      le profil de l&apos;entreprise (taille, zone géographique), sans dupliquer le dispositif
       entier.
     </p>
   </div>
