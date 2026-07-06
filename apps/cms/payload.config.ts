@@ -10,6 +10,7 @@ import { Operators } from '@/collections/Operators'
 import { Programs } from '@/collections/Programs'
 import { Projects } from '@/collections/Projects'
 import { GeographicAreas } from '@/collections/GeographicAreas'
+import { ReviewComments } from '@/collections/ReviewComments'
 import { agirEndpoints } from '@/endpoints/agir/agirEndpoints'
 
 const filename = fileURLToPath(import.meta.url)
@@ -19,6 +20,10 @@ export default buildConfig({
   admin: {
     user: Users.slug,
     theme: 'light',
+    // French date/time format (date-fns pattern) used as the admin-wide default,
+    // e.g. for the document versions list. Day-only fields override it with
+    // their own `admin.date.displayFormat`.
+    dateFormat: 'dd/MM/yyyy HH:mm',
     meta: {
       icons: [{ rel: 'icon', type: 'image/svg+xml', url: '/favicon.svg' }],
     },
@@ -32,7 +37,15 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Users, Media, Operators, Programs, Projects, GeographicAreas],
+  collections: [
+    Users,
+    Media,
+    Operators,
+    Programs,
+    Projects,
+    GeographicAreas,
+    ReviewComments,
+  ],
   endpoints: agirEndpoints,
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',

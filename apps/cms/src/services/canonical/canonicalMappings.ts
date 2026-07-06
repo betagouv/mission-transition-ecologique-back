@@ -1,9 +1,13 @@
 import type { StatutDispositif, StatutEdition, Theme, TypeAide } from '@tee-backoffice/canonical'
 import type { GeographicArea, Program } from '../../../payload-types'
+import { ACTIVITY_SECTOR_OPTIONS } from '@/constants/activitySectorOptions'
 import {
-  ACTIVITY_SECTOR_OPTIONS,
   COMPANY_SIZE_OPTIONS,
-} from '@/constants/eligibilityOptions'
+  COMPANY_SIZE_BUCKETS,
+  type CompanySizeBucket,
+} from '@/constants/companySizeOptions'
+import { NAF_SECTIONS_OPTIONS } from '@/constants/nafSectionsOptions'
+import type { NafSection } from '@/constants/nafSectionsOptions'
 
 /**
  * Lookup tables between the Payload `Program` vocabularies and the canonical
@@ -13,9 +17,8 @@ import {
  */
 
 type AidType = Program['aidType']
-type WorkflowStatus = Program['workflowStatus']
+type WorkflowStatus = NonNullable<Program['workflowStatus']>
 type PayloadTheme = NonNullable<Program['themes']>[number]
-type CompanySize = NonNullable<Program['companySizes']>[number]
 type CoverageType = GeographicArea['coverageType']
 
 /** Maps a select-option list to a `value → label` record, keeping value typing. */
@@ -27,9 +30,6 @@ function labelsByValue<O extends readonly { label: string; value: string }[]>(
     string
   >
 }
-
-/** Number of numeric size buckets (all but `other`); selecting them all = no constraint. */
-export const NUMERIC_COMPANY_SIZE_COUNT = 7
 
 /** Aid nature: single Payload `aidType` → one canonical `types_aides` value. */
 export const AID_TYPE_TO_CANONICAL: Record<AidType, TypeAide> = {
@@ -103,7 +103,7 @@ export const DUREE_BY_AID_TYPE: Partial<Record<AidType, { label: string; field: 
 }
 
 /** Company-size bucket → numeric bounds (max omitted means open-ended). */
-export const COMPANY_SIZE_BOUNDS: Record<CompanySize, { min?: number; max?: number }> = {
+export const COMPANY_SIZE_BOUNDS: Record<CompanySizeBucket, { min?: number; max?: number }> = {
   '0-9': { min: 0, max: 9 },
   '10-19': { min: 10, max: 19 },
   '20-49': { min: 20, max: 49 },
@@ -111,11 +111,18 @@ export const COMPANY_SIZE_BOUNDS: Record<CompanySize, { min?: number; max?: numb
   '250-499': { min: 250, max: 499 },
   '500-4999': { min: 500, max: 4999 },
   '5000+': { min: 5000 },
-  other: {},
+}
+
+/** True for a size value that is one of the fixed numeric buckets. */
+export function isCompanySizeBucket(value: string | null | undefined): value is CompanySizeBucket {
+  return COMPANY_SIZE_BUCKETS.includes(value as CompanySizeBucket)
 }
 
 /** Human labels for the activity sectors, reused in the editorial `texte`. */
 export const ACTIVITY_SECTOR_LABELS = labelsByValue(ACTIVITY_SECTOR_OPTIONS)
+
+/** Human labels for the NAF sections (A→U), reused in the editorial `texte`. */
+export const NAF_SECTION_LABELS: Record<NafSection, string> = labelsByValue(NAF_SECTIONS_OPTIONS)
 
 /** Human labels for the size buckets, reused in the editorial `texte`. */
 export const COMPANY_SIZE_LABELS = labelsByValue(COMPANY_SIZE_OPTIONS)

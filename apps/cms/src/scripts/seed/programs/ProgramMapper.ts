@@ -1,7 +1,12 @@
 import type { editorConfigFactory } from '@payloadcms/richtext-lexical'
 import { convertMarkdownToLexical } from '@payloadcms/richtext-lexical'
 import type { SourceProgram } from './types'
+import type { GeographicAreaResolver } from './GeographicAreaResolver'
+import { VariantMapper } from './VariantMapper'
 import { FrenchDateParser } from '@/utils/FrenchDateParser'
+import { UrlValidator } from '@/utils/UrlValidator'
+import type { NafSection } from '@/constants/nafSectionsOptions'
+import { COMPANY_SIZE_BOUNDS } from '@/services/canonical/canonicalMappings'
 
 type AidType =
   | 'financement'
@@ -10,7 +15,7 @@ type AidType =
   | 'formation'
   | 'diagnostic-etude'
 
-type CompanySize =
+type CompanySizeBucket =
   | '0-9'
   | '10-19'
   | '20-49'
@@ -18,9 +23,11 @@ type CompanySize =
   | '250-499'
   | '500-4999'
   | '5000+'
-  | 'other'
 
-type ActivitySector =
+type CompanySize = 'all' | CompanySizeBucket | 'specific'
+
+/** Coarse sectors recognised in the source free text (pre-NAF vocabulary). */
+type SourceSector =
   | 'all'
   | 'agriculture'
   | 'industrie'
@@ -28,25 +35,42 @@ type ActivitySector =
   | 'commerce'
   | 'artisanat'
   | 'tourisme'
-  | 'other'
-  | 'naf-code'
+
+type ActivitySector = 'all' | 'naf-sections' | 'specific'
 
 type EditorConfig = Awaited<ReturnType<typeof editorConfigFactory.default>>
 
 interface CompanySizeMapping {
-  sizes: CompanySize[]
-  sizeOther: string | undefined
+  companySize: CompanySize
+  companySizeMin: number | undefined
+  companySizeMax: number | undefined
 }
 
 interface ActivitySectorMapping {
-  sectors: ActivitySector[]
-  sectorOther: string | undefined
+  activitySector: ActivitySector
+  nafSections: NafSection[]
+  activitySectorDescription: string | undefined
+  nafCode: string | undefined
+}
+
+/** Best-effort mapping of the coarse source sectors onto NAF sections. */
+const SOURCE_SECTOR_TO_NAF: Partial<Record<SourceSector, NafSection[]>> = {
+  agriculture: ['A'],
+  industrie: ['C'],
+  commerce: ['G'],
+  tourisme: ['I'],
+}
+
+/** Coarse sectors with no clean NAF section: kept as a free-text description. */
+const SOURCE_SECTOR_LEFTOVER_LABEL: Partial<Record<SourceSector, string>> = {
+  tertiaire: 'Tertiaire',
+  artisanat: 'Artisanat',
 }
 
 type ContactMethod = 'email' | 'url' | 'advisor'
 
 interface ContactMapping {
-  contactMethods: ContactMethod[]
+  contactMethod: ContactMethod | undefined
   contactEmail: string | undefined
   contactPageUrl: string | undefined
 }
@@ -59,7 +83,7 @@ const AID_TYPE_MAP: Record<string, AidType> = {
   'avantage fiscal': 'avantage-fiscal',
 }
 
-const COMPANY_SIZE_KEYWORDS: { value: CompanySize; matchers: RegExp[] }[] = [
+const COMPANY_SIZE_KEYWORDS: { value: CompanySizeBucket; matchers: RegExp[] }[] = [
   { value: '0-9', matchers: [/0\s*[àa-]\s*9/i, /\bTPE\b/i, /micro[\s-]?entreprise/i] },
   { value: '10-19', matchers: [/10\s*[àa-]\s*19/i] },
   { value: '20-49', matchers: [/20\s*[àa-]\s*49/i] },
@@ -69,7 +93,7 @@ const COMPANY_SIZE_KEYWORDS: { value: CompanySize; matchers: RegExp[] }[] = [
   { value: '5000+', matchers: [/[+5]\s*5000/i, /grandes?\s+entreprises?/i] },
 ]
 
-const ACTIVITY_SECTOR_KEYWORDS: { value: ActivitySector; matchers: RegExp[] }[] = [
+const ACTIVITY_SECTOR_KEYWORDS: { value: SourceSector; matchers: RegExp[] }[] = [
   { value: 'all', matchers: [/tous\s+secteurs/i, /toutes?\s+entreprises?/i] },
   { value: 'agriculture', matchers: [/agricult/i, /\bagri\b/i] },
   { value: 'industrie', matchers: [/industri/i] },
@@ -80,9 +104,18 @@ const ACTIVITY_SECTOR_KEYWORDS: { value: ActivitySector; matchers: RegExp[] }[] 
 ]
 
 export class ProgramMapper {
-  constructor(private readonly editorConfig: EditorConfig) {}
+  private readonly variantMapper = new VariantMapper()
 
-  map(program: SourceProgram, operatorIdByName: Map<string, number>) {
+  constructor(
+    private readonly editorConfig: EditorConfig,
+    private readonly geographicAreaResolver: GeographicAreaResolver,
+  ) {}
+
+  map(
+    program: SourceProgram,
+    operatorIdByName: Map<string, number>,
+    regionIdByName: Map<string, number>,
+  ) {
     const operatorId = operatorIdByName.get(program['opérateur de contact'])
     if (!operatorId) return null
 
@@ -92,15 +125,15 @@ export class ProgramMapper {
 
     const aidType = this.mapAidType(program["nature de l'aide"])
     const eligibilityCondition = program["conditions d'éligibilité"]
-    const { sizes, sizeOther } = this.mapCompanySizes(
+    const companySize = this.mapCompanySizes(
       eligibilityCondition?.["taille de l'entreprise"] ?? [],
     )
-    const { sectors, sectorOther } = this.mapActivitySectors(
+    const activitySector = this.mapActivitySectors(
       eligibilityCondition?.["secteur d'activité"] ?? [],
     )
-    const geographicAreaFeedback = (eligibilityCondition?.['secteur géographique'] ?? [])
-      .filter(Boolean)
-      .join(' — ')
+    const geographic = this.geographicAreaResolver.resolve(
+      eligibilityCondition?.['secteur géographique'],
+    )
     const otherCriteria = [
       ...(eligibilityCondition?.["nombre d'années d'activité"] ?? []),
       ...(eligibilityCondition?.["autres critères d'éligibilité"] ?? []),
@@ -111,7 +144,20 @@ export class ProgramMapper {
     const contact = this.mapContact(program['contact question'])
     const amounts = this.mapAmountFields(aidType, program)
     const trimmedUrl = program.url?.trim()
-    const hasValidUrl = Boolean(trimmedUrl)
+    const steps = (program.objectifs ?? []).map((obj) => ({
+      description: this.toRichText(obj.description),
+      links: (obj.liens ?? []).map((lien) => ({
+        linkLabel: lien.texte ?? '',
+        url: lien.lien,
+      })),
+    }))
+
+    // Publish only when the main url and every step link are valid; otherwise
+    // keep the program in draft (en-creation) so editors can spot and fix it.
+    const canPublish =
+      Boolean(trimmedUrl) &&
+      UrlValidator.isValid(trimmedUrl) &&
+      steps.every((step) => step.links.every((link) => UrlValidator.isValid(link.url)))
 
     return {
       slug: program.id,
@@ -126,26 +172,27 @@ export class ProgramMapper {
       otherOperators: otherOperatorIds.length > 0 ? otherOperatorIds : undefined,
       url: trimmedUrl,
       ...amounts,
-      steps: (program.objectifs ?? []).map((obj) => ({
-        description: obj.description,
-        links: (obj.liens ?? []).map((lien) => ({
-          url: lien.lien,
-          linkLabel: lien.texte ?? '',
-        })),
-      })),
-      contactMethods: contact.contactMethods,
+      steps,
+      contactMethod: contact.contactMethod,
       contactEmail: contact.contactEmail,
       contactPageUrl: contact.contactPageUrl,
       validityStart: FrenchDateParser.parse(program['début de validité']),
       validityEnd: FrenchDateParser.parse(program['fin de validité']),
-      companySizes: sizes,
-      companySizeOther: sizeOther,
-      geographicAreaFeedback: geographicAreaFeedback || undefined,
-      activitySectors: sectors,
-      activitySectorOther: sectorOther,
+      companySize: companySize.companySize,
+      companySizeMin: companySize.companySizeMin,
+      companySizeMax: companySize.companySizeMax,
+      geographicCoverage: geographic.geographicCoverage ?? null,
+      geographicAreas: geographic.geographicAreas ?? [],
+      // Pass null (not undefined) so a stale feedback is actually cleared on update.
+      geographicAreaFeedback: geographic.geographicAreaFeedback ?? null,
+      activitySector: activitySector.activitySector,
+      nafSections: activitySector.nafSections,
+      activitySectorDescription: activitySector.activitySectorDescription,
+      nafCode: activitySector.nafCode,
       otherCriteria,
-      workflowStatus: hasValidUrl ? ('publie' as const) : ('en-creation' as const),
-      _status: hasValidUrl ? ('published' as const) : ('draft' as const),
+      variants: this.variantMapper.map(program, operatorIdByName, regionIdByName),
+      workflowStatus: canPublish ? ('publie' as const) : ('en-creation' as const),
+      _status: canPublish ? ('published' as const) : ('draft' as const),
       metaTitle: program.metaTitre,
       metaDescription: program.metaDescription,
     }
@@ -192,58 +239,96 @@ export class ProgramMapper {
     const trimmed = contactQuestion.trim()
     if (trimmed.startsWith('mailto:')) {
       return {
-        contactMethods: ['email'],
+        contactMethod: 'email',
         contactEmail: trimmed.slice('mailto:'.length),
         contactPageUrl: undefined,
       }
     }
     if (/^https?:\/\//.test(trimmed)) {
       return {
-        contactMethods: ['url'],
+        contactMethod: 'url',
         contactEmail: undefined,
         contactPageUrl: trimmed,
       }
     }
-    return { contactMethods: [], contactEmail: undefined, contactPageUrl: undefined }
+    return { contactMethod: undefined, contactEmail: undefined, contactPageUrl: undefined }
   }
 
   private mapCompanySizes(values: string[]): CompanySizeMapping {
-    const sizes = new Set<CompanySize>()
-    const unmatched: string[] = []
+    const buckets = new Set<CompanySizeBucket>()
     for (const value of values) {
-      const matched = COMPANY_SIZE_KEYWORDS.filter(({ matchers }) =>
-        matchers.some((re) => re.test(value)),
-      )
-      if (matched.length === 0) {
-        unmatched.push(value)
-      } else {
-        for (const m of matched) sizes.add(m.value)
+      for (const { value: bucket, matchers } of COMPANY_SIZE_KEYWORDS) {
+        if (matchers.some((re) => re.test(value))) buckets.add(bucket)
       }
     }
-    if (unmatched.length > 0) sizes.add('other')
-    return {
-      sizes: [...sizes],
-      sizeOther: unmatched.length > 0 ? unmatched.join(' — ') : undefined,
+
+    const matched = [...buckets]
+    // No recognised bucket: leave the default (no constraint).
+    if (matched.length === 0) {
+      return { companySize: 'all', companySizeMin: undefined, companySizeMax: undefined }
     }
+
+    // A single recognised bucket keeps its named option (bounds derived later).
+    if (matched.length === 1) {
+      return { companySize: matched[0], companySizeMin: undefined, companySizeMax: undefined }
+    }
+
+    // Several buckets collapse to one explicit interval (specific min/max).
+    const bounds = matched.map((bucket) => COMPANY_SIZE_BOUNDS[bucket])
+    const mins = bounds.map((b) => b.min).filter((m): m is number => m !== undefined)
+    const min = mins.length > 0 ? Math.min(...mins) : undefined
+    const hasOpenEnd = bounds.some((b) => b.max === undefined)
+    const maxes = bounds.map((b) => b.max).filter((m): m is number => m !== undefined)
+    const max = hasOpenEnd || maxes.length === 0 ? undefined : Math.max(...maxes)
+
+    return { companySize: 'specific', companySizeMin: min, companySizeMax: max }
   }
 
   private mapActivitySectors(values: string[]): ActivitySectorMapping {
-    const sectors = new Set<ActivitySector>()
+    const sources = new Set<SourceSector>()
     const unmatched: string[] = []
     for (const value of values) {
       const matched = ACTIVITY_SECTOR_KEYWORDS.filter(({ matchers }) =>
         matchers.some((re) => re.test(value)),
       )
-      if (matched.length === 0) {
-        unmatched.push(value)
-      } else {
-        for (const m of matched) sectors.add(m.value)
+      if (matched.length === 0) unmatched.push(value)
+      else for (const m of matched) sources.add(m.value)
+    }
+
+    const nafSections = [
+      ...new Set(
+        [...sources].flatMap((sector) => SOURCE_SECTOR_TO_NAF[sector] ?? []),
+      ),
+    ]
+    const leftovers = [
+      ...[...sources]
+        .map((sector) => SOURCE_SECTOR_LEFTOVER_LABEL[sector])
+        .filter((label): label is string => label !== undefined),
+      ...unmatched,
+    ]
+
+    // Prefer the structured NAF mapping; fall back to a free-text description.
+    if (nafSections.length > 0) {
+      return {
+        activitySector: 'naf-sections',
+        nafSections,
+        activitySectorDescription: undefined,
+        nafCode: undefined,
       }
     }
-    if (unmatched.length > 0) sectors.add('other')
+    if (leftovers.length > 0) {
+      return {
+        activitySector: 'specific',
+        nafSections: [],
+        activitySectorDescription: leftovers.join(' / '),
+        nafCode: undefined,
+      }
+    }
     return {
-      sectors: [...sectors],
-      sectorOther: unmatched.length > 0 ? unmatched.join(' — ') : undefined,
+      activitySector: 'all',
+      nafSections: [],
+      activitySectorDescription: undefined,
+      nafCode: undefined,
     }
   }
 }

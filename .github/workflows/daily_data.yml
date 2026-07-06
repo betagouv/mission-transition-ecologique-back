@@ -3,8 +3,9 @@ name: Daily data update
 # Daily: fetch the upstream programs.json, regenerate the canonical store from
 # it (Payload-free), push to Grist, and commit the refreshed data back.
 on:
-  schedule:
-    - cron: '17 3 * * *' # every day ~03:17 UTC
+  # Cron temporairement désactivé — déclenchement manuel uniquement pour l'instant.
+  # schedule:
+  #   - cron: '17 3 * * *' # every day ~03:17 UTC
   workflow_dispatch: # allow manual runs
 
 concurrency:

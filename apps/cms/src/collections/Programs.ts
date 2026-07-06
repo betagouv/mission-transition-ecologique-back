@@ -2,28 +2,35 @@ import type { CollectionConfig, FieldAccess } from 'payload'
 import { ProgramAccessPolicy } from '@/services/access/ProgramAccessPolicy'
 import { beforeChangeWorkflow } from '@/hooks/programs/beforeChangeWorkflow'
 import { assignCreatorOnCreate } from '@/hooks/programs/assignCreatorOnCreate'
+import { normalizeGeographicCoverage } from '@/hooks/programs/normalizeGeographicCoverage'
+import { trackLastModifiedBy } from '@/hooks/programs/trackLastModifiedBy'
 import { assignCanonicalId } from '@/hooks/programs/assignCanonicalId'
 import { syncCanonicalOnPublish } from '@/hooks/programs/syncCanonicalOnPublish'
 import { THEMES_OPTIONS } from '@/constants/themesOptions'
+import { COMPANY_SIZE_OPTIONS } from '@/constants/companySizeOptions'
+import { ACTIVITY_SECTOR_OPTIONS } from '@/constants/activitySectorOptions'
+import { NAF_SECTIONS_OPTIONS } from '@/constants/nafSectionsOptions'
+import { CONTACT_METHOD_OPTIONS } from '@/constants/contactMethodOptions'
+import { AID_TYPE_OPTIONS } from '@/constants/aidTypeOptions'
 import {
-  ACTIVITY_SECTOR_OPTIONS,
-  COMPANY_SIZE_OPTIONS,
-} from '@/constants/eligibilityOptions'
+  CONDITION_TYPE_OPTIONS,
+  MODIFIABLE_FIELD_OPTIONS,
+} from '@/constants/variantOptions'
 import { UserRole, type UserRoleValue } from '@/utils/user/UserRole'
+import { UrlValidator } from '@/utils/UrlValidator'
+import { IntegerValidator } from '@/utils/IntegerValidator'
+import { RelationshipValidator } from '@/utils/RelationshipValidator'
+import { ProgramFieldAccessPolicy } from '@/services/access/ProgramFieldAccessPolicy'
 
-const CONTACT_METHOD_OPTIONS = [
-  { label: 'Avec Conseillers-Entreprises (rappel téléphonique)', value: 'advisor' },
-  { label: 'Par mail', value: 'email' },
-  { label: 'Par lien vers une page contact', value: 'url' },
-] as const
-
-const AID_TYPE_OPTIONS = [
-  { label: 'Financement', value: 'financement' },
-  { label: 'Prêt', value: 'pret' },
-  { label: 'Avantage fiscal', value: 'avantage-fiscal' },
-  { label: 'Formation', value: 'formation' },
-  { label: 'Diagnostic ou étude', value: 'diagnostic-etude' },
-] as const
+// Modifiable fields whose new value is plain text (the others, operators, use a
+// relationship picker into the Operators collection).
+const TEXT_VALUE_MODIFICATION_FIELDS = [
+  'montant',
+  'duree',
+  'urlSource',
+  'eligibiliteEffectif',
+  'autresCriteres',
+]
 
 export const Programs: CollectionConfig = {
   slug: 'programs',
@@ -44,12 +51,36 @@ export const Programs: CollectionConfig = {
       edit: {
         PublishButton:
           '@/components/programs/WorkflowActionBar#WorkflowActionBar',
+        SaveDraftButton:
+          '@/components/programs/WorkflowHiddenControl#WorkflowHiddenControl',
+        UnpublishButton:
+          '@/components/programs/WorkflowHiddenControl#WorkflowHiddenControl',
+        editMenuItems: [
+          '@/components/programs/WorkflowEditMenuItems#WorkflowEditMenuItems',
+        ],
         Status: '@/components/programs/WorkflowStatusBadge#WorkflowStatusBadge',
+      },
+      views: {
+        edit: {
+          // Custom versions list: same native experience (rows link to the
+          // native version diff view) augmented with workflow columns
+          // (Qui / Statut depuis / Statut vers).
+          versions: {
+            Component:
+              '@/components/programs/versions/ProgramVersionsView#ProgramVersionsView',
+          },
+        },
       },
     },
   },
   hooks: {
-    beforeChange: [assignCanonicalId, assignCreatorOnCreate, beforeChangeWorkflow],
+    beforeValidate: [normalizeGeographicCoverage],
+    beforeChange: [
+      assignCanonicalId,
+      assignCreatorOnCreate,
+      trackLastModifiedBy,
+      beforeChangeWorkflow,
+    ],
     afterChange: [syncCanonicalOnPublish],
   },
   access: {
@@ -61,6 +92,12 @@ export const Programs: CollectionConfig = {
   versions: {
     drafts: true,
     maxPerDoc: 100,
+  },
+  // Prevents two editors from clobbering each other's work: Payload locks the
+  // document for the active editor and releases it after `duration` of
+  // inactivity. Enabled by default; set explicitly to document the intent.
+  lockDocuments: {
+    duration: 300,
   },
   fields: [
     // --- Main ---
@@ -79,6 +116,7 @@ export const Programs: CollectionConfig = {
       label: 'Opérateur principal',
       relationTo: 'operators',
       required: true,
+      validate: RelationshipValidator.required,
       filterOptions: ({ user }) => {
         if (!user) return true
         if (UserRole.isAdmin(user as { role: UserRoleValue })) return true
@@ -98,6 +136,7 @@ export const Programs: CollectionConfig = {
       type: 'text',
       label: 'Lien du dispositif',
       required: true,
+      validate: UrlValidator.validate,
       admin: {
         description: 'Exemple : https://...',
       },
@@ -195,6 +234,29 @@ export const Programs: CollectionConfig = {
           "Exemple : Bénéficiez de l'accompagnement d'un expert CCI pour vous aider à évaluer la vulnérabilité climatique de votre entreprise (30 à 60 mots).",
       },
     },
+    {
+      type: 'row',
+      fields: [
+        {
+          name: 'validityStart',
+          type: 'date',
+          label: 'Date de début de validité',
+          admin: {
+            width: '50%',
+            date: { pickerAppearance: 'dayOnly', displayFormat: 'dd/MM/yyyy' },
+          },
+        },
+        {
+          name: 'validityEnd',
+          type: 'date',
+          label: 'Date de fin de validité',
+          admin: {
+            width: '50%',
+            date: { pickerAppearance: 'dayOnly', displayFormat: 'dd/MM/yyyy' },
+          },
+        },
+      ],
+    },
 
     // --- How to benefit ---
     {
@@ -216,19 +278,19 @@ export const Programs: CollectionConfig = {
             },
           },
           defaultValue: [
-            { description: '', links: [{ url: '', linkLabel: '' }] },
-            { description: '', links: [{ url: '', linkLabel: '' }] },
-            { description: '' },
+            { description: null, links: [{ url: '', linkLabel: '' }] },
+            { description: null, links: [{ url: '', linkLabel: '' }] },
+            { description: null },
           ],
           fields: [
             {
               name: 'description',
-              type: 'text',
+              type: 'richText',
               label: "Description de l'étape",
               required: true,
               admin: {
                 description:
-                  "Une étape courte et actionnable, dans l'ordre chronologique. Ex. étape 1 : « Consultez le document pour vérifier l'éligibilité de votre projet » — étape 2 : « Déposez votre demande de financement via le formulaire » — étape 3 : « Recevez votre aide financière et réalisez vos travaux ».",
+                  "Une étape courte et actionnable, dans l'ordre chronologique. Ex. étape 1 : « Consultez le document pour vérifier l'éligibilité de votre projet », étape 2 : « Déposez votre demande de financement via le formulaire », étape 3 : « Recevez votre aide financière et réalisez vos travaux ».",
               },
             },
             {
@@ -246,19 +308,20 @@ export const Programs: CollectionConfig = {
               },
               fields: [
                 {
-                  name: 'url',
-                  type: 'text',
-                  label: 'URL',
-                  admin: {
-                    description: 'Lien de votre document au format https://...',
-                  },
-                },
-                {
                   name: 'linkLabel',
                   type: 'text',
                   label: 'Titre du lien',
                   admin: {
                     description: 'Exemple : Document, Formulaire.',
+                  },
+                },
+                {
+                  name: 'url',
+                  type: 'text',
+                  label: 'URL',
+                  validate: UrlValidator.validate,
+                  admin: {
+                    description: 'Lien de votre document au format https://...',
                   },
                 },
               ],
@@ -275,10 +338,9 @@ export const Programs: CollectionConfig = {
       admin: { initCollapsed: false },
       fields: [
         {
-          name: 'contactMethods',
+          name: 'contactMethod',
           type: 'select',
           label: 'Mode de contact',
-          hasMany: true,
           options: [...CONTACT_METHOD_OPTIONS],
         },
         {
@@ -286,9 +348,7 @@ export const Programs: CollectionConfig = {
           type: 'email',
           label: 'Adresse mail du conseiller',
           admin: {
-            condition: (data) =>
-              Array.isArray(data?.contactMethods) &&
-              (data.contactMethods as string[]).includes('email'),
+            condition: (data) => data?.contactMethod === 'email',
           },
         },
         {
@@ -296,23 +356,9 @@ export const Programs: CollectionConfig = {
           type: 'text',
           label: 'URL',
           admin: {
-            condition: (data) =>
-              Array.isArray(data?.contactMethods) &&
-              (data.contactMethods as string[]).includes('url'),
+            condition: (data) => data?.contactMethod === 'url',
             description: 'Exemple : https://...',
           },
-        },
-        {
-          name: 'validityStart',
-          type: 'date',
-          label: 'Date de début de validité',
-          admin: { date: { pickerAppearance: 'dayOnly' } },
-        },
-        {
-          name: 'validityEnd',
-          type: 'date',
-          label: 'Date de fin de validité',
-          admin: { date: { pickerAppearance: 'dayOnly' } },
         },
       ],
     },
@@ -330,7 +376,8 @@ export const Programs: CollectionConfig = {
           hasMany: true,
           options: THEMES_OPTIONS,
           admin: {
-            description: 'Sert à filtrer les projets associables ci-dessous.',
+            description:
+              'Thématiques du dispositif. Indicatif pour le rapprochement avec les projets.',
           },
         },
         {
@@ -350,6 +397,12 @@ export const Programs: CollectionConfig = {
           label: 'Projet(s) lié(s) au dispositif',
           relationTo: 'projects',
           hasMany: true,
+          admin: {
+            // All projects offered, no thematic filtering (deliberate).
+            sortOptions: 'title',
+            // Disabled here: the project workflow stays separate from the program one.
+            allowCreate: false,
+          },
         },
       ],
     },
@@ -361,74 +414,139 @@ export const Programs: CollectionConfig = {
       admin: { initCollapsed: false },
       fields: [
         {
-          name: 'companySizes',
+          name: 'companySize',
           type: 'select',
           label: "Taille d'entreprise",
-          hasMany: true,
           options: [...COMPANY_SIZE_OPTIONS],
-          defaultValue: [
-            '0-9',
-            '10-19',
-            '20-49',
-            '50-249',
-            '250-499',
-            '500-4999',
-            '5000+',
+          defaultValue: 'all',
+        },
+        {
+          type: 'row',
+          admin: {
+            condition: (data) => data?.companySize === 'specific',
+          },
+          fields: [
+            {
+              name: 'companySizeMin',
+              type: 'number',
+              label: 'Taille minimum',
+              min: 0,
+              validate: IntegerValidator.nonNegative,
+              admin: {
+                width: '50%',
+                step: 1,
+                description: 'Nombre de salariés minimum.',
+              },
+            },
+            {
+              name: 'companySizeMax',
+              type: 'number',
+              label: 'Taille maximum',
+              min: 0,
+              validate: IntegerValidator.nonNegative,
+              admin: {
+                width: '50%',
+                step: 1,
+                description: 'Nombre de salariés maximum.',
+              },
+            },
           ],
         },
         {
-          name: 'companySizeOther',
-          type: 'text',
-          label: 'Éligibilité taille spécifique',
+          name: 'geographicCoverage',
+          type: 'select',
+          label: 'Couverture géographique',
+          options: [
+            { label: 'National', value: 'national' },
+            { label: 'Régional', value: 'regional' },
+            { label: 'Départemental', value: 'departemental' },
+          ],
+          admin: {
+            description:
+              "National : l'aide couvre tout le territoire, aucune zone à préciser. Régional / Départemental : sélectionnez les zones concernées ci-dessous.",
+          },
+        },
+        {
+          name: 'selectAllAreasButtons',
+          type: 'ui',
+          label: '',
           admin: {
             condition: (data) =>
-              Array.isArray(data?.companySizes) &&
-              (data.companySizes as string[]).includes('other'),
-            description: 'Exemple : PME au sens européen.',
+              data?.geographicCoverage === 'regional' ||
+              data?.geographicCoverage === 'departemental',
+            components: {
+              Field:
+                '@/components/programs/SelectAllAreasButtons#SelectAllAreasButtons',
+            },
           },
         },
         {
           name: 'geographicAreas',
           type: 'relationship',
-          label: "Zone géographique couverte par l'aide",
+          label: "Zones géographiques couvertes par l'aide",
           relationTo: 'geographic-areas',
           hasMany: true,
+          admin: {
+            className: 'field--geographic-areas',
+            condition: (data) =>
+              data?.geographicCoverage === 'regional' ||
+              data?.geographicCoverage === 'departemental',
+          },
+          filterOptions: ({ data }) => {
+            const coverage = (data as { geographicCoverage?: string })
+              ?.geographicCoverage
+            if (coverage === 'regional')
+              return { coverageType: { equals: 'region' } }
+            if (coverage === 'departemental')
+              return { coverageType: { equals: 'departement' } }
+            return false
+          },
         },
         {
           name: 'geographicAreaFeedback',
           type: 'text',
           label: 'Vous ne trouvez pas de zone géographique appropriée ?',
           admin: {
+            condition: (data) =>
+              data?.geographicCoverage === 'regional' ||
+              data?.geographicCoverage === 'departemental',
             description:
-              'Décrivez librement la zone manquante — un administrateur pourra ensuite la créer.',
+              'Décrivez librement la zone manquante, un administrateur pourra ensuite la créer.',
           },
         },
         {
-          name: 'activitySectors',
+          name: 'activitySector',
           type: 'select',
           label: "Secteur d'activité",
-          hasMany: true,
           options: [...ACTIVITY_SECTOR_OPTIONS],
-          defaultValue: ['all'],
+          defaultValue: 'all',
         },
         {
-          name: 'activitySectorOther',
-          type: 'text',
-          label: 'Autre secteur spécifique',
+          name: 'nafSections',
+          type: 'select',
+          label: 'Sections du code NAF',
+          hasMany: true,
+          options: [...NAF_SECTIONS_OPTIONS],
           admin: {
-            condition: (data) =>
-              Array.isArray(data?.activitySectors) &&
-              (data.activitySectors as string[]).includes('other'),
+            condition: (data) => data?.activitySector === 'naf-sections',
+            description: 'Cochez les sections concernées.',
           },
         },
         {
-          name: 'nafCodeOther',
+          name: 'activitySectorDescription',
           type: 'text',
-          label: 'Code NAF spécifique associé',
+          label: "Description du secteur d'activité spécifique",
           admin: {
-            condition: (data) =>
-              Array.isArray(data?.activitySectors) &&
-              (data.activitySectors as string[]).includes('naf-code'),
+            condition: (data) => data?.activitySector === 'specific',
+          },
+        },
+        {
+          name: 'nafCode',
+          type: 'text',
+          label: "Code NAF du secteur d'activité associé",
+          admin: {
+            condition: (data) => data?.activitySector === 'specific',
+            description: 'Format : une section (A) ou un code précis (01.11Z).',
           },
         },
         {
@@ -460,6 +578,226 @@ export const Programs: CollectionConfig = {
       name: 'additionalInfo',
       type: 'richText',
       label: 'Informations complémentaires',
+    },
+
+    // --- Variants ---
+    {
+      type: 'collapsible',
+      label: "Conditions d'éligibilité variables selon le type de profil",
+      admin: {
+        initCollapsed: false,
+        components: {
+          Label: '@/components/programs/VariantsSectionLabel#VariantsSectionLabel',
+        },
+      },
+      fields: [
+        {
+          name: 'variantsIntro',
+          type: 'ui',
+          label: '',
+          admin: {
+            components: {
+              Field: '@/components/programs/VariantsSectionIntro#VariantsSectionIntro',
+            },
+          },
+        },
+        {
+          name: 'variants',
+          type: 'array',
+          labels: { singular: 'variant', plural: 'variants' },
+          admin: {
+            components: {
+              RowLabel: {
+                path: '@/components/programs/NumberedRowLabel#NumberedRowLabel',
+                clientProps: { singular: 'Variant' },
+              },
+            },
+          },
+          fields: [
+            {
+              name: 'conditions',
+              type: 'array',
+              minRows: 1,
+              labels: { singular: 'une condition', plural: 'conditions' },
+              label: "1. À quelles entreprises s'applique cette variante ?",
+              admin: {
+                description:
+                  'Au moins une condition est requise. Ajoutez-en plusieurs si elles doivent toutes être vraies à la fois.',
+                components: {
+                  RowLabel: {
+                    path: '@/components/programs/NumberedRowLabel#NumberedRowLabel',
+                    clientProps: { singular: 'Condition' },
+                  },
+                },
+              },
+              fields: [
+                {
+                  name: 'etConnector',
+                  type: 'ui',
+                  label: '',
+                  admin: {
+                    components: {
+                      Field:
+                        '@/components/programs/VariantEtConnector#VariantEtConnector',
+                    },
+                  },
+                },
+                {
+                  // Anonymous row: keeps "Type de condition" and "Valeur de la
+                  // condition" side by side as in the mockup. A row carries no
+                  // name, so child field paths are unchanged for the UI fields.
+                  type: 'row',
+                  fields: [
+                    {
+                      name: 'conditionType',
+                      type: 'select',
+                      label: 'Type de condition',
+                      required: true,
+                      options: [...CONDITION_TYPE_OPTIONS],
+                      admin: { width: '50%' },
+                    },
+                    {
+                      // Stored as JSON (a single column), not a `select hasMany`,
+                      // on purpose: a multi-value field nested two arrays deep
+                      // breaks Payload's version sub-table FK (it inserts the
+                      // text row uuid into an integer parent_id). JSON keeps the
+                      // multi-select on one column; the custom component renders
+                      // the same chip picker as a native select.
+                      name: 'companySizeValue',
+                      type: 'json',
+                      label: 'Valeur de la condition',
+                      admin: {
+                        width: '50%',
+                        condition: (_data, siblingData) =>
+                          siblingData?.conditionType === 'companySize',
+                        components: {
+                          Field:
+                            '@/components/programs/CompanySizeMultiSelect#CompanySizeMultiSelect',
+                        },
+                      },
+                    },
+                    {
+                      name: 'geographicAreaValue',
+                      type: 'relationship',
+                      label: 'Valeur de la condition',
+                      relationTo: 'geographic-areas',
+                      hasMany: true,
+                      admin: {
+                        width: '50%',
+                        condition: (_data, siblingData) =>
+                          siblingData?.conditionType === 'geographicArea',
+                      },
+                    },
+                  ],
+                },
+                {
+                  name: 'conditionReminder',
+                  type: 'ui',
+                  label: '',
+                  admin: {
+                    components: {
+                      Field:
+                        '@/components/programs/VariantConditionReminder#VariantConditionReminder',
+                    },
+                  },
+                },
+              ],
+            },
+            {
+              name: 'modifications',
+              type: 'array',
+              minRows: 1,
+              labels: {
+                singular: 'un champ à modifier',
+                plural: 'champs à modifier',
+              },
+              label: '2. Que faut-il modifier pour ces entreprises ?',
+              admin: {
+                description:
+                  'La nouvelle valeur remplace la valeur générique, uniquement pour les entreprises mentionnées ci-dessus.',
+                components: {
+                  RowLabel: {
+                    path: '@/components/programs/NumberedRowLabel#NumberedRowLabel',
+                    clientProps: { singular: 'Champ à modifier' },
+                  },
+                },
+              },
+              fields: [
+                {
+                  type: 'row',
+                  fields: [
+                    {
+                      name: 'field',
+                      type: 'select',
+                      label: 'Champ à modifier',
+                      required: true,
+                      options: [...MODIFIABLE_FIELD_OPTIONS],
+                      admin: { width: '50%' },
+                    },
+                    {
+                      name: 'newValue',
+                      type: 'text',
+                      label: 'Nouvelle valeur',
+                      admin: {
+                        width: '50%',
+                        condition: (_data, siblingData) =>
+                          TEXT_VALUE_MODIFICATION_FIELDS.includes(
+                            siblingData?.field as string,
+                          ),
+                      },
+                    },
+                    {
+                      name: 'contactOperator',
+                      type: 'relationship',
+                      relationTo: 'operators',
+                      label: 'Nouvel opérateur de contact',
+                      admin: {
+                        width: '50%',
+                        condition: (_data, siblingData) =>
+                          siblingData?.field === 'contactOperateur',
+                      },
+                    },
+                    {
+                      name: 'otherOperators',
+                      type: 'relationship',
+                      relationTo: 'operators',
+                      hasMany: true,
+                      label: 'Nouveaux opérateurs',
+                      admin: {
+                        width: '50%',
+                        condition: (_data, siblingData) =>
+                          siblingData?.field === 'autresOperateurs',
+                      },
+                    },
+                  ],
+                },
+                {
+                  name: 'modReminder',
+                  type: 'ui',
+                  label: '',
+                  admin: {
+                    components: {
+                      Field:
+                        '@/components/programs/VariantModificationReminder#VariantModificationReminder',
+                    },
+                  },
+                },
+              ],
+            },
+            {
+              name: 'ruleSummary',
+              type: 'ui',
+              label: '',
+              admin: {
+                components: {
+                  Field:
+                    '@/components/programs/VariantRuleSummary#VariantRuleSummary',
+                },
+              },
+            },
+          ],
+        },
+      ],
     },
 
     // --- Sidebar ---
@@ -504,12 +842,18 @@ export const Programs: CollectionConfig = {
         { label: 'Publié', value: 'publie' },
         { label: 'En cours de modification', value: 'en-cours-modification' },
         { label: 'Importé', value: 'importe' },
-        { label: 'Annulé', value: 'annule' },
+        { label: 'Supprimé', value: 'annule' },
         { label: 'Archivé', value: 'archive' },
         { label: 'Remplacé', value: 'remplace' },
       ],
       admin: {
         position: 'sidebar',
+        // The workflow status is driven by the WorkflowActionBar buttons; only
+        // super-admins keep the raw select for manual overrides.
+        condition: (_data, _siblingData, { user }) =>
+          UserRole.isSuperAdmin(
+            user as { role: UserRoleValue } | null | undefined,
+          ),
         components: {
           Cell: '@/components/programs/WorkflowStatusCell#WorkflowStatusCell',
         },
@@ -534,11 +878,27 @@ export const Programs: CollectionConfig = {
       }),
     },
     {
+      name: 'lastModifiedBy',
+      type: 'relationship',
+      label: 'Dernière modification par',
+      relationTo: 'users',
+      hasMany: false,
+      admin: {
+        // Captured into each version snapshot to feed the "Qui" column of the
+        // custom versions view. Not shown in the form.
+        hidden: true,
+        readOnly: true,
+      },
+    },
+    {
       name: 'workflowHistory',
       type: 'array',
       label: 'Historique des transitions',
       admin: {
-        position: 'sidebar',
+        // Removed from the sidebar (ticket #6, point 10). The data is still
+        // written by `beforeChangeWorkflow` and stays available in the API and
+        // version snapshots.
+        hidden: true,
         readOnly: true,
         description: 'Historique automatique des changements de statut.',
       },
@@ -575,10 +935,7 @@ export const Programs: CollectionConfig = {
       ],
       admin: { position: 'sidebar' },
       access: {
-        update: (({ req: { user } }) => {
-          if (!user) return false;
-          return UserRole.isAdmin(user);
-        }) satisfies FieldAccess,
+        update: ProgramFieldAccessPolicy.adminOnly,
       },
     },
     {
@@ -590,10 +947,18 @@ export const Programs: CollectionConfig = {
       admin: {
         position: 'sidebar',
         description: 'Contributeurs autorisés à éditer ce dispositif.',
+        // No drawer to edit the linked user from within the program form.
+        allowEdit: false,
+        // Admins always edit this field; creators only see a read-only display
+        // (access.update is false for them) when contributors are assigned.
+        condition: (data, _siblingData, { user }) =>
+          UserRole.isAdmin(user as { role: UserRoleValue } | null | undefined) ||
+          (Array.isArray(data?.assignedContributors) &&
+            data.assignedContributors.length > 0),
       },
+      // The condition only hides the field in the UI; access locks API writes.
       access: {
-        update: (({ req: { user } }) =>
-          UserRole.isAdmin(user)) satisfies FieldAccess,
+        update: ProgramFieldAccessPolicy.adminOnly,
       },
     },
 
@@ -602,13 +967,52 @@ export const Programs: CollectionConfig = {
       name: 'metaTitle',
       type: 'text',
       label: 'Titre SEO',
-      admin: { position: 'sidebar' },
+      admin: {
+        position: 'sidebar',
+        condition: (_data, _siblingData, { user }) =>
+          UserRole.isAdmin(user as { role: UserRoleValue } | null | undefined),
+      },
+      // The condition only hides the field in the UI; access locks API writes.
+      access: {
+        create: (({ req: { user } }) =>
+          UserRole.isAdmin(user)) satisfies FieldAccess,
+        update: (({ req: { user } }) =>
+          UserRole.isAdmin(user)) satisfies FieldAccess,
+      },
     },
     {
       name: 'metaDescription',
       type: 'textarea',
       label: 'Description SEO',
-      admin: { position: 'sidebar' },
+      admin: {
+        position: 'sidebar',
+        condition: (_data, _siblingData, { user }) =>
+          UserRole.isAdmin(user as { role: UserRoleValue } | null | undefined),
+      },
+      // The condition only hides the field in the UI; access locks API writes.
+      access: {
+        create: (({ req: { user } }) =>
+          UserRole.isAdmin(user)) satisfies FieldAccess,
+        update: (({ req: { user } }) =>
+          UserRole.isAdmin(user)) satisfies FieldAccess,
+      },
+    },
+
+    // --- Review comments (sidebar, under SEO) ---
+    // UI-only field: data lives in the `review-comments` collection. The
+    // thread component reads/creates comments there, so posting a comment never
+    // updates the program (no workflow transition, no validation, no version).
+    {
+      name: 'reviewComments',
+      type: 'ui',
+      label: 'Commentaires de relecture',
+      admin: {
+        position: 'sidebar',
+        components: {
+          Field:
+            '@/components/programs/ReviewCommentsThread#ReviewCommentsThread',
+        },
+      },
     },
   ],
 };

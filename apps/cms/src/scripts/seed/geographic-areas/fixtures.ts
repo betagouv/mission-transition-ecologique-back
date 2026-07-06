@@ -3,6 +3,7 @@ export interface GeographicAreaFixture {
   name: string
   coverageType: 'region' | 'departement'
   parentInseeCode?: string
+  isOverseas?: boolean
 }
 
 export const REGIONS: GeographicAreaFixture[] = [
@@ -19,11 +20,19 @@ export const REGIONS: GeographicAreaFixture[] = [
   { inseeCode: '84', name: 'Auvergne-Rhône-Alpes', coverageType: 'region' },
   { inseeCode: '93', name: "Provence-Alpes-Côte d'Azur", coverageType: 'region' },
   { inseeCode: '94', name: 'Corse', coverageType: 'region' },
-  { inseeCode: '01', name: 'Guadeloupe', coverageType: 'region' },
-  { inseeCode: '02', name: 'Martinique', coverageType: 'region' },
-  { inseeCode: '03', name: 'Guyane', coverageType: 'region' },
-  { inseeCode: '04', name: 'La Réunion', coverageType: 'region' },
-  { inseeCode: '06', name: 'Mayotte', coverageType: 'region' },
+  { inseeCode: '01', name: 'Guadeloupe', coverageType: 'region', isOverseas: true },
+  { inseeCode: '02', name: 'Martinique', coverageType: 'region', isOverseas: true },
+  { inseeCode: '03', name: 'Guyane', coverageType: 'region', isOverseas: true },
+  { inseeCode: '04', name: 'La Réunion', coverageType: 'region', isOverseas: true },
+  { inseeCode: '06', name: 'Mayotte', coverageType: 'region', isOverseas: true },
+  // Overseas collectivities (COM), modelled as regions to match source data.
+  { inseeCode: '975', name: 'Saint-Pierre-et-Miquelon', coverageType: 'region', isOverseas: true },
+  { inseeCode: '977', name: 'Saint-Barthélemy', coverageType: 'region', isOverseas: true },
+  { inseeCode: '978', name: 'Saint-Martin', coverageType: 'region', isOverseas: true },
+  { inseeCode: '984', name: 'Terres australes et antarctiques françaises', coverageType: 'region', isOverseas: true },
+  { inseeCode: '986', name: 'Wallis-et-Futuna', coverageType: 'region', isOverseas: true },
+  { inseeCode: '987', name: 'Polynésie française', coverageType: 'region', isOverseas: true },
+  { inseeCode: '988', name: 'Nouvelle-Calédonie', coverageType: 'region', isOverseas: true },
 ]
 
 export const DEPARTEMENTS: GeographicAreaFixture[] = [
@@ -123,9 +132,9 @@ export const DEPARTEMENTS: GeographicAreaFixture[] = [
   { inseeCode: '93', name: 'Seine-Saint-Denis', coverageType: 'departement', parentInseeCode: '11' },
   { inseeCode: '94', name: 'Val-de-Marne', coverageType: 'departement', parentInseeCode: '11' },
   { inseeCode: '95', name: "Val-d'Oise", coverageType: 'departement', parentInseeCode: '11' },
-  { inseeCode: '971', name: 'Guadeloupe', coverageType: 'departement', parentInseeCode: '01' },
-  { inseeCode: '972', name: 'Martinique', coverageType: 'departement', parentInseeCode: '02' },
-  { inseeCode: '973', name: 'Guyane', coverageType: 'departement', parentInseeCode: '03' },
-  { inseeCode: '974', name: 'La Réunion', coverageType: 'departement', parentInseeCode: '04' },
-  { inseeCode: '976', name: 'Mayotte', coverageType: 'departement', parentInseeCode: '06' },
+  { inseeCode: '971', name: 'Guadeloupe', coverageType: 'departement', parentInseeCode: '01', isOverseas: true },
+  { inseeCode: '972', name: 'Martinique', coverageType: 'departement', parentInseeCode: '02', isOverseas: true },
+  { inseeCode: '973', name: 'Guyane', coverageType: 'departement', parentInseeCode: '03', isOverseas: true },
+  { inseeCode: '974', name: 'La Réunion', coverageType: 'departement', parentInseeCode: '04', isOverseas: true },
+  { inseeCode: '976', name: 'Mayotte', coverageType: 'departement', parentInseeCode: '06', isOverseas: true },
 ]

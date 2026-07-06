@@ -28,7 +28,9 @@ test.describe('Admin Panel', () => {
 
   test('can navigate to list view', async () => {
     await page.goto('http://localhost:3000/admin/collections/users')
-    await expect(page).toHaveURL('http://localhost:3000/admin/collections/users')
+    // Payload's list view may append default query params (e.g. ?depth=1&limit=10);
+    // assert on the path and tolerate an optional query string.
+    await expect(page).toHaveURL(/\/admin\/collections\/users(\?.*)?$/)
     const listViewArtifact = page.locator('h1', { hasText: 'Users' }).first()
     await expect(listViewArtifact).toBeVisible()
   })
