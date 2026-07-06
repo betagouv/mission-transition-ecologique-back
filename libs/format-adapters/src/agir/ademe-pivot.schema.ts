@@ -1,6 +1,5 @@
 import { z } from 'zod'
 import {
-  contactQuestionSchema,
   dureeSchema,
   eligibiliteSchema,
   etapeActivationSchema,
@@ -14,7 +13,6 @@ import {
   nonEmptyStringSchema,
   operateursSchema,
   slugSchema,
-  themeSchema,
   typeAideSchema,
   urlSchema,
   varianteSchema,
@@ -24,11 +22,31 @@ import {
  * Output guard for the ADEME pivot (proposition 2) = canonical wire with the
  * ADEME deltas (see README §Décisions). `.strict()` makes this a WHITELIST: any
  * canonical field added later that is not listed here fails the guard instead of
- * leaking. Field shapes are reused from the canonical so the pivot stays iso.
+ * leaking. Field shapes are reused from the canonical so the pivot stays iso,
+ * except the closed vocabularies (`source`, `statut`, `themes`,
+ * `contact_question.type`) which use the lowercased/snake_case AGIR wire values.
  */
 
 export const ademeSourceSchema = z.enum(['tee', 'ademe', 'schema'])
-export const ademeStatutSchema = z.enum(['actif', 'indisponible'])
+export const ademeStatutSchema = z.enum(['en_prod', 'temporairement_indisponible', 'remplace'])
+export const ademeThemeSchema = z.enum([
+  'batiment',
+  'mobilite',
+  'dechets',
+  'eau',
+  'energie',
+  'rh',
+  'environnement',
+])
+
+/** Contact question, AGIR wire shape: `ADEME` lowercased to `ademe`, other channels unchanged. */
+export const ademeContactQuestionSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('ademe') }).strict(),
+  z.object({ type: z.literal('conseiller_entreprise') }).strict(),
+  z.object({ type: z.literal('email'), valeur: z.string().email() }).strict(),
+  z.object({ type: z.literal('url'), valeur: urlSchema }).strict(),
+])
+export type AgirContactQuestion = z.infer<typeof ademeContactQuestionSchema>
 
 export const ademePivotSchema = z
   .object({
@@ -47,24 +65,27 @@ export const ademePivotSchema = z
     meta: metaSchema.optional(),
 
     // Lifecycle (single collapsed statut; statut_edition/statut_dispositif dropped).
+    // Archived aids ship as en_prod carried by date_cloture; replaced aids carry
+    // remplace_par as the replacing program's slug.
     statut: ademeStatutSchema,
     date_ouverture: isoDateSchema.optional(),
     date_cloture: isoDateOrDateTimeSchema.optional(),
+    remplace_par: slugSchema.optional(),
 
     // Aid nature (montant/duree kept as objects).
     types_aides: z.array(typeAideSchema).min(1),
     montant: montantSchema.optional(),
     duree: dureeSchema.optional(),
 
-    // Actors and contact (canonical shapes kept).
+    // Actors and contact (canonical shapes kept; contact_question type lowercased).
     operateurs: operateursSchema,
-    contact_question: contactQuestionSchema.optional(),
+    contact_question: ademeContactQuestionSchema.optional(),
     url_source: urlSchema.optional(),
     etapes_activation: z.array(etapeActivationSchema).optional(),
 
-    // Eligibility / themes / variants (canonical shapes kept).
+    // Eligibility / themes / variants (canonical shapes kept; themes use wire vocab).
     eligibilite: eligibiliteSchema.optional(),
-    themes: z.array(themeSchema).optional(),
+    themes: z.array(ademeThemeSchema).optional(),
     variantes: z.array(varianteSchema).optional(),
   })
   .strict()

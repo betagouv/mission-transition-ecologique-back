@@ -16,7 +16,7 @@ import { createCanonicalProgramRepository } from '@tee-backoffice/canonical-stor
 import { TeeExporter } from '../src/tee/TeeExporter'
 
 const OUTPUT_PATH = resolve(process.cwd(), 'static/exports/tee-programs.json')
-const REFERENCE_PATH = resolve(process.cwd(), 'static/input/programs.json')
+const REFERENCE_PATH = resolve(process.cwd(), 'static/input/programs-tests.json')
 
 // Keys we never compare (not part of the canonical model).
 const EXCLUDED_KEYS = ['publicodes', 'activable en autonomie', 'illustration']

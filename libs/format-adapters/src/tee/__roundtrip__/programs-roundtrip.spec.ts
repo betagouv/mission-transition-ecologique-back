@@ -6,12 +6,14 @@
 // TEE schema and (2) is identical to the input (modulo trim — the pivot
 // normalizes stray whitespace).
 //
-// ⚠️ EPHEMERAL: this folder depends on the local copy `static/input/programs.json`
-// and is meant to disappear. When that input is removed, delete this whole folder
+// ⚠️ EPHEMERAL: this folder depends on the frozen copy
+// `static/input/programs-tests.json` (the curated round-trip fixture, distinct
+// from the live `programs.json` the daily pipeline overwrites) and is meant to
+// disappear. When that fixture is removed, delete this whole folder
 // (`__roundtrip__/`) — nothing else depends on it. The durable import/export
 // coverage lives in TeeImporter.spec.ts / TeeExporter.spec.ts.
 import { CanonicalProgramValidator } from '@tee-backoffice/canonical'
-import programs from '../../../static/input/programs.json'
+import programs from '../../../static/input/programs-tests.json'
 import { TeeImporter } from '../TeeImporter'
 import { TeeExporter } from '../TeeExporter'
 import { teeProgramSchema } from '../tee-program.schema'

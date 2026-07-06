@@ -8,13 +8,13 @@ describe('AgirDetailExporter', () => {
     const out = exporter.export(fullProgram)
 
     it('mappe identité, source, dates et état', () => {
-      expect(out.idDispositif).toBe('DSP-000123')
+      expect(out.idDispositif).toBe('diagnostic-energie-pme')
       expect(out.idFonctionnel).toBe('diagnostic-energie-pme')
       expect(out.titre).toBe('Diagnostic énergie PME')
       expect(out.source).toBe('ademe')
       expect(out.dateDispositif).toEqual({ dateDebut: '2026-01-01', dateFin: '2026-12-31' })
       expect(out.dateDerniereModification).toBe('2026-03-19T17:00:00+01:00')
-      expect(out.etatDispositif).toBe('inProd')
+      expect(out.etatDispositif).toBe('en_prod')
     })
 
     it('dérive typeDispositif des types_aides', () => {

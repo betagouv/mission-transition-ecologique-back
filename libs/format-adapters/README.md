@@ -12,9 +12,12 @@ publique du package au même titre qu'un consommateur externe.
 La lib porte ses propres données pour rester **autonome** (aucune dépendance au
 reste du repo hormis `@tee-backoffice/canonical`) :
 
-- `static/input/programs.json` — l'entrée de l'**import TEE**. Dérivée de
-  `docs/sources/` (hors lib), avec les quelques URLs malformées corrigées.
-  Disparaît avec la migration.
+- `static/input/programs-tests.json` — copie **figée et curée** (URLs malformées
+  corrigées) servant de fixture au self-check round-trip (`__roundtrip__/`) et de
+  référence au récap de `export:tee`. Disparaît avec la migration.
+- `static/input/programs.json` — entrée **vivante** de l'import quotidien, écrasée
+  par le `programs.json` amont via le workflow `grist-daily`. Absente du repo tant
+  que le workflow n'a pas tourné ; `import:tee` retombe alors sur la fixture.
 - `static/exports/` — sorties produites par les scripts (ex. `tee-programs.json`).
 
 Périmètre courant : **TEE** (iso `docs/sources/programs.json`). Les formats

@@ -5,6 +5,7 @@ import {
   fullProgram,
   indisponibleProgram,
   minimalProgram,
+  remplaceProgram,
 } from '../__fixtures__/canonical-programs'
 
 describe('AgirListeExporter', () => {
@@ -14,14 +15,14 @@ describe('AgirListeExporter', () => {
     const out = exporter.export(fullProgram)
 
     it('mappe identité, source et dates', () => {
-      // ademe_id_dsp présent dans autres_donnees → idDispositif = DSP.
-      expect(out.idDispositif).toBe('DSP-000123')
+      // idDispositif = slug (jamais ademe_id_dsp ni le cuid2).
+      expect(out.idDispositif).toBe('diagnostic-energie-pme')
       expect(out.idFonctionnel).toBe('diagnostic-energie-pme')
       expect(out.titre).toBe('Diagnostic énergie PME')
       expect(out.source).toBe('ademe')
       expect(out.dateDispositif).toEqual({ dateDebut: '2026-01-01', dateFin: '2026-12-31' })
       expect(out.dateDerniereModification).toBe('2026-03-19T17:00:00+01:00')
-      expect(out.etatDispositif).toBe('inProd')
+      expect(out.etatDispositif).toBe('en_prod')
     })
 
     it('construit les 2 URLs depuis la base injectée (sans double slash)', () => {
@@ -33,7 +34,7 @@ describe('AgirListeExporter', () => {
   describe('entrée minimale', () => {
     const out = exporter.export(minimalProgram)
 
-    it('retombe sur le slug quand ademe_id_dsp est absent', () => {
+    it('utilise le slug comme idDispositif', () => {
       expect(out.idDispositif).toBe('aide-decarbonation-industrie')
     })
 
@@ -53,20 +54,26 @@ describe('AgirListeExporter', () => {
       draftProgram,
       indisponibleProgram,
       archivedProgram,
+      remplaceProgram,
     ])
 
-    it('exclut les non-publiés et les statuts non exportables', () => {
+    it('exclut les non-publiés, transmet valide/indisponible/archivé/remplacé', () => {
       const slugs = liste.map((entry) => entry.idFonctionnel)
+      // draft (statut_edition en_creation) exclu ; archivé et remplacé transmis.
       expect(slugs).toEqual([
         'aide-decarbonation-industrie',
         'diagnostic-energie-pme',
         'aide-temporairement-indisponible',
+        'aide-archivee',
+        'aide-remplacee',
       ])
     })
 
-    it('mappe etatDispositif pour temporairement indisponible', () => {
-      const indispo = liste.find((entry) => entry.idFonctionnel === 'aide-temporairement-indisponible')
-      expect(indispo?.etatDispositif).toBe('temporairement indisponible')
+    it('mappe etatDispositif pour chaque statut transmis', () => {
+      const etat = (slug: string) => liste.find((entry) => entry.idFonctionnel === slug)?.etatDispositif
+      expect(etat('aide-temporairement-indisponible')).toBe('temporairement_indisponible')
+      expect(etat('aide-archivee')).toBe('en_prod')
+      expect(etat('aide-remplacee')).toBe('remplace')
     })
   })
 })

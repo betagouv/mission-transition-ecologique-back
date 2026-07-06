@@ -18,9 +18,14 @@ Règles communes :
 
 - N'exposer que les dispositifs **publiés** (`statut_edition === 'pret_prod'`,
   `ExportPolicy.isPublished`) **et** dont `statut_dispositif ∈ { valide,
-  temporairement_indisponible }` (`AgirEtatMapper.isExportable`). Les
-  `archive`/`remplace`/`abandonne`/`inconnu` sont **absents** de l'index et
-  renvoient `404` en détail/pivot. Le filtre combiné = `AgirExportPolicy.isExportable`.
+  temporairement_indisponible, remplace, archive }` (`AgirEtatMapper.isExportable`).
+  Seul `inconnu` (et l'`abandonne` éditorial) est **absent** de l'index et renvoie
+  `404` en détail/pivot. Un dispositif **archivé continue d'être transmis** (porté
+  par `date_cloture` = date de fin, pas de statut dédié) ; un dispositif
+  **remplacé** est transmis avec `statut = remplace` + `remplace_par`. Le filtre
+  combiné = `AgirExportPolicy.isExportable`. ⚠️ L'export open data (Grist) reste,
+  lui, restreint à `valide`/`temporairement_indisponible` (`SchemaExportPolicy`,
+  indépendant d'AGIR).
 - `404` si slug inconnu ou non exportable, `200` + corps JSON sinon.
 - Pas de pagination au MVP (volume faible).
 
@@ -30,10 +35,16 @@ Centralisé dans `AgirVocabulary` (un seul fichier pour ajuster). Valeurs
 **placeholder** tant qu'AGIR n'a pas tranché :
 
 - `source` : `INTERNE → tee`, `ADEME → ademe`, `SCHEMA → schema` (`AgirSourceMapper`).
-- `etatDispositif` (index + détail) : `valide → inProd`,
-  `temporairement_indisponible → temporairement indisponible` (`AgirEtatMapper`).
-- `statut` (pivot ADEME) : `valide → actif`,
-  `temporairement_indisponible → indisponible` (`AgirStatutMapper`).
+- `statut` / `etatDispositif` (index + détail + pivot, **vocabulaire unique**
+  français snake_case, `AgirEtatMapper`) : `valide → en_prod`,
+  `temporairement_indisponible → temporairement_indisponible`,
+  `remplace → remplace`, `archive → en_prod` (l'archivage est porté par
+  `date_cloture`, pas par un statut).
+- `themes` (pivot) : vocabulaire wire à 7 valeurs (`AgirThemeMapper`) ; les 3
+  thèmes de la famille environnement (`environnemental`/`ecoconception`/
+  `biodiversite`) sont repliés sur `environnement`.
+- `contact_question.type` (pivot) : `ADEME → ademe` (minuscule) ; les autres
+  canaux (`conseiller_entreprise`/`email`/`url`) inchangés (`AgirContactMapper`).
 - `typeDispositif` (détail) : libellés d'affichage des `types_aides` joints par
   ` | ` (`AgirTypeDispositifMapper`). Format unique/liste/enum à confirmer.
 - `typeSecteur` (détail) : déduit du niveau COG (`PAYS → National`,
@@ -46,7 +57,7 @@ Schéma cible `ListeDispositif TEE R2DA v1.0` + 2 URLs ajoutées.
 
 | Champ | Source canonical |
 |---|---|
-| `idDispositif` | `autres_donnees.ademe_id_dsp ?? slug` |
+| `idDispositif` | `slug` |
 | `idFonctionnel` | `slug` |
 | `titre` | `titre` |
 | `source` | `AgirSourceMapper(source)` |
@@ -96,13 +107,21 @@ Deltas vs canonical :
 2. `ademe_id_dsp` ← `autres_donnees.ademe_id_dsp` **si présent** ; le reste de
    `autres_donnees` n'est **pas** émis.
 3. `source` ← `AgirSourceMapper` (minuscules).
-4. `statut` ← `AgirStatutMapper` (`actif`/`indisponible`) ; `statut_edition`,
-   `statut_dispositif`, `remplace_par` **supprimés**.
-5. `montant` / `duree` : **objet `{ type, valeur }`** inchangé.
-6. `contact_question` : types distincts conservés (`ADEME`/`conseiller_entreprise`/
-   `email`/`url`). Pas de type `formulaire` dans le canonical.
-7. `themes` : français inchangés.
-8. `eligibilite`, `variantes`, `operateurs`, `etapes_activation`, contenu
+4. `statut` ← `AgirEtatMapper` (`en_prod`/`temporairement_indisponible`/
+   `remplace`) ; `statut_edition`/`statut_dispositif` **supprimés**. `archive` est
+   remonté en `en_prod` (date de fin dans `date_cloture`).
+5. `remplace_par` : **conservé** quand `statut === 'remplace'`, résolu du cuid2
+   canonical vers le **slug** du remplaçant (`RemplaceParResolver`, construit sur
+   `repository.findAll()`) ; omis si le pointeur est introuvable. Les dispositifs
+   `remplace` proviennent des **tombstones de redirection** générés à l'import
+   depuis `redirects.json` (voir `docs/context/schema-grist-export.md` §Redirections).
+6. `montant` / `duree` : **objet `{ type, valeur }`** inchangé.
+7. `contact_question` : types distincts conservés, discriminant `ADEME` mis en
+   minuscule → `ademe` (`AgirContactMapper`). Pas de type `formulaire` dans le
+   canonical.
+8. `themes` : vocabulaire wire à 7 valeurs (`AgirThemeMapper`, famille
+   environnement repliée sur `environnement`).
+9. `eligibilite`, `variantes`, `operateurs`, `etapes_activation`, contenu
    éditorial : forme canonical inchangée.
 
 ## Couverture du canonical par les deux formats
@@ -141,7 +160,8 @@ Légende : ✅ exporté fidèlement · ⚠️ exporté mais dégradé/partiel ·
 | `secteur_geographique.exclusions` | ❌ | ✅ | perdues en P1 |
 | `themes` | ✅ `thematique` (FR) | ✅ (FR) | taxonomie non mappée vers une réf. AGIR/ADEME |
 | `variantes` | ❌ | ✅ | **lacune P1** |
-| `autres_donnees.ademe_id_dsp` | ✅ `idDispositif` | ✅ (racine) | |
+| `statut_dispositif = remplace` | ⚠️ `etatDispositif` (état seul) | ✅ `statut` + `remplace_par` (slug) | cible de redirection portée par le pivot |
+| `autres_donnees.ademe_id_dsp` | ❌ (idDispositif = slug) | ✅ (racine) | `idDispositif`/`idFonctionnel` = `slug` |
 | `autres_donnees` (reste) | ❌ | ❌ | passthrough interne — non exporté **volontairement** |
 
 > En une phrase : le **pivot (P2) est l'export complet** (quasi sans perte), le
@@ -192,10 +212,11 @@ Le pivot est quasi exhaustif. Points ouverts (par choix, pas par oubli) :
 
 - **`id` interne (cuid2) non exposé** (seul le slug). Si ADEME veut une clé
   stable indépendante d'un slug renommable, prévoir de la remonter.
-- **Taxonomies non mappées** : `themes` (FR interne) et `types_aides` (enum
-  interne) sont livrés tels quels, faute de correspondance vers une nomenclature
-  ADEME/AGIR (non fournie à ce stade).
-- **`remplace_par` retiré** .
+- **Taxonomies partiellement mappées** : `themes` passe par le vocabulaire wire
+  à 7 valeurs (`AgirThemeMapper`) ; `types_aides` reste livré tel quel, faute de
+  correspondance vers une nomenclature ADEME/AGIR (non fournie à ce stade).
+- **`remplace_par` conservé** : résolu du cuid2 canonical vers le slug du
+  remplaçant. Omis (silencieux) si le dispositif cible n'est pas dans le store.
 
 ## Recommandations — champs à proposer à AGIR (Détail R2DA)
 

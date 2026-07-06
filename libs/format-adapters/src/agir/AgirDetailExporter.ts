@@ -23,7 +23,7 @@ export class AgirDetailExporter {
     const d = program.data
 
     const out: DetailDispositif = {
-      idDispositif: d.autres_donnees?.ademe_id_dsp ?? d.slug,
+      idDispositif: d.slug,
       idFonctionnel: d.slug,
       titre: d.titre,
       source: AgirSourceMapper.toAgir(d.source),

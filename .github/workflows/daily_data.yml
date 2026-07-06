@@ -1,0 +1,74 @@
+name: Daily data update
+
+# Daily: fetch the upstream programs.json, regenerate the canonical store from
+# it (Payload-free), push to Grist, and commit the refreshed data back.
+on:
+  schedule:
+    - cron: '17 3 * * *' # every day ~03:17 UTC
+  workflow_dispatch: # allow manual runs
+
+concurrency:
+  group: data-daily
+  cancel-in-progress: false
+
+# Needs write access to commit the refreshed programs.json + canonical.db.
+permissions:
+  contents: write
+
+env:
+  NX_DAEMON: 'false'
+  NEXT_TELEMETRY_DISABLED: '1'
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-workspace
+
+      - name: Fetch upstream programs.json
+        run: |
+          curl -fsSL \
+            "https://raw.githubusercontent.com/betagouv/mission-transition-ecologique/main/libs/data/static/programs.json" \
+            -o libs/format-adapters/static/input/programs.json
+
+      - name: Fetch upstream redirects.json
+        run: |
+          curl -fsSL \
+            "https://raw.githubusercontent.com/betagouv/mission-transition-ecologique/main/libs/data/static/redirects.json" \
+            -o libs/format-adapters/static/input/redirects.json
+
+      - name: Regenerate canonical store (fresh, reflects deletions)
+        run: |
+          rm -f libs/canonical-store/canonical.db
+          pnpm nx run @tee-backoffice/format-adapters:import:tee
+
+      - name: Ensure Grist table (idempotent)
+        env:
+          GRIST_BASE_URL: ${{ secrets.GRIST_BASE_URL }}
+          GRIST_DOC_ID: ${{ secrets.GRIST_DOC_ID }}
+          GRIST_TABLE_ID: ${{ secrets.GRIST_TABLE_ID }}
+          GRIST_API_KEY: ${{ secrets.GRIST_API_KEY }}
+        run: pnpm nx run @tee-backoffice/format-adapters:setup:grist
+
+      - name: Export to Grist
+        env:
+          GRIST_BASE_URL: ${{ secrets.GRIST_BASE_URL }}
+          GRIST_DOC_ID: ${{ secrets.GRIST_DOC_ID }}
+          GRIST_TABLE_ID: ${{ secrets.GRIST_TABLE_ID }}
+          GRIST_API_KEY: ${{ secrets.GRIST_API_KEY }}
+          GRIST_PUSH: '1'
+        run: pnpm nx run @tee-backoffice/format-adapters:export:grist
+
+      - name: Commit refreshed data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add libs/format-adapters/static/input/programs.json libs/format-adapters/static/input/redirects.json libs/canonical-store/canonical.db
+          if git diff --staged --quiet; then
+            echo "Aucun changement de données — rien à committer."
+          else
+            git commit -m "chore(data): daily refresh of programs.json + canonical store"
+            git push
+          fi

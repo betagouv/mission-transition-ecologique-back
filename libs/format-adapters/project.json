@@ -19,6 +19,27 @@
         "command": "tsx scripts/export-tee.ts"
       }
     },
+    "import:tee": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "libs/format-adapters",
+        "command": "tsx scripts/import-tee.ts"
+      }
+    },
+    "export:grist": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "libs/format-adapters",
+        "command": "tsx scripts/export-grist.ts"
+      }
+    },
+    "setup:grist": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "libs/format-adapters",
+        "command": "tsx scripts/grist-setup.ts"
+      }
+    },
     "typecheck": {
       "executor": "nx:run-commands",
       "options": {
