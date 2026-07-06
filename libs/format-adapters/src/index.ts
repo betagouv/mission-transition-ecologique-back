@@ -2,8 +2,12 @@ export * from './tee/tee-program.types';
 export * from './tee/tee-program.schema';
 export * from './tee/TeeExporter';
 export * from './tee/TeeImporter';
+export * from './tee/SlugCanonicalId';
+export * from './tee/ProgramRedirects';
+export * from './tee/RedirectTombstoneBuilder';
 export * from './shared/ExportLogger';
 export * from './shared/ConsoleExportLogger';
+export * from './shared/StatutMapper';
 
 // AGIR triple export (index + détail R2DA + pivot ADEME)
 export * from './agir/agir-liste.types';
@@ -13,10 +17,34 @@ export * from './agir/ademe-pivot.types';
 export * from './agir/ademe-pivot.schema';
 export * from './agir/AgirVocabulary';
 export * from './agir/AgirSourceMapper';
-export * from './agir/AgirStatutMapper';
 export * from './agir/AgirEtatMapper';
+export * from './agir/AgirThemeMapper';
+export * from './agir/AgirContactMapper';
 export * from './agir/AgirTypeDispositifMapper';
+export * from './agir/RemplaceParResolver';
 export * from './agir/AgirExportPolicy';
 export * from './agir/AgirListeExporter';
 export * from './agir/AgirDetailExporter';
 export * from './agir/AdemePivotExporter';
+
+// Etalab schema export → Grist (dispositif-aide + extension professionnels)
+export * from './schema/schema-row.types';
+export * from './schema/SchemaVocabulary';
+export * from './schema/SchemaIdResolver';
+export * from './schema/TypesAidesSchemaMapper';
+export * from './schema/GeoCoverageMapper';
+export * from './schema/SecteurActiviteMapper';
+export * from './schema/PorteursMapper';
+export * from './schema/DescriptionTextBuilder';
+export * from './schema/EligibiliteTextBuilder';
+export * from './schema/SchemaProgramMapper';
+export * from './schema/SchemaFitChecker';
+export * from './schema/SchemaExportPolicy';
+export * from './schema/EtalabSchemaValidator';
+export * from './schema/GristRowBuilder';
+export * from './schema/GristExporter';
+export * from './grist/grist.types';
+export * from './grist/gristColumns';
+export * from './grist/GristConfig';
+export * from './grist/GristClient';
+export * from './grist/GristTableManager';

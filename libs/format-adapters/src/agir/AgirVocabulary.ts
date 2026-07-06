@@ -17,16 +17,17 @@ export class AgirVocabulary {
     SCHEMA: 'schema',
   }
 
-  /** `etatDispositif` (liste + détail), keyed by the exportable `statut_dispositif`. */
+  /**
+   * AGIR lifecycle status — shared by the index (`etatDispositif`), the detail
+   * (`etatDispositif`) and the pivot (`statut`). Keyed by the exportable
+   * `statut_dispositif`. Archived aids keep being transmitted (carried by
+   * `date_cloture`, not a distinct status) so they collapse to `en_prod`.
+   */
   static readonly ETAT = {
-    valide: 'inProd',
-    temporairement_indisponible: 'temporairement indisponible',
-  } as const
-
-  /** Pivot ADEME `statut`, keyed by the exportable `statut_dispositif`. */
-  static readonly STATUT = {
-    valide: 'actif',
-    temporairement_indisponible: 'indisponible',
+    valide: 'en_prod',
+    temporairement_indisponible: 'temporairement_indisponible',
+    remplace: 'remplace',
+    archive: 'en_prod',
   } as const
 
   /** Separator used to join several aid types into `typeDispositif`. */

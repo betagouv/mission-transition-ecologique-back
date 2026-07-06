@@ -1,0 +1,15 @@
+{
+  "program_redirects": {
+    "audits-clef-verte": "label-clef-verte",
+    "diag-decarbon-action-2": "diag-decarbon-action",
+    "etude-et-investissement-qualite-de-l'air": "etude-et-investissement-qualite-de-l-air",
+    "investissement-boucle-d'eau-geothermique": "investissement-boucle-d-eau-geothermique",
+    "diag-eco-flux-2": "diag-eco-flux",
+    "visite-energie-cci": "visite-energie",
+    "visite-energie-cma": "visite-energie",
+    "cheque-vert-grand-est": "cheque-transition-tissu-economique",
+    "ormat-2024": "fonds-economie-circulaire-ormat",
+    "ormat": "fonds-economie-circulaire-ormat",
+    "contrat-3S-occitanie": "contrat-3s-occitanie"
+  }
+}

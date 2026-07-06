@@ -1,5 +1,13 @@
 import { AdemePivotExporter } from './AdemePivotExporter'
-import { fullProgram, indisponibleProgram, minimalProgram } from '../__fixtures__/canonical-programs'
+import { RemplaceParResolver } from './RemplaceParResolver'
+import {
+  archivedProgram,
+  fullProgram,
+  indisponibleProgram,
+  minimalProgram,
+  remplacantProgram,
+  remplaceProgram,
+} from '../__fixtures__/canonical-programs'
 
 describe('AdemePivotExporter', () => {
   const exporter = new AdemePivotExporter()
@@ -19,7 +27,7 @@ describe('AdemePivotExporter', () => {
 
     it('mappe source et statut, supprime statut_edition/statut_dispositif', () => {
       expect(out.source).toBe('ademe')
-      expect(out.statut).toBe('actif')
+      expect(out.statut).toBe('en_prod')
       expect(out).not.toHaveProperty('statut_edition')
       expect(out).not.toHaveProperty('statut_dispositif')
       expect(out).not.toHaveProperty('remplace_par')
@@ -57,6 +65,7 @@ describe('AdemePivotExporter', () => {
         'statut',
         'date_ouverture',
         'date_cloture',
+        'remplace_par',
         'types_aides',
         'montant',
         'duree',
@@ -84,7 +93,29 @@ describe('AdemePivotExporter', () => {
     })
   })
 
-  it('mappe temporairement_indisponible → indisponible', () => {
-    expect(exporter.export(indisponibleProgram).statut).toBe('indisponible')
+  it('mappe temporairement_indisponible → temporairement_indisponible', () => {
+    expect(exporter.export(indisponibleProgram).statut).toBe('temporairement_indisponible')
+  })
+
+  it('transmet un dispositif archivé en en_prod (date de fin, pas de statut dédié)', () => {
+    const out = exporter.export(archivedProgram)
+    expect(out.statut).toBe('en_prod')
+    expect(out.date_cloture).toBe('2026-05-31')
+  })
+
+  describe('dispositif remplacé', () => {
+    const resolver = new RemplaceParResolver([remplacantProgram, remplaceProgram])
+
+    it('émet statut remplace et remplace_par (slug du remplaçant)', () => {
+      const out = new AdemePivotExporter(resolver).export(remplaceProgram)
+      expect(out.statut).toBe('remplace')
+      expect(out.remplace_par).toBe('aide-remplacante')
+    })
+
+    it('omet remplace_par sans resolver (cuid2 non résolu)', () => {
+      const out = new AdemePivotExporter().export(remplaceProgram)
+      expect(out.statut).toBe('remplace')
+      expect(out).not.toHaveProperty('remplace_par')
+    })
   })
 })

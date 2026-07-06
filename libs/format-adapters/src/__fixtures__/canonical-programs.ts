@@ -89,11 +89,34 @@ const indisponibleInput = {
   statut_dispositif: 'temporairement_indisponible',
 }
 
-/** Published but archived program — excluded from AGIR (non-exportable status). */
-const archivedInput = { ...minimalInput, slug: 'aide-archivee', statut_dispositif: 'archive' }
+/** Published but archived — still transmitted to AGIR (etat en_prod, carried by date_cloture). */
+const archivedInput = {
+  ...minimalInput,
+  slug: 'aide-archivee',
+  statut_dispositif: 'archive',
+  date_cloture: '2026-05-31',
+}
+
+/** The replacing program a `remplace` fixture points at (its cuid2 = remplace_par target). */
+const remplacantInput = {
+  ...minimalInput,
+  id: 'b1b2c3d4e5f6g7h8i9j0klmn',
+  slug: 'aide-remplacante',
+}
+
+/** Published but replaced — transmitted to AGIR with statut 'remplace' + remplace_par (cuid2). */
+const remplaceInput = {
+  ...minimalInput,
+  id: 'c1b2c3d4e5f6g7h8i9j0klmn',
+  slug: 'aide-remplacee',
+  statut_dispositif: 'remplace',
+  remplace_par: 'b1b2c3d4e5f6g7h8i9j0klmn',
+}
 
 export const minimalProgram = build(minimalInput)
 export const fullProgram = build(fullInput)
 export const draftProgram = build(draftInput)
 export const indisponibleProgram = build(indisponibleInput)
 export const archivedProgram = build(archivedInput)
+export const remplacantProgram = build(remplacantInput)
+export const remplaceProgram = build(remplaceInput)

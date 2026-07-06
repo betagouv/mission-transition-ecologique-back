@@ -34,7 +34,7 @@ export class AgirListeExporter {
     if (d.date_cloture) dateDispositif.dateFin = d.date_cloture
 
     const out: ListeDispositif = {
-      idDispositif: d.autres_donnees?.ademe_id_dsp ?? d.slug,
+      idDispositif: d.slug,
       idFonctionnel: d.slug,
       titre: d.titre,
       source: AgirSourceMapper.toAgir(d.source),

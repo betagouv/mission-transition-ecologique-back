@@ -4,6 +4,7 @@ import {
   AgirDetailExporter,
   AgirExportPolicy,
   AgirListeExporter,
+  RemplaceParResolver,
 } from '@tee-backoffice/format-adapters'
 import type { Endpoint, PayloadRequest } from 'payload'
 import { getCanonicalProgramRepository } from '@/services/canonical/canonicalRepository'
@@ -21,6 +22,18 @@ function notFound(): Response {
   return Response.json({ error: 'Dispositif introuvable' }, { status: 404 })
 }
 
+/**
+ * Public base URL for the absolute AGIR links. Behind a reverse proxy (Scalingo
+ * router) `req.origin` is the internal container address (localhost:36xxx), so:
+ * explicit env override → forwarded headers set by the router → request origin.
+ */
+function resolveBaseUrl(req: PayloadRequest): string {
+  if (process.env.PUBLIC_BASE_URL) return process.env.PUBLIC_BASE_URL
+  const host = req.headers.get('x-forwarded-host')
+  if (host) return `${req.headers.get('x-forwarded-proto') ?? 'https'}://${host}`
+  return req.origin
+}
+
 /** Resolves an exportable program by slug, or null (unknown / non-exportable). */
 async function findExportable(req: PayloadRequest, slug: string): Promise<CanonicalProgram | null> {
   if (!slug) return null
@@ -32,8 +45,8 @@ async function findExportable(req: PayloadRequest, slug: string): Promise<Canoni
 const listeHandler = async (req: PayloadRequest): Promise<Response> => {
   const repository = await getCanonicalProgramRepository(req.payload.logger)
   const programs = await repository.findAll()
-  // Index links are absolute, built from the origin the client reached us on.
-  return Response.json(new AgirListeExporter({ baseUrl: req.origin }).exportMany(programs))
+  // Index links are absolute; see resolveBaseUrl for the reverse-proxy caveat.
+  return Response.json(new AgirListeExporter({ baseUrl: resolveBaseUrl(req) }).exportMany(programs))
 }
 
 const detailHandler = async (req: PayloadRequest): Promise<Response> => {
@@ -45,7 +58,10 @@ const detailHandler = async (req: PayloadRequest): Promise<Response> => {
 const pivotHandler = async (req: PayloadRequest): Promise<Response> => {
   const program = await findExportable(req, String(req.routeParams?.slug ?? ''))
   if (!program) return notFound()
-  return Response.json(new AdemePivotExporter().export(program))
+  // Resolve remplace_par (a canonical cuid2) to the replacing program's slug.
+  const repository = await getCanonicalProgramRepository(req.payload.logger)
+  const resolver = new RemplaceParResolver(await repository.findAll())
+  return Response.json(new AdemePivotExporter(resolver).export(program))
 }
 
 export const agirEndpoints: Endpoint[] = [

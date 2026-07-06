@@ -69,6 +69,9 @@ apps/cms/test-results/
 # Local-only working directory (per-developer scratch, never committed)
 /local/
 
+# Generated export snapshot (regenerated on every export:grist run)
+libs/format-adapters/static/exports/grist*
+
 # Env
 .env
 .env*.local
