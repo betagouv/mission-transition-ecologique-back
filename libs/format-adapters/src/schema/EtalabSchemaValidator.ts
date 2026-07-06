@@ -1,5 +1,5 @@
-import coreSchema from './etalab/dispositif-aide.schema.json'
-import entrepriseSchema from './etalab/dispositif-aide-professionnels.schema.json'
+import coreSchema from './etalab/dispositif-aide.schema'
+import entrepriseSchema from './etalab/dispositif-aide-professionnels.schema'
 import { SCHEMA_CORE, SCHEMA_ENTREPRISE } from './schema-row.types'
 import type { SchemaName, SchemaRow } from './schema-row.types'
 

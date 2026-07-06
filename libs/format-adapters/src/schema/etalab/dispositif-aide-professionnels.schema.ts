@@ -1,4 +1,7 @@
-{
+// Etalab Table Schema (copie autonome, spec frictionless), embarque en module TS.
+// Pas d import JSON: Node ESM exige un import attribute (with { type: "json" })
+// que certains transpileurs retirent. Editer ici si le schema amont change.
+export default {
   "$schema": "https://specs.frictionlessdata.io/schemas/table-schema.json",
   "name": "dispositif-aide-professionnels",
   "title": "Dispositifs d'aides pour les professionnels",

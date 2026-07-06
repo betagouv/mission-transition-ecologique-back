@@ -8,13 +8,16 @@
 
 ## Schémas cibles
 
-Table Schema frictionless, copiés (autonomes) dans
-`src/schema/etalab/` :
+Table Schema frictionless, copiés (autonomes) dans `src/schema/etalab/` et
+**embarqués en modules TS** (`export default`) plutôt qu'en `.json` : un import
+JSON exige un import attribute (`with { type: 'json' }`) que Node ESM impose et
+que certains transpileurs (Next/Playwright) retirent, cassant le build. Éditer
+ces `.ts` si le schéma amont évolue.
 
 | Fichier | Nom | Champs |
 |---|---|---|
-| `dispositif-aide.schema.json` | `dispositif-aide` (core) | 15 champs |
-| `dispositif-aide-professionnels.schema.json` | `dispositif-aide-professionnels` (entreprise) | core + éligibilité entreprise |
+| `dispositif-aide.schema.ts` | `dispositif-aide` (core) | 15 champs |
+| `dispositif-aide-professionnels.schema.ts` | `dispositif-aide-professionnels` (entreprise) | core + éligibilité entreprise |
 
 Tous nos dispositifs sont `professionnels` : **entreprise** est le format riche,
 **core** son sous-ensemble. La gestion des listes de valeurs (types d'aides,
