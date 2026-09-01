@@ -24,9 +24,8 @@ import {
  * refines and applied by the root schema — the logic stays in this module.
  */
 
-/** Contact question: value depends on type. `email`/`url` require a value; `ADEME`/`conseiller_entreprise` carry none. */
+/** Contact question: value depends on type. `email`/`url` require a value; `conseiller_entreprise` carries none. */
 export const contactQuestionSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('ADEME') }).strict(),
   z.object({ type: z.literal('conseiller_entreprise') }).strict(),
   z.object({ type: z.literal('email'), valeur: z.string().email() }).strict(),
   z.object({ type: z.literal('url'), valeur: urlSchema }).strict(),

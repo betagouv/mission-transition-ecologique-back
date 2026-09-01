@@ -228,12 +228,12 @@ export class TeeImporter {
     return { titre, description }
   }
 
-  /** `mailto:…` → email · `formulaire` → ADEME · URL brute → url. */
+  /** `mailto:…` → email · `formulaire` → conseiller_entreprise · URL brute → url. */
   private contactQuestion(record: TeeRecord): ContactQuestionInput | undefined {
     const value = this.str(record['contact question'])
     if (!value) return undefined
     if (value.startsWith('mailto:')) return { type: 'email', valeur: value.slice('mailto:'.length) }
-    if (value === 'formulaire') return { type: 'ADEME' }
+    if (value === 'formulaire') return { type: 'conseiller_entreprise' }
     return { type: 'url', valeur: value }
   }
 

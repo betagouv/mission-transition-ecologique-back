@@ -55,7 +55,7 @@ Référence consolidée du format **pivot interne** implémenté dans `libs/cano
 **Acteurs & contact** :
 - `operateurs` (✔) : `{ contact: Operateur, autres?: Operateur[] }`.
   - `Operateur` : `nom` (✔), `nom_normalise` (—, requis export schéma), `siren` (`Siren`, —, requis export schéma).
-- `contact_question` : union discriminée — `{ type: 'ADEME' | 'conseiller_entreprise' }` (sans valeur) | `{ type: 'email', valeur: email }` | `{ type: 'url', valeur: url }`.
+- `contact_question` : union discriminée — `{ type: 'conseiller_entreprise' }` (sans valeur) | `{ type: 'email', valeur: email }` | `{ type: 'url', valeur: url }`. Côté source TEE, `"formulaire"` = mise en relation Conseillers-Entreprises → `conseiller_entreprise` (même sémantique que `{ formulaire: true }` dans les liens d'étape).
 - `url_source` (URL).
 - `etapes_activation` : array 1–6 de `{ description (Markdown, ✔), liens?: ( { texte, url } | { conseiller_entreprise: true } )[] }`.
 

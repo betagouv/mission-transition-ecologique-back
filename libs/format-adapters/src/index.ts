@@ -19,7 +19,6 @@ export * from './agir/AgirVocabulary';
 export * from './agir/AgirSourceMapper';
 export * from './agir/AgirEtatMapper';
 export * from './agir/AgirThemeMapper';
-export * from './agir/AgirContactMapper';
 export * from './agir/AgirTypeDispositifMapper';
 export * from './agir/RemplaceParResolver';
 export * from './agir/AgirExportPolicy';

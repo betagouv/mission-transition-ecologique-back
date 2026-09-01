@@ -1,5 +1,4 @@
 import type { CanonicalProgram } from '@tee-backoffice/canonical'
-import { AgirContactMapper } from './AgirContactMapper'
 import { AgirEtatMapper } from './AgirEtatMapper'
 import { AgirSourceMapper } from './AgirSourceMapper'
 import { AgirThemeMapper } from './AgirThemeMapper'
@@ -10,7 +9,7 @@ import type { AdemePivot } from './ademe-pivot.types'
 /**
  * Projects a canonical program to the ADEME pivot (proposition 2): the canonical
  * wire with the ADEME deltas (id = slug, single AGIR `statut`, lowercased
- * `source`, wire `themes`/`contact_question`, `ademe_id_dsp` surfaced from
+ * `source`, wire `themes`, `ademe_id_dsp` surfaced from
  * `autres_donnees`, `remplace_par` resolved to a slug). Built field by field as
  * an explicit whitelist, then re-parsed by `ademePivotSchema` (`.strict()`) so no
  * internal field can leak. The caller must have filtered exportable programs.
@@ -49,7 +48,7 @@ export class AdemePivotExporter {
     if (d.date_cloture !== undefined) out.date_cloture = d.date_cloture
     if (d.montant !== undefined) out.montant = d.montant
     if (d.duree !== undefined) out.duree = d.duree
-    if (d.contact_question !== undefined) out.contact_question = AgirContactMapper.toAgir(d.contact_question)
+    if (d.contact_question !== undefined) out.contact_question = d.contact_question
     if (d.url_source !== undefined) out.url_source = d.url_source
     if (d.etapes_activation !== undefined) out.etapes_activation = d.etapes_activation
     if (d.eligibilite !== undefined) out.eligibilite = d.eligibilite

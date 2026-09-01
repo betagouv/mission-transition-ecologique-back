@@ -58,8 +58,6 @@ export class DescriptionTextBuilder {
         return `${prefix} ${contact.valeur}`
       case 'conseiller_entreprise':
         return `${prefix} ${DescriptionTextBuilder.teeFiche(d.slug)}`
-      case 'ADEME':
-        return `${prefix} ADEME`
     }
   }
 

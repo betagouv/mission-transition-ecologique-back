@@ -29,8 +29,10 @@ describe('TeeImporter', () => {
         valeur: 'a@b.fr',
       })
     })
-    it('formulaire → ADEME', () => {
-      expect(importer.import({ ...base, 'contact question': 'formulaire' }).contact_question).toEqual({ type: 'ADEME' })
+    it('formulaire → conseiller_entreprise', () => {
+      expect(importer.import({ ...base, 'contact question': 'formulaire' }).contact_question).toEqual({
+        type: 'conseiller_entreprise',
+      })
     })
     it('URL brute → url', () => {
       expect(importer.import({ ...base, 'contact question': 'https://x.fr' }).contact_question).toEqual({

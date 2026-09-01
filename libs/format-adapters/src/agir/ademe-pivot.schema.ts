@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import {
+  contactQuestionSchema,
   dureeSchema,
   eligibiliteSchema,
   etapeActivationSchema,
@@ -23,8 +24,8 @@ import {
  * ADEME deltas (see README §Décisions). `.strict()` makes this a WHITELIST: any
  * canonical field added later that is not listed here fails the guard instead of
  * leaking. Field shapes are reused from the canonical so the pivot stays iso,
- * except the closed vocabularies (`source`, `statut`, `themes`,
- * `contact_question.type`) which use the lowercased/snake_case AGIR wire values.
+ * except the closed vocabularies (`source`, `statut`, `themes`) which use the
+ * lowercased/snake_case AGIR wire values.
  */
 
 export const ademeSourceSchema = z.enum(['tee', 'ademe', 'schema'])
@@ -39,13 +40,8 @@ export const ademeThemeSchema = z.enum([
   'environnement',
 ])
 
-/** Contact question, AGIR wire shape: `ADEME` lowercased to `ademe`, other channels unchanged. */
-export const ademeContactQuestionSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('ademe') }).strict(),
-  z.object({ type: z.literal('conseiller_entreprise') }).strict(),
-  z.object({ type: z.literal('email'), valeur: z.string().email() }).strict(),
-  z.object({ type: z.literal('url'), valeur: urlSchema }).strict(),
-])
+/** Contact question: identical to the canonical shape (no ADEME-specific vocabulary). */
+export const ademeContactQuestionSchema = contactQuestionSchema
 export type AgirContactQuestion = z.infer<typeof ademeContactQuestionSchema>
 
 export const ademePivotSchema = z
@@ -77,7 +73,7 @@ export const ademePivotSchema = z
     montant: montantSchema.optional(),
     duree: dureeSchema.optional(),
 
-    // Actors and contact (canonical shapes kept; contact_question type lowercased).
+    // Actors and contact (canonical shapes kept).
     operateurs: operateursSchema,
     contact_question: ademeContactQuestionSchema.optional(),
     url_source: urlSchema.optional(),

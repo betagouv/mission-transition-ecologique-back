@@ -43,8 +43,8 @@ Centralisé dans `AgirVocabulary` (un seul fichier pour ajuster). Valeurs
 - `themes` (pivot) : vocabulaire wire à 7 valeurs (`AgirThemeMapper`) ; les 3
   thèmes de la famille environnement (`environnemental`/`ecoconception`/
   `biodiversite`) sont repliés sur `environnement`.
-- `contact_question.type` (pivot) : `ADEME → ademe` (minuscule) ; les autres
-  canaux (`conseiller_entreprise`/`email`/`url`) inchangés (`AgirContactMapper`).
+- `contact_question` (pivot) : aucun delta, la forme canonical est reprise telle
+  quelle (`conseiller_entreprise`/`email`/`url`).
 - `typeDispositif` (détail) : libellés d'affichage des `types_aides` joints par
   ` | ` (`AgirTypeDispositifMapper`). Format unique/liste/enum à confirmer.
 - `typeSecteur` (détail) : déduit du niveau COG (`PAYS → National`,
@@ -116,9 +116,10 @@ Deltas vs canonical :
    `remplace` proviennent des **tombstones de redirection** générés à l'import
    depuis `redirects.json` (voir `docs/context/schema-grist-export.md` §Redirections).
 6. `montant` / `duree` : **objet `{ type, valeur }`** inchangé.
-7. `contact_question` : types distincts conservés, discriminant `ADEME` mis en
-   minuscule → `ademe` (`AgirContactMapper`). Pas de type `formulaire` dans le
-   canonical.
+7. `contact_question` : repris tel quel du canonical (aucune traduction de
+   vocabulaire). Pas de type `formulaire` dans le canonical : la valeur
+   `"formulaire"` de la source TEE désigne la mise en relation
+   Conseillers-Entreprises et devient `conseiller_entreprise`.
 8. `themes` : vocabulaire wire à 7 valeurs (`AgirThemeMapper`, famille
    environnement repliée sur `environnement`).
 9. `eligibilite`, `variantes`, `operateurs`, `etapes_activation`, contenu
@@ -174,7 +175,7 @@ Légende : ✅ exporté fidèlement · ⚠️ exporté mais dégradé/partiel ·
 Toutes les pertes notables sont en P1 (le pivot ne perd rien d'essentiel).
 
 1. **Contact / question (`contact_question`)** — ⚠️ seul le canal `email` est
-   exporté (`mailContact`). Les canaux `url` (formulaire en ligne), `ADEME` et
+   exporté (`mailContact`). Les canaux `url` (formulaire en ligne) et
    `conseiller_entreprise` sont **perdus** : le schéma R2DA n'a aucun champ
    dédié. Conséquence : l'usager ne sait plus **comment poser sa question** quand
    le contact n'est pas un e-mail. → champ à ajouter (cf. recommandations).

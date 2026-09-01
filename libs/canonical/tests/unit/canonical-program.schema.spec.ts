@@ -79,9 +79,9 @@ describe('canonicalProgramSchema', () => {
       expect(canonicalProgramSchema.safeParse(input).success).toBe(false)
     })
 
-    it('accepts ADEME without a valeur', () => {
+    it('accepts conseiller_entreprise without a valeur', () => {
       const input = cloneMinimal()
-      input['contact_question'] = { type: 'ADEME' }
+      input['contact_question'] = { type: 'conseiller_entreprise' }
       expect(canonicalProgramSchema.safeParse(input).success).toBe(true)
     })
   })
@@ -146,9 +146,9 @@ describe('canonicalProgramSchema', () => {
       expect(canonicalProgramSchema.safeParse(input).success).toBe(false)
     })
 
-    it('rejects a contact_question ADEME carrying a valeur (strict)', () => {
+    it('rejects a contact_question conseiller_entreprise carrying a valeur (strict)', () => {
       const input = cloneMinimal()
-      input['contact_question'] = { type: 'ADEME', valeur: 'oops' }
+      input['contact_question'] = { type: 'conseiller_entreprise', valeur: 'oops' }
       expect(canonicalProgramSchema.safeParse(input).success).toBe(false)
     })
   })

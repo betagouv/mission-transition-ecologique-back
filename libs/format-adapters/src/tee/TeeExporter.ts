@@ -150,7 +150,7 @@ export class TeeExporter {
     return out
   }
 
-  /** `email` → `mailto:…` · `url` → raw URL · `ADEME`/`conseiller_entreprise` → `formulaire`. */
+  /** `email` → `mailto:…` · `url` → raw URL · `conseiller_entreprise` → `formulaire`. */
   private contactQuestion(cq: ContactQuestion | undefined): string | undefined {
     if (!cq) return undefined
     switch (cq.type) {
@@ -158,7 +158,6 @@ export class TeeExporter {
         return `mailto:${cq.valeur}`
       case 'url':
         return cq.valeur
-      case 'ADEME':
       case 'conseiller_entreprise':
         return 'formulaire'
     }
