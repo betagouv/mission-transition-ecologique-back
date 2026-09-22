@@ -1,0 +1,126 @@
+# Feature 004 : Migration PostgreSQL (persistance de production)
+
+**ADR :** [0012-production-persistence-postgres](../adr/0012-production-persistence-postgres.md)
+**Complète :** [ADR 0008](../adr/0008-canonical-persistence-ddd.md) (gap « Migration Postgres à venir »)
+
+---
+
+## Contexte
+
+Sur Scalingo, le système de fichiers d'un conteneur est éphémère : les deux bases SQLite (`apps/cms/tee-poc.db` pour Payload, `libs/canonical-store/canonical.db` pour le canonical) et les uploads `Media` sont réinitialisés à chaque déploiement. La prod sert les fichiers `.db` commités et perd toute écriture. Cette feature bascule les deux bases sur l'addon PostgreSQL Scalingo (une instance, schémas `public` pour Payload et `canonical` pour le store), et Postgres devient le moteur unique en dev (conteneur Docker dédié), en CI, en préprod et en prod.
+
+**Hors scope :**
+- Passage de la colonne `data` du canonical en `jsonb`.
+- Outil de migration pour le store canonical (`drizzle-kit`) : l'amorçage idempotent suffit pour une table.
+- Reprise des éditions faites dans la prod actuelle (conteneur éphémère, rien à récupérer côté disque).
+
+---
+
+## Décisions prises
+
+| Sujet | Décision |
+|---|---|
+| Moteur | PostgreSQL, addon Scalingo, même région que l'app |
+| Topologie | Une instance, deux schémas : `public` (Payload), `canonical` (store) |
+| Payload | `@payloadcms/db-postgres`, `push` en dev seulement, migrations versionnées appliquées au démarrage via `prodMigrations` |
+| Store canonical | Dialecte unique `pg-core` + `node-postgres`, `data` reste en `text`, amorçage `CREATE SCHEMA/TABLE IF NOT EXISTS` |
+| Tests du store | PGlite en mémoire (remplace libSQL `:memory:`) |
+| Dev local | Conteneur Docker dédié (`docker-compose.yml`, service `postgres`) : bases `tee` (dev) et `tee_test` (tests d'intégration) créées au premier démarrage, volume nommé |
+| Préprod | Addon PostgreSQL Scalingo (plus petite offre), bascule répétée ici avant la prod |
+| CI | Service `postgres` sur `test` et `e2e` ; E2E = migrate + seed, plus de `.db` commitée |
+| Seed prod | `UsersSeed` jamais exécuté en prod ; premier super-admin créé à la main |
+| Media | `@payloadcms/storage-s3` vers un bucket français (lot séparé possible) |
+| Pipeline quotidien | **À trancher** (question ouverte de l'ADR 0012) : option A (amont maître, écriture directe en prod par cron Scalingo) recommandée pour la transition |
+
+---
+
+## Fichiers à créer / modifier
+
+| Fichier | Action |
+|---|---|
+| `package.json` | Modifier : `@payloadcms/db-sqlite` → `@payloadcms/db-postgres`, `@libsql/client` → `pg` (+ `@types/pg` en dev), ajouter `@electric-sql/pglite` (dev), scripts `db:up`, `migrate`, `migrate:create` |
+| `docker-compose.yml` | Créer : service `postgres` (version alignée sur l'addon), `POSTGRES_DB=tee`, port `5432`, volume nommé, healthcheck, montage de `docker/postgres/init/` |
+| `docker/postgres/init/01-create-test-db.sql` | Créer : `CREATE DATABASE tee_test` (exécuté une seule fois, au premier démarrage du volume) |
+| `apps/cms/payload.config.ts` | Modifier : `postgresAdapter({ pool: { connectionString, max }, migrationDir, prodMigrations })` |
+| `apps/cms/src/migrations/` | Créer : migration initiale générée (`payload migrate:create initial`) + `index.ts` généré |
+| `apps/cms/project.json` | Modifier : targets `migrate`, `migrate:create`, `migrate:status` (`payload migrate…`, cwd projet) |
+| `apps/cms/.env.example` | Modifier : `DATABASE_URI` et `CANONICAL_DATABASE_URI` en `postgres://tee:tee@localhost:5432/tee` |
+| `apps/cms/vitest.config.mts` | Modifier : base de test Postgres dédiée (`tee_test`) au lieu des fichiers `.db` |
+| `apps/cms/vitest.global-setup.ts` | Modifier : `DROP SCHEMA public, canonical CASCADE` puis recréation, au lieu de `rmSync` des fichiers |
+| `apps/cms/src/scripts/seed/run.ts` | Modifier : `UsersSeed` exclu quand `NODE_ENV=production` (ou opt-in explicite) |
+| `libs/canonical-store/src/schema.ts` | Modifier : `pgSchema('canonical').table('canonical_programs', …)` |
+| `libs/canonical-store/src/db.ts` | Modifier : `drizzle-orm/node-postgres` + `Pool` borné, amorçage `CREATE SCHEMA IF NOT EXISTS` + `CREATE TABLE IF NOT EXISTS` |
+| `libs/canonical-store/src/DrizzleCanonicalProgramRepository.ts` | Modifier : `create(url)` ouvre un pool Postgres ; ajouter une construction depuis une instance Drizzle déjà ouverte (PGlite en test) |
+| `libs/canonical-store/src/createCanonicalProgramRepository.ts` | Modifier : `CANONICAL_DATABASE_URI` obligatoire, suppression du défaut ancré au workspace (`findWorkspaceRoot`) |
+| `libs/canonical-store/tests/DrizzleCanonicalProgramRepository.spec.ts` | Modifier : PGlite au lieu de libSQL `:memory:` |
+| `apps/cms/tests/unit/CanonicalProgramService.spec.ts` | Modifier : idem si elle ouvre un store réel |
+| `libs/format-adapters/scripts/import-tee.ts` | Modifier : remplacement complet dans une transaction (`DELETE` + inserts) au lieu de dépendre d'un `rm -f` du fichier |
+| `.github/workflows/ci.yml` | Modifier : service `postgres`, `DATABASE_URI`/`CANONICAL_DATABASE_URI` Postgres, étapes `migrate` + `seed` avant E2E |
+| `.github/workflows/daily_data.yml` | Modifier selon l'option retenue : plus de `rm -f canonical.db` ni de commit de la base |
+| `cron.json` | Créer si option A : tâche planifiée Scalingo pour `import:tee` + export Grist |
+| `.gitignore` | Modifier : ignorer `*.db` sans exception |
+| `apps/cms/tee-poc.db`, `libs/canonical-store/canonical.db` | Supprimer du dépôt (`git rm`) après bascule |
+| `CLAUDE.md` | Modifier : stack (PostgreSQL), sections `libs/canonical-store` et Seed, commandes `db:up`/`migrate`, index ADR |
+| `docs/adr/0008-canonical-persistence-ddd.md` | Modifier : gap « Migration Postgres » renvoyé vers l'ADR 0012, défaut `canonical.db` marqué obsolète |
+
+---
+
+## Étapes d'implémentation
+
+### Lot 1 : Postgres en local (aucun impact prod)
+
+1. Créer `docker-compose.yml` (image `postgres` à la version majeure de l'addon Scalingo) et le script d'init `tee_test` ; scripts `db:up` (`docker compose up -d --wait`), `db:down` et `db:reset` (`docker compose down -v` puis `up`).
+2. Remplacer l'adaptateur Payload par `postgresAdapter` avec `pool.max` borné (5 par défaut, surchargeable par `DATABASE_POOL_MAX`).
+3. Démarrer en dev (`push` crée le schéma), vérifier l'admin, puis générer la migration initiale : `payload migrate:create initial`. Brancher `prodMigrations` sur `apps/cms/src/migrations/index.ts`.
+4. Ajouter les targets NX `migrate`, `migrate:create`, `migrate:status`.
+5. Vérifier le comportement du `select hasMany` imbriqué (ADR 0011) sous Postgres : le contournement `json` doit rester fonctionnel.
+
+### Lot 2 : store canonical sur Postgres
+
+6. Réécrire `schema.ts` en `pgSchema('canonical')`, `db.ts` en `node-postgres` avec amorçage du schéma et de la table.
+7. Adapter `DrizzleCanonicalProgramRepository` (construction depuis une instance Drizzle Postgres) et `createCanonicalProgramRepository` (`CANONICAL_DATABASE_URI` obligatoire, erreur explicite sinon).
+8. Passer les tests du store sur PGlite ; vérifier upsert, `findBySlug`, `findAll` et l'événement `program_dropped` en lecture.
+9. Adapter `import-tee.ts` : remplacement complet transactionnel, pour refléter les suppressions amont sans effacer de fichier.
+
+### Lot 3 : seed, tests d'intégration, CI
+
+10. Rendre `UsersSeed` inactif en prod ; vérifier que `pnpm seed` complet fonctionne sur une base vide migrée.
+11. Adapter `vitest.config.mts` et `vitest.global-setup.ts` (base `tee_test`, reset par `DROP SCHEMA … CASCADE`).
+12. CI : service `postgres` sur `test` et `e2e`, variables d'environnement, étapes `pnpm migrate` puis `pnpm seed` avant `pnpm e2e`. Supprimer la dépendance à `tee-poc.db` commitée.
+13. Lint, typecheck, tests unitaires, intégration et E2E verts.
+
+### Lot 4 : décision pipeline et Media
+
+14. **Trancher la question ouverte de l'ADR 0012** (qui écrit dans le canonical de prod) et passer l'ADR en « Accepté ».
+15. Selon l'option : réécrire `daily_data.yml` (plus de commit de base) et, si option A, créer `cron.json` Scalingo et désactiver l'écriture du hook en prod par variable d'environnement.
+16. Media : ajouter `@payloadcms/storage-s3` (bucket, clés en variables d'environnement Scalingo). Lot livrable séparément.
+
+### Lot 5 : bascule (préprod, puis prod)
+
+Les étapes 17 à 21 se font d'abord sur la **préprod**, puis à l'identique sur la **prod** une fois la préprod validée.
+
+17. Provisionner l'addon PostgreSQL Scalingo ; définir `DATABASE_URI=$SCALINGO_POSTGRESQL_URL` et `CANONICAL_DATABASE_URI=$SCALINGO_POSTGRESQL_URL`.
+18. Vérifier que les dépendances nécessaires au seed (`tsx`, `nx`) sont disponibles dans le conteneur Scalingo (le buildpack Node peut élaguer les `devDependencies`) ; sinon prévoir un script de seed prod compilé ou déplacer les dépendances requises.
+19. Déployer : au démarrage, `prodMigrations` crée le schéma Payload ; le store amorce `canonical`.
+20. `scalingo run` : seed des référentiels (sans utilisateurs de dev), puis création manuelle du premier super-admin.
+21. Contrôles : connexion admin, édition et publication d'un dispositif, présence dans `/api/agir/…`, **redéploiement puis vérification que les données sont toujours là**.
+22. Nettoyage : `git rm` des deux `.db`, `.gitignore`, mise à jour de `CLAUDE.md`, ADR 0008 et mémos obsolètes.
+
+---
+
+## Vérification
+
+```sh
+pnpm db:up                                       # Postgres local
+pnpm nx run @tee-backoffice/cms:migrate          # applique les migrations
+pnpm seed                                        # seed complet sur base vide
+pnpm nx run @tee-backoffice/canonical-store:test # store sur PGlite
+pnpm test:unit && pnpm test                      # unitaires + intégration
+pnpm lint && pnpm typecheck
+pnpm build && pnpm e2e
+```
+
+En prod (Scalingo) :
+- `scalingo --app <app> pgsql-console` : les schémas `public` et `canonical` existent, `canonical.canonical_programs` est peuplée.
+- Publier un dispositif, redéployer, vérifier qu'il est toujours présent dans l'admin et dans les endpoints AGIR.
+- Vérifier qu'aucun compte `@tee.test` n'existe en base de prod.
