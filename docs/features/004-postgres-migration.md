@@ -75,6 +75,14 @@ Sur Scalingo, le système de fichiers d'un conteneur est éphémère : les deux 
 4. Ajouter les targets NX `migrate`, `migrate:create`, `migrate:status`.
 5. Vérifier le comportement du `select hasMany` imbriqué (ADR 0011) sous Postgres : le contournement `json` doit rester fonctionnel.
 
+**Constats du lot 1 (fait) :**
+- `Programs` redéclarait les options `draft`/`published` du champ `_status`. Payload fusionne ce champ avec son propre `_status` de brouillons en **concaténant** les options, ce qui donnait un enum Postgres à valeurs dupliquées (`CREATE TYPE … AS ENUM('draft', 'published', 'draft', 'published')`, rejeté). Les options sont désormais fournies par Payload seul (`options: []`), avec des libellés français identiques.
+- `syncCanonicalOnPublish` relisait le dispositif sans passer `req` : lecture hors transaction, donc document non commité invisible et **blocage du pool** (seed figé à 0/234). Corrigé en passant `req`.
+- La migration initiale produit un schéma strictement identique à celui du `push` de dev (comparaison `pg_dump -s`). Un démarrage `NODE_ENV=production` sur base vide l'applique via `prodMigrations`.
+- Le contournement `json` de l'ADR 0011 fonctionne (colonne `jsonb`, table principale et table des versions).
+- Les migrations générées sont exclues du lint (`eslint.config.mjs`), comme `payload-types.ts`.
+- Tant que les lots 2 et 3 ne sont pas faits, les tests d'intégration et la CI (qui utilisent encore des URL `file:`) ne passent pas : la branche n'est pas fusionnable seule.
+
 ### Lot 2 : store canonical sur Postgres
 
 6. Réécrire `schema.ts` en `pgSchema('canonical')`, `db.ts` en `node-postgres` avec amorçage du schéma et de la table.

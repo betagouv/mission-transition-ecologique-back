@@ -40,7 +40,12 @@ pnpm nx run @tee-backoffice/cms:lint       # lint
 pnpm nx run @tee-backoffice/cms:typecheck  # typecheck
 pnpm nx run-many -t lint                   # lint tout le workspace
 pnpm nx affected -t lint                   # lint fichiers modifiés
+pnpm db:up                                 # démarre le Postgres local (Docker, bases `tee` + `tee_test`)
+pnpm db:reset                              # remet le Postgres local à zéro (supprime le volume)
 pnpm seed                                  # seed complet : operators + programs + utilisateurs de dev
+pnpm migrate:create <nom>                  # génère une migration Payload (apps/cms/src/migrations/)
+pnpm migrate                               # applique les migrations en attente
+pnpm migrate:status                        # état des migrations
 ```
 
 ## Seed
@@ -196,5 +201,7 @@ Les classes utilitaires partagées vont dans `src/utils/`.
 - Ne jamais modifier les fichiers dans `docs/sources/`
 - Ne pas committer sans avoir fait tourner `pnpm nx affected -t lint`
 - `payload-types.ts` est généré — ne pas l'éditer manuellement
+- **Base Payload : PostgreSQL** (ADR 0012). En local, conteneur Docker (`pnpm db:up`), schéma synchronisé automatiquement (`push`) en dev. Tout changement de champ ou de collection est livré avec une migration générée par `pnpm migrate:create <nom>` (sur une base vierge, pas sur la base de dev en `push`) et commitée dans `apps/cms/src/migrations/` (générées, exclues du lint) : hors dev, le schéma n'évolue que par migrations, appliquées au démarrage via `prodMigrations`
+- **Hooks Payload** : toute opération `payload.*` lancée depuis un hook reçoit `req`, sinon elle s'exécute hors de la transaction en cours (sous Postgres : document non visible et blocage du pool de connexions)
 - `importMap.js` est généré — ne pas l'éditer manuellement, regénérer avec `pnpm generate:importmap` après tout ajout de composant custom Payload
 - **Toujours vérifier que la documentation est à jour avec le code** : après tout changement structurel (renommage/déplacement de fichiers ou dossiers, ajout/suppression de collections, modification d'architecture), mettre à jour les sections concernées dans `CLAUDE.md` (ex: Seed, Structure des apps), les ADR dans `docs/adr/`, les fichiers de contexte dans `docs/context/`, et les fiches de feature dans `docs/features/` (tableaux de fichiers, étapes d'implémentation)

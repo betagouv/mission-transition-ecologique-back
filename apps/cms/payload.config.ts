@@ -1,5 +1,5 @@
 import { buildConfig } from 'payload'
-import { sqliteAdapter } from '@payloadcms/db-sqlite'
+import { postgresAdapter } from '@payloadcms/db-postgres'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -12,6 +12,7 @@ import { Projects } from '@/collections/Projects'
 import { GeographicAreas } from '@/collections/GeographicAreas'
 import { ReviewComments } from '@/collections/ReviewComments'
 import { agirEndpoints } from '@/endpoints/agir/agirEndpoints'
+import { migrations } from '@/migrations'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -52,10 +53,18 @@ export default buildConfig({
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
-  db: sqliteAdapter({
-    client: {
-      url: process.env.DATABASE_URI || 'file:./tee-poc.db',
+  // Payload owns the `public` schema; the canonical store lives in its own
+  // `canonical` schema of the same database (ADR 0012). Schema changes are
+  // pushed automatically in dev only; elsewhere they ship as migrations.
+  db: postgresAdapter({
+    pool: {
+      connectionString: process.env.DATABASE_URI,
+      // Small addon plans cap connections: keep the pool bounded.
+      max: Number(process.env.DATABASE_POOL_MAX) || 5,
     },
+    migrationDir: path.resolve(dirname, 'src/migrations'),
+    // Applied on server start when NODE_ENV=production (no postdeploy step).
+    prodMigrations: migrations,
   }),
   i18n: {
     fallbackLanguage: 'en',

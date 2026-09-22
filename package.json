@@ -15,6 +15,12 @@
     "generate:importmap": "nx run @tee-backoffice/cms:generate:importmap",
     "generate:types": "nx run @tee-backoffice/cms:generate:types",
     "seed": "nx run @tee-backoffice/cms:seed",
+    "db:up": "docker compose up -d --wait postgres",
+    "db:down": "docker compose down",
+    "db:reset": "docker compose down -v && docker compose up -d --wait postgres",
+    "migrate": "nx run @tee-backoffice/cms:migrate",
+    "migrate:create": "nx run @tee-backoffice/cms:migrate:create",
+    "migrate:status": "nx run @tee-backoffice/cms:migrate:status",
     "export:tee": "nx run @tee-backoffice/format-adapters:export:tee",
     "test": "nx run @tee-backoffice/cms:test",
     "test:unit": "nx run @tee-backoffice/cms:test:unit"
@@ -22,7 +28,7 @@
   "private": true,
   "dependencies": {
     "@libsql/client": "^0.17.4",
-    "@payloadcms/db-sqlite": "^3.79.1",
+    "@payloadcms/db-postgres": "3.79.1",
     "@payloadcms/next": "^3.79.1",
     "@payloadcms/richtext-lexical": "^3.79.1",
     "@payloadcms/translations": "^3.79.1",
