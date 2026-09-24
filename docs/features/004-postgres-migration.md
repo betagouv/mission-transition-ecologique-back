@@ -31,7 +31,7 @@ Sur Scalingo, le système de fichiers d'un conteneur est éphémère : les deux 
 | CI | Service `postgres` sur `test` et `e2e` ; E2E = migrate + seed, plus de `.db` commitée |
 | Seed prod | `UsersSeed` jamais exécuté en prod ; premier super-admin créé à la main |
 | Media | `@payloadcms/storage-s3` vers un bucket français (lot séparé possible) |
-| Pipeline quotidien | **À trancher** (question ouverte de l'ADR 0012) : option A (amont maître, écriture directe en prod par cron Scalingo) recommandée pour la transition |
+| Pipeline quotidien | Option A tranchée : l'amont reste maître, tâche planifiée Scalingo (`cron.json`), hook CMS laissé actif (ses écritures sont écrasées par l'import) |
 
 ---
 
@@ -49,6 +49,7 @@ Sur Scalingo, le système de fichiers d'un conteneur est éphémère : les deux 
 | `apps/cms/project.json` | Modifier : targets `migrate`, `migrate:create`, `migrate:status` (`payload migrate…`, cwd projet) |
 | `apps/cms/.env.example` | Modifier : `DATABASE_URI` et `CANONICAL_DATABASE_URI` en `postgres://tee:tee@localhost:5432/tee` |
 | `apps/cms/vitest.config.mts` | Modifier : base de test Postgres dédiée (`tee_test`) au lieu des fichiers `.db` |
+| `apps/cms/tests/support/testDatabaseUrl.ts` | Créer : URL de la base de test partagée entre la config vitest et le global setup (ce dernier ne doit jamais lire `DATABASE_URI`) |
 | `apps/cms/vitest.global-setup.ts` | Modifier : `DROP SCHEMA public, canonical CASCADE` puis recréation, au lieu de `rmSync` des fichiers |
 | `apps/cms/src/scripts/seed/run.ts` | Modifier : `UsersSeed` exclu quand `NODE_ENV=production` (ou opt-in explicite) |
 | `libs/canonical-store/src/schema.ts` | Modifier : `pgSchema('canonical').table('canonical_programs', …)` |
@@ -59,8 +60,10 @@ Sur Scalingo, le système de fichiers d'un conteneur est éphémère : les deux 
 | `apps/cms/tests/unit/CanonicalProgramService.spec.ts` | Modifier : idem si elle ouvre un store réel |
 | `libs/format-adapters/scripts/import-tee.ts` | Modifier : remplacement complet dans une transaction (`DELETE` + inserts) au lieu de dépendre d'un `rm -f` du fichier |
 | `.github/workflows/ci.yml` | Modifier : service `postgres`, `DATABASE_URI`/`CANONICAL_DATABASE_URI` Postgres, étapes `migrate` + `seed` avant E2E |
-| `.github/workflows/daily_data.yml` | Modifier selon l'option retenue : plus de `rm -f canonical.db` ni de commit de la base |
-| `cron.json` | Créer si option A : tâche planifiée Scalingo pour `import:tee` + export Grist |
+| `.github/workflows/daily_data.yml` | Supprimer : remplacé par la tâche planifiée Scalingo |
+| `cron.json` | Créer : tâche planifiée Scalingo quotidienne (`pnpm data:daily`) |
+| `libs/format-adapters/src/tee/UpstreamJsonSource.ts` | Créer : lecture HTTP des fichiers amont (`TEE_PROGRAMS_URL` / `TEE_REDIRECTS_URL`), consommés en mémoire |
+| `package.json` | Modifier : script `data:daily` ; `tsx` passe en dépendance de production (le conteneur Scalingo élague les devDependencies) |
 | `.gitignore` | Modifier : ignorer `*.db` sans exception |
 | `apps/cms/tee-poc.db`, `libs/canonical-store/canonical.db` | Supprimer du dépôt (`git rm`) après bascule |
 | `CLAUDE.md` | Modifier : stack (PostgreSQL), sections `libs/canonical-store` et Seed, commandes `db:up`/`migrate`, index ADR |
@@ -112,13 +115,14 @@ Sur Scalingo, le système de fichiers d'un conteneur est éphémère : les deux 
 - Les tests d'intégration visent `tee_test` (surchargeable par `TEST_DATABASE_URI`, utilisé par la CI) ; `vitest.global-setup.ts` supprime les schémas `public` et `canonical` avant chaque exécution au lieu d'effacer des fichiers.
 - CI : service `postgres:17-alpine` sur les jobs `test` (accès par `localhost`) et `e2e` (job en conteneur, accès par le nom `postgres`). Le job E2E enchaîne build, `pnpm migrate`, `pnpm seed`, Playwright : plus aucune dépendance à une base commitée.
 - **Piège trouvé** : un seed lancé en mode dev pousse le schéma et marque la base comme « poussée en dev » (ligne `dev`, batch -1 de `payload_migrations`). Le démarrage suivant en production demande alors une confirmation interactive et le serveur ne répond jamais (E2E en échec sur un timeout). D'où le `NODE_ENV: production` sur l'étape de seed de la CI.
+- **Piège trouvé (corrigé)** : les variables déclarées dans `test.env` de vitest ne s'appliquent qu'aux fichiers de test, **pas au global setup**. Une première version lisait `DATABASE_URI` dans le global setup et a donc vidé la base de **dev**. L'URL de test vit désormais dans une constante partagée (`tests/support/testDatabaseUrl.ts`).
 - Vérifié en local dans les conditions de la CI : migrations puis seed sur base vierge, build de production, 7 tests E2E verts, 22 tests d'intégration verts.
 - `apps/cms/tee-poc.db` et `libs/canonical-store/canonical.db` ne servent plus à rien mais restent commités : leur suppression est au lot 5.
 
 ### Lot 4 : décision pipeline et Media
 
-14. **Trancher la question ouverte de l'ADR 0012** (qui écrit dans le canonical de prod) et passer l'ADR en « Accepté ».
-15. Selon l'option : réécrire `daily_data.yml` (plus de commit de base) et, si option A, créer `cron.json` Scalingo et désactiver l'écriture du hook en prod par variable d'environnement.
+14. ~~Trancher la question ouverte de l'ADR 0012~~ **fait** : option A (amont maître), hook laissé actif, ADR passé en « Accepté ».
+15. **Fait** : `daily_data.yml` supprimé, remplacé par `cron.json` (tâche planifiée Scalingo) et le script `pnpm data:daily` (import distant, amorçage Grist, export Grist avec push). Les fichiers amont sont lus par HTTP (`UpstreamJsonSource`), plus aucun commit de données. Le hook reste actif, conformément à la décision.
 16. Media : ajouter `@payloadcms/storage-s3` (bucket, clés en variables d'environnement Scalingo). Lot livrable séparément.
 
 ### Lot 5 : bascule (préprod, puis prod)

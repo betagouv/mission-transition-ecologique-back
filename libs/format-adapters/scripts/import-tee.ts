@@ -5,6 +5,8 @@
 // Invalid records are skipped and reported (never persisted silently).
 //
 // Run from the repo root: `nx run @tee-backoffice/format-adapters:import:tee`.
+// With `--remote` (the daily refresh on Scalingo), the two JSON files are read
+// straight from the upstream repository instead of `static/input/`.
 //
 // The import is a FULL REBUILD: the store is emptied before the upsert, so
 // dispositifs removed upstream disappear here too. Emptying happens only once
@@ -19,6 +21,9 @@ import { RedirectTombstoneBuilder } from '../src/tee/RedirectTombstoneBuilder'
 import { SlugCanonicalId } from '../src/tee/SlugCanonicalId'
 import { TeeImporter } from '../src/tee/TeeImporter'
 import type { TeeRecord } from '../src/tee/TeeImporter'
+import { UpstreamJsonSource } from '../src/tee/UpstreamJsonSource'
+
+const REMOTE = process.argv.includes('--remote')
 
 // Live upstream input (the daily workflow overwrites it). Falls back to the
 // frozen round-trip fixture so a local run works without fetching first.
@@ -30,7 +35,27 @@ const FIXTURE_PATH = resolve(process.cwd(), 'static/input/programs-tests.json')
 const LIVE_REDIRECTS_PATH = resolve(process.cwd(), 'static/input/redirects.json')
 const FIXTURE_REDIRECTS_PATH = resolve(process.cwd(), 'static/input/redirects-tests.json')
 
-function loadRedirects(): ProgramRedirects {
+type RedirectsFile = ConstructorParameters<typeof ProgramRedirects>[0]
+
+/** Reads both inputs: from the upstream repository, or from `static/input/`. */
+async function loadInputs(): Promise<{ records: TeeRecord[]; redirects: ProgramRedirects }> {
+  if (!REMOTE) return { records: loadLocalRecords(), redirects: loadLocalRedirects() }
+
+  const source = new UpstreamJsonSource()
+  process.stdout.write(`Source distante : ${source.describe()}\n`)
+  const records = await source.programs<TeeRecord[]>()
+  const redirects = await source.redirects<RedirectsFile>()
+  if (!redirects) process.stdout.write('Redirections : fichier amont absent, étape ignorée.\n')
+  return { records, redirects: new ProgramRedirects(redirects ?? undefined) }
+}
+
+function loadLocalRecords(): TeeRecord[] {
+  const inputPath = existsSync(LIVE_PATH) ? LIVE_PATH : FIXTURE_PATH
+  process.stdout.write(`Source : ${inputPath}\n`)
+  return JSON.parse(readFileSync(inputPath, 'utf8')) as TeeRecord[]
+}
+
+function loadLocalRedirects(): ProgramRedirects {
   const path = existsSync(LIVE_REDIRECTS_PATH)
     ? LIVE_REDIRECTS_PATH
     : existsSync(FIXTURE_REDIRECTS_PATH)
@@ -45,9 +70,7 @@ function loadRedirects(): ProgramRedirects {
 }
 
 async function main(): Promise<void> {
-  const inputPath = existsSync(LIVE_PATH) ? LIVE_PATH : FIXTURE_PATH
-  process.stdout.write(`Source : ${inputPath}\n`)
-  const records = JSON.parse(readFileSync(inputPath, 'utf8')) as TeeRecord[]
+  const { records, redirects } = await loadInputs()
   const repository = await createCanonicalProgramRepository()
   const service = new CanonicalProgramService(repository)
 
@@ -67,7 +90,6 @@ async function main(): Promise<void> {
   // Phase 2 — apply redirects: mark surviving former slugs `remplace` in place,
   // and synthesize `remplace` tombstones (cloning the replacement's content) for
   // former slugs no longer present, so a consumer holding them can follow on.
-  const redirects = loadRedirects()
   const { tombstones, markedInPlace, skipped } = new RedirectTombstoneBuilder().build(redirects, inputsBySlug)
   inputs.push(...tombstones)
 

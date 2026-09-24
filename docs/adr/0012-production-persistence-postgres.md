@@ -1,7 +1,7 @@
 # ADR 0012 : Persistance de production sur PostgreSQL (Scalingo)
 
 **Date :** 2026-09-22
-**Statut :** Proposé
+**Statut :** Accepté
 **Décideurs :** Yohann
 **Plan de mise en œuvre :** [Feature 004 : Migration PostgreSQL](../features/004-postgres-migration.md)
 
@@ -93,22 +93,30 @@ Si des éditions faites en prod doivent être conservées avant la bascule, on n
 
 Même problème, solution distincte : plugin **`@payloadcms/storage-s3`** vers un bucket S3 hébergé en France (Outscale, Scaleway ou OVH, à arbitrer selon le marché ADEME et beta.gouv). Scalingo ne fournit pas de stockage objet. Ce point peut être livré séparément de la bascule Postgres.
 
-## Question ouverte : qui écrit dans le canonical de prod ?
+## Qui écrit dans le canonical de production (tranché le 2026-09-24)
 
-Aujourd'hui, deux chemins alimentent le store canonical, et c'est le fichier commité qui départage :
+Deux chemins alimentent le store : le **hook `syncCanonicalOnPublish`** (publication dans le CMS) et le **pipeline quotidien** (reconstruction complète depuis le `programs.json` amont, lui-même issu d'une transformation de données Baserow).
 
-1. le **hook `syncCanonicalOnPublish`** (publication dans le CMS) ;
-2. le **pipeline quotidien `daily_data.yml`**, qui fait `rm -f canonical.db`, reconstruit tout depuis `programs.json` amont (`import:tee`), pousse vers Grist et **commite** la base.
+**Décision : l'amont reste maître (option A).** La production n'est pas éditée par des utilisateurs ; elle est mise à jour par une tâche planifiée quotidienne. Le hook **reste actif** (pas d'interrupteur à poser) : il écrit simplement dans un store que le prochain import écrasera. C'est assumé, et ça garde le chemin de synchronisation vivant et testé.
 
-Avec une base persistante partagée, le chemin 2 tel quel **écraserait** chaque nuit ce que le CMS a publié, et l'étape de commit n'a plus de sens. Il faut choisir la source de vérité de la période de transition :
+Conséquences à connaître :
 
-| Option | Principe | Conséquence |
-|---|---|---|
-| **A. Amont maître** (transition) | Le pipeline reste la source ; il écrit directement dans le Postgres de prod (tâche planifiée Scalingo `cron.json`, pas de commit), dans une transaction « tout remplacer ». Le hook CMS est désactivé en prod. | Le back-office sert de préproduction éditoriale ; rien de ce qui est publié dans le CMS n'atteint AGIR. |
-| **B. CMS maître** | Le hook est la seule écriture ; le pipeline cesse d'écrire dans le store et ne fait plus que l'export Grist depuis le canonical. | Suppose que les dispositifs amont aient été importés dans Payload et que l'équipe édite désormais dans le back-office. |
-| **C. Fusion** | Le pipeline fait un upsert sans suppression ; le plus récent (`date_mise_a_jour`) gagne. | Complexe, suppressions amont non propagées, conflits silencieux. À éviter. |
+- **Une publication faite dans le back-office de prod ne survit pas à l'import suivant.** Le pipeline vide le store puis le réécrit depuis l'amont.
+- **L'identifiant canonique d'un même dispositif diffère selon l'écrivain** : le hook porte le cuid2 immuable du CMS (`assignCanonicalId`), l'import dérive le sien du slug (`SlugCanonicalId`). Après chaque import, les identifiants sont ceux dérivés du slug. Les exports AGIR et Grist étant clés sur le **slug**, l'impact reste interne ; un consommateur externe qui indexerait sur `id` verrait des variations.
 
-**Recommandation : A tant que le site TEE lit `programs.json` amont, puis B à la bascule éditoriale.** La décision relève du produit ; elle doit être prise avant la mise en service (étape 6 du plan) parce qu'elle conditionne la réécriture de `daily_data.yml`.
+**Bascule prévue vers le CMS maître (option B)** le jour où l'amont cesse d'être mis à jour (arrêt de la transformation Baserow vers `programs.json`) : il suffira alors de désactiver la tâche planifiée, le hook étant déjà en place.
+
+### Où tourne le pipeline
+
+**Tâche planifiée Scalingo** (`cron.json` à la racine, script `pnpm data:daily`), et non plus GitHub Actions :
+
+- elle s'exécute dans un conteneur one-off de l'app, avec ses variables d'environnement, donc avec l'accès à la base ; l'addon n'a pas besoin d'être exposé sur Internet ;
+- les logs partent dans les logs de l'application (`scalingo logs`), les tâches se listent avec `scalingo cron-tasks` ;
+- limites de la plateforme : 5 tâches par application, 10 minutes d'intervalle minimum, 12 heures d'exécution maximum, horaires en UTC, exécution non garantie (rares ratés) et décalage possible.
+
+Le pipeline lit désormais les deux fichiers amont **par HTTP** (`UpstreamJsonSource`, URLs surchargeables par `TEE_PROGRAMS_URL` / `TEE_REDIRECTS_URL`) au lieu de les écrire sur un disque éphémère, et **ne commite plus rien** : `daily_data.yml` est supprimé.
+
+**Surveillance** : Scalingo ne notifie pas nativement l'échec d'une tâche planifiée. Le script sort en code non nul en cas d'erreur, ce qui rend l'échec visible dans les logs. Un canal d'alerte (email ou Slack) pourra être branché sur le port d'observabilité `CanonicalEventSink` (ADR 0008 §6) si le besoin se confirme.
 
 ## Conséquences
 
