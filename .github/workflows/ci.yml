@@ -15,7 +15,9 @@ permissions:
 
 env:
   PAYLOAD_SECRET: ci-secret
-  DATABASE_URI: file:./tee-poc.db
+  # Lint, typecheck and the build only read the Payload config, they never
+  # connect: the jobs that do connect override this with their service URL.
+  DATABASE_URI: postgres://tee:tee@localhost:5432/tee
   NEXT_TELEMETRY_DISABLED: '1'
   NX_DAEMON: 'false'
 
@@ -48,6 +50,24 @@ jobs:
     name: Unit & integration tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: tee
+          POSTGRES_PASSWORD: tee
+          POSTGRES_DB: tee_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tee -d tee_test"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      # Integration tests boot a real Payload; vitest.global-setup.ts wipes the
+      # schemas of this database before the run.
+      TEST_DATABASE_URI: postgres://tee:tee@localhost:5432/tee_test
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-workspace
@@ -68,6 +88,23 @@ jobs:
     # Pin the tag to the @playwright/test version in the lockfile.
     container:
       image: mcr.microsoft.com/playwright:v1.58.2-noble
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: tee
+          POSTGRES_PASSWORD: tee
+          POSTGRES_DB: tee
+        options: >-
+          --health-cmd "pg_isready -U tee -d tee"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+    env:
+      # The job runs in a container, so the service is reached by its name, not
+      # by localhost.
+      DATABASE_URI: postgres://tee:tee@postgres:5432/tee
+      CANONICAL_DATABASE_URI: postgres://tee:tee@postgres:5432/tee
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-workspace
@@ -75,6 +112,19 @@ jobs:
       # `pnpm build` runs `pnpm generate` first, so no separate generate step.
       - name: Build
         run: pnpm build
+
+      # The database starts empty: the schema comes from the migrations and the
+      # data from the seed (no committed database fixture).
+      - name: Apply migrations
+        run: pnpm migrate
+
+      # In production mode: no dev-mode schema push (which would mark the
+      # database as pushed and make the server start ask for confirmation) and
+      # no dev user fixtures, which the e2e specs do not use.
+      - name: Seed
+        run: pnpm seed
+        env:
+          NODE_ENV: production
 
       - name: E2E tests
         run: pnpm e2e

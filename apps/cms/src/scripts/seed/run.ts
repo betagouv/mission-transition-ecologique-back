@@ -6,6 +6,7 @@ import { GeographicAreasSeed } from './geographic-areas'
 import { ProgramsSeed } from './programs'
 import { ProjectsSeed } from './projects'
 import { UsersSeed } from './users'
+import { Config } from '@/config/Config'
 
 const dirname = fileURLToPath(new URL('.', import.meta.url))
 const programsPath = resolve(dirname, '../../../../../docs/sources/programs.json')
@@ -15,5 +16,11 @@ const payload = await getPayload({ config })
 await new GeographicAreasSeed(payload).run()
 await new ProgramsSeed(payload, programsPath).run()
 await new ProjectsSeed(payload, projectsPath).run()
-await new UsersSeed(payload).run()
+// The user fixtures use the email as password: never seed them in production,
+// where the first super-admin is created by hand.
+if (Config.isProduction()) {
+  process.stdout.write('NODE_ENV=production : utilisateurs de dev non seedés.\n')
+} else {
+  await new UsersSeed(payload).run()
+}
 process.exit(0)

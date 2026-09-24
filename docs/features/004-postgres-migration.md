@@ -107,6 +107,14 @@ Sur Scalingo, le système de fichiers d'un conteneur est éphémère : les deux 
 12. CI : service `postgres` sur `test` et `e2e`, variables d'environnement, étapes `pnpm migrate` puis `pnpm seed` avant `pnpm e2e`. Supprimer la dépendance à `tee-poc.db` commitée.
 13. Lint, typecheck, tests unitaires, intégration et E2E verts.
 
+**Constats du lot 3 (fait) :**
+- `UsersSeed` est ignoré quand `NODE_ENV=production` (message explicite), le reste du seed tourne normalement.
+- Les tests d'intégration visent `tee_test` (surchargeable par `TEST_DATABASE_URI`, utilisé par la CI) ; `vitest.global-setup.ts` supprime les schémas `public` et `canonical` avant chaque exécution au lieu d'effacer des fichiers.
+- CI : service `postgres:17-alpine` sur les jobs `test` (accès par `localhost`) et `e2e` (job en conteneur, accès par le nom `postgres`). Le job E2E enchaîne build, `pnpm migrate`, `pnpm seed`, Playwright : plus aucune dépendance à une base commitée.
+- **Piège trouvé** : un seed lancé en mode dev pousse le schéma et marque la base comme « poussée en dev » (ligne `dev`, batch -1 de `payload_migrations`). Le démarrage suivant en production demande alors une confirmation interactive et le serveur ne répond jamais (E2E en échec sur un timeout). D'où le `NODE_ENV: production` sur l'étape de seed de la CI.
+- Vérifié en local dans les conditions de la CI : migrations puis seed sur base vierge, build de production, 7 tests E2E verts, 22 tests d'intégration verts.
+- `apps/cms/tee-poc.db` et `libs/canonical-store/canonical.db` ne servent plus à rien mais restent commités : leur suppression est au lot 5.
+
 ### Lot 4 : décision pipeline et Media
 
 14. **Trancher la question ouverte de l'ADR 0012** (qui écrit dans le canonical de prod) et passer l'ADR en « Accepté ».

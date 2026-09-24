@@ -14,10 +14,12 @@ export default defineConfig({
     hookTimeout: 180_000,
     teardownTimeout: 30_000,
     env: {
-      DATABASE_URI: 'file:./tee-pco-test.db',
-      // Isolate the canonical store so the publish hook never touches the
-      // committed libs/canonical-store/canonical.db during tests.
-      CANONICAL_DATABASE_URI: 'file:./canonical-test.db',
+      // Dedicated test database (created by docker-compose next to `tee`), wiped
+      // by vitest.global-setup.ts: a test run never touches the dev data. The
+      // canonical store shares it, in its own `canonical` schema.
+      DATABASE_URI: process.env['TEST_DATABASE_URI'] ?? 'postgres://tee:tee@localhost:5432/tee_test',
+      CANONICAL_DATABASE_URI:
+        process.env['TEST_DATABASE_URI'] ?? 'postgres://tee:tee@localhost:5432/tee_test',
       PAYLOAD_SECRET: 'test-secret-for-vitest',
     },
   },
