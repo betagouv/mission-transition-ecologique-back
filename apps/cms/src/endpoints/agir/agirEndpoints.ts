@@ -7,6 +7,7 @@ import {
   RemplaceParResolver,
 } from '@tee-backoffice/format-adapters'
 import type { Endpoint, PayloadRequest } from 'payload'
+import { Config } from '@/config/Config'
 import { getCanonicalProgramRepository } from '@/services/canonical/canonicalRepository'
 
 /**
@@ -28,7 +29,8 @@ function notFound(): Response {
  * explicit env override → forwarded headers set by the router → request origin.
  */
 function resolveBaseUrl(req: PayloadRequest): string {
-  if (process.env.PUBLIC_BASE_URL) return process.env.PUBLIC_BASE_URL
+  const configured = Config.publicBaseUrl()
+  if (configured) return configured
   const host = req.headers.get('x-forwarded-host')
   if (host) return `${req.headers.get('x-forwarded-proto') ?? 'https'}://${host}`
   return req.origin

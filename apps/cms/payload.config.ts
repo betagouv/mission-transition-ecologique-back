@@ -13,7 +13,7 @@ import { GeographicAreas } from '@/collections/GeographicAreas'
 import { ReviewComments } from '@/collections/ReviewComments'
 import { agirEndpoints } from '@/endpoints/agir/agirEndpoints'
 import { migrations } from '@/migrations'
-import { DatabaseUrl } from '@/utils/db/DatabaseUrl'
+import { Config } from '@/config/Config'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -50,7 +50,7 @@ export default buildConfig({
   ],
   endpoints: agirEndpoints,
   editor: lexicalEditor(),
-  secret: process.env.PAYLOAD_SECRET || '',
+  secret: Config.payloadSecret(),
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
@@ -59,9 +59,8 @@ export default buildConfig({
   // pushed automatically in dev only; elsewhere they ship as migrations.
   db: postgresAdapter({
     pool: {
-      connectionString: DatabaseUrl.resolve(),
-      // Small addon plans cap connections: keep the pool bounded.
-      max: Number(process.env.DATABASE_POOL_MAX) || 5,
+      connectionString: Config.databaseUrl(),
+      max: Config.databasePoolMax(),
     },
     migrationDir: path.resolve(dirname, 'src/migrations'),
     // Applied on server start when NODE_ENV=production (no postdeploy step).

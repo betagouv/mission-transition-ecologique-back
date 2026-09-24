@@ -43,13 +43,13 @@ Une seule instance, deux **schémas** Postgres pour garder la séparation de l'A
 
 Payload reste dans `public` : son option `schemaName` est **expérimentale** et n'apporte rien ici. Le store déclare son schéma avec `pgSchema('canonical')` de Drizzle. L'isolation se fait donc par le schéma, dans le code, les deux accès partageant la même URL.
 
-**Résolution de l'URL** : Scalingo injecte lui-même le DSN de l'addon dans `SCALINGO_POSTGRESQL_URL` sur l'app (prod et préprod), sans intervention. Le code lit donc `DATABASE_URI` en priorité (local, CI, ou surcharge ponctuelle) puis retombe sur `SCALINGO_POSTGRESQL_URL` ; si aucune des deux n'est définie, il lève une erreur explicite au démarrage. Rien n'est à configurer sur le serveur, et les deux variables applicatives (`DATABASE_URI` pour Payload, `CANONICAL_DATABASE_URI` pour le store) restent distinctes pour pouvoir séparer les bases plus tard sans toucher au code.
+**Résolution de l'URL** : Scalingo injecte lui-même le DSN de l'addon dans `SCALINGO_POSTGRESQL_URL` sur l'app (prod et préprod), sans intervention. La classe `apps/cms/src/config/Config.ts` (point d'entrée unique des variables d'environnement du CMS) lit donc `DATABASE_URI` en priorité (local, CI, ou surcharge ponctuelle) puis retombe sur `SCALINGO_POSTGRESQL_URL` ; si aucune des deux n'est définie, il lève une erreur explicite au démarrage. Rien n'est à configurer sur le serveur, et les deux variables applicatives (`DATABASE_URI` pour Payload, `CANONICAL_DATABASE_URI` pour le store) restent distinctes pour pouvoir séparer les bases plus tard sans toucher au code.
 
 Pour un changement de CMS, on supprime le schéma `public` et on garde `canonical`.
 
 ### 3. Payload : adaptateur Postgres et migrations versionnées
 
-- `@payloadcms/db-sqlite` est remplacé par **`@payloadcms/db-postgres`**, la chaîne de connexion venant de `DatabaseUrl.resolve()` (`DATABASE_URI`, sinon `SCALINGO_POSTGRESQL_URL`).
+- `@payloadcms/db-sqlite` est remplacé par **`@payloadcms/db-postgres`**, la chaîne de connexion venant de `Config.databaseUrl()` (`DATABASE_URI`, sinon `SCALINGO_POSTGRESQL_URL`).
 - Le mode `push` (synchronisation automatique du schéma) reste actif **en dev uniquement** (comportement par défaut de Payload, désactivé quand `NODE_ENV=production`).
 - En prod, le schéma évolue par **migrations versionnées** (`apps/cms/src/migrations/`, générées par `payload migrate:create`) et appliquées **au démarrage du serveur** via l'option `prodMigrations`. On n'a donc pas besoin d'étape `postdeploy` : un conteneur qui démarre applique d'abord les migrations en attente.
 - Nouvelle règle de travail : **tout changement de champ ou de collection s'accompagne d'une migration** commitée. Cela remplace le « reset + reseed » actuel (voir mémo sur les changements de type de champ).
