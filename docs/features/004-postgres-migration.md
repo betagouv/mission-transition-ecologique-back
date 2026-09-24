@@ -93,6 +93,13 @@ Sur Scalingo, le système de fichiers d'un conteneur est éphémère : les deux 
 8. Passer les tests du store sur PGlite ; vérifier upsert, `findBySlug`, `findAll` et l'événement `program_dropped` en lecture.
 9. Adapter `import-tee.ts` : remplacement complet transactionnel, pour refléter les suppressions amont sans effacer de fichier.
 
+**Constats du lot 2 (fait) :**
+- Port `CanonicalProgramRepository` enrichi d'un `deleteAll()` (reconstruction complète depuis l'amont), implémenté par le store et le fake du domaine.
+- `DrizzleCanonicalProgramRepository` accepte désormais soit une URL (`.create`), soit une connexion déjà ouverte (`.fromDb`), ce qui permet PGlite en test.
+- PGlite est isolé dans `src/testing/InMemoryCanonicalDb.ts`, accessible par le chemin `@tee-backoffice/canonical-store/testing` (nouvelle entrée dans `tsconfig.base.json` et `apps/cms/tsconfig.json`) pour ne pas l'embarquer dans le bundle applicatif.
+- `import:tee` vide le store après la validation des entrées (jamais avant), puis réécrit tout : plus besoin de supprimer un fichier au préalable. Vérifié idempotent (240 dispositifs sur deux exécutions consécutives).
+- `libs/canonical-store/canonical.db` (libSQL) est devenu inutilisable : sa suppression du dépôt est traitée au lot 5, avec celle de `tee-poc.db`.
+
 ### Lot 3 : seed, tests d'intégration, CI
 
 10. Rendre `UsersSeed` inactif en prod ; vérifier que `pnpm seed` complet fonctionne sur une base vide migrée.

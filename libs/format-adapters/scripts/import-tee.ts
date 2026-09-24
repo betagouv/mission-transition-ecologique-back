@@ -6,10 +6,10 @@
 //
 // Run from the repo root: `nx run @tee-backoffice/format-adapters:import:tee`.
 //
-// For a CLEAN rebuild that reflects upstream deletions, delete the store first
-// (the daily workflow does `rm -f libs/canonical-store/canonical.db` before this
-// step). Re-importing onto a non-empty store would upsert the current records
-// but leave previously-removed dispositifs behind — the script warns if so.
+// The import is a FULL REBUILD: the store is emptied before the upsert, so
+// dispositifs removed upstream disappear here too. Emptying happens only once
+// every record has been mapped and validated, to avoid wiping a good store on a
+// broken input.
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { CanonicalProgramService, type CanonicalProgramInput } from '@tee-backoffice/canonical'
@@ -51,13 +51,6 @@ async function main(): Promise<void> {
   const repository = await createCanonicalProgramRepository()
   const service = new CanonicalProgramService(repository)
 
-  const existing = await service.getAll()
-  if (existing.length > 0) {
-    process.stdout.write(
-      `⚠ ${existing.length.toString()} dispositifs déjà présents — pour une régénération propre (suppressions reflétées), supprimer canonical.db avant l'import.\n`,
-    )
-  }
-
   const importer = new TeeImporter()
   const now = new Date().toISOString()
 
@@ -78,7 +71,11 @@ async function main(): Promise<void> {
   const { tombstones, markedInPlace, skipped } = new RedirectTombstoneBuilder().build(redirects, inputsBySlug)
   inputs.push(...tombstones)
 
-  // Phase 3 — validate + upsert everything (real programs + tombstones).
+  // Phase 3 — replace the store content: empty it, then validate + upsert
+  // everything (real programs + tombstones).
+  const replaced = (await service.getAll()).length
+  await repository.deleteAll()
+
   let saved = 0
   const invalid: string[] = []
   for (const input of inputs) {
@@ -87,7 +84,9 @@ async function main(): Promise<void> {
     else invalid.push(result.slug || '(slug manquant)')
   }
 
-  process.stdout.write(`\n✓ ${saved.toString()}/${inputs.length.toString()} dispositifs importés dans le store canonical\n`)
+  process.stdout.write(
+    `\n✓ ${saved.toString()}/${inputs.length.toString()} dispositifs importés dans le store canonical (${replaced.toString()} remplacé(s))\n`,
+  )
   if (redirects.size > 0) {
     process.stdout.write(
       `Redirections : ${markedInPlace.length.toString()} marquée(s) en place, ${tombstones.length.toString()} tombstone(s) créé(s)${

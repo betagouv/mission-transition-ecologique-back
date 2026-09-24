@@ -1,14 +1,15 @@
 import { describe, it, expect } from 'vitest'
 import { CanonicalProgramService } from '@tee-backoffice/canonical'
 import { DrizzleCanonicalProgramRepository } from '@tee-backoffice/canonical-store'
+import { InMemoryCanonicalDb } from '@tee-backoffice/canonical-store/testing'
 import { ProgramCanonicalMapper } from '@/services/canonical/ProgramCanonicalMapper'
 import { CUID, StubRichTextToMarkdown, buildProgram } from './support/canonicalProgramFixtures'
 
 // Integration of the CMS path: Payload program → mapper (adapter) → domain
-// CanonicalProgramService → libSQL store. The domain validate/persist rule is
+// CanonicalProgramService → Postgres store (PGlite in memory here). The domain validate/persist rule is
 // unit tested in libs/canonical; here we exercise the full wiring.
 async function build() {
-  const repository = await DrizzleCanonicalProgramRepository.create(':memory:')
+  const repository = DrizzleCanonicalProgramRepository.fromDb(await InMemoryCanonicalDb.create())
   const service = new CanonicalProgramService(repository)
   const mapper = new ProgramCanonicalMapper(new StubRichTextToMarkdown())
   return { service, mapper, repository }

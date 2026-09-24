@@ -1,12 +1,9 @@
-import { afterEach, describe, it, expect } from 'vitest'
-import { rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { describe, it, expect } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { CanonicalProgramValidator } from '@tee-backoffice/canonical'
 import type { CanonicalEvent, CanonicalEventSink } from '@tee-backoffice/canonical'
 import { DrizzleCanonicalProgramRepository } from '../src/DrizzleCanonicalProgramRepository'
-import { createCanonicalDb } from '../src/db'
+import { InMemoryCanonicalDb } from '../src/testing/InMemoryCanonicalDb'
 import { canonicalPrograms } from '../src/schema'
 
 const validInput = {
@@ -24,19 +21,21 @@ const validInput = {
 
 const program = new CanonicalProgramValidator().parse(validInput)
 
-// Unique temp-file suffix per drift test, avoiding cross-worker name clashes.
-let driftCounter = 0
+async function newRepository(events?: CanonicalEventSink) {
+  const db = await InMemoryCanonicalDb.create()
+  return { db, repo: DrizzleCanonicalProgramRepository.fromDb(db, events) }
+}
 
 describe('DrizzleCanonicalProgramRepository', () => {
   it('saves then reads a program back by slug', async () => {
-    const repo = await DrizzleCanonicalProgramRepository.create(':memory:')
+    const { repo } = await newRepository()
     await repo.save(program)
     const found = await repo.findBySlug('diagnostic-energie-pme')
     expect(found?.toJSON()).toEqual(program.toJSON())
   })
 
   it('upserts on the same canonical id without error', async () => {
-    const repo = await DrizzleCanonicalProgramRepository.create(':memory:')
+    const { repo } = await newRepository()
     await repo.save(program)
     await repo.save(program)
     const found = await repo.findBySlug('diagnostic-energie-pme')
@@ -44,39 +43,33 @@ describe('DrizzleCanonicalProgramRepository', () => {
   })
 
   it('returns null for an unknown slug', async () => {
-    const repo = await DrizzleCanonicalProgramRepository.create(':memory:')
+    const { repo } = await newRepository()
     expect(await repo.findBySlug('inconnu')).toBeNull()
   })
 
   it('findAll returns every saved program', async () => {
-    const repo = await DrizzleCanonicalProgramRepository.create(':memory:')
+    const { repo } = await newRepository()
     expect(await repo.findAll()).toEqual([])
     await repo.save(program)
     const all = await repo.findAll()
     expect(all.map((p) => p.slug)).toEqual(['diagnostic-energie-pme'])
   })
 
+  it('deleteAll empties the store', async () => {
+    const { repo } = await newRepository()
+    await repo.save(program)
+    await repo.deleteAll()
+    expect(await repo.findAll()).toEqual([])
+  })
+
   describe('format drift on read', () => {
-    let dbPath: string | undefined
-
-    afterEach(() => {
-      if (dbPath) rmSync(dbPath, { force: true })
-      dbPath = undefined
-    })
-
-    // Corrupts the stored `data` for the saved program through a second
-    // connection to the same file, then returns repo + recorded events.
+    // Corrupts the stored `data` of the saved program, then returns the
+    // repository and the events it recorded.
     async function withCorruptedRow(corruptData: string) {
-      driftCounter += 1
-      dbPath = join(tmpdir(), `canonical-drift-${process.pid.toString()}-${driftCounter.toString()}.db`)
-      const url = `file:${dbPath}`
       const events: CanonicalEvent[] = []
-      const sink: CanonicalEventSink = { emit: (event) => events.push(event) }
-
-      const repo = await DrizzleCanonicalProgramRepository.create(url, sink)
+      const { db, repo } = await newRepository({ emit: (event) => events.push(event) })
       await repo.save(program)
 
-      const db = await createCanonicalDb(url)
       await db
         .update(canonicalPrograms)
         .set({ data: corruptData })

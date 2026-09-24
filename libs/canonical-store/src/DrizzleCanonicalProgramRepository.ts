@@ -10,7 +10,7 @@ import { createCanonicalDb, type CanonicalDb } from './db'
 import { canonicalPrograms } from './schema'
 
 /**
- * libSQL-backed canonical store. Implements the domain repository port without
+ * Postgres-backed canonical store. Implements the domain repository port without
  * any CMS dependency: the canonical is persisted as its own JSON, keyed by
  * canonical id, and rebuilt through the validator on read.
  *
@@ -25,12 +25,19 @@ export class DrizzleCanonicalProgramRepository implements CanonicalProgramReposi
     private readonly events: CanonicalEventSink,
   ) {}
 
-  /** Opens (and bootstraps) the canonical store at the given libSQL url. */
+  /** Opens (and bootstraps) the canonical store at the given Postgres url. */
   static async create(
     url: string,
     events: CanonicalEventSink = new NullEventSink(),
   ): Promise<DrizzleCanonicalProgramRepository> {
-    const db = await createCanonicalDb(url)
+    return DrizzleCanonicalProgramRepository.fromDb(await createCanonicalDb(url), events)
+  }
+
+  /** Wraps an already-open connection, e.g. the in-memory PGlite of the tests. */
+  static fromDb(
+    db: CanonicalDb,
+    events: CanonicalEventSink = new NullEventSink(),
+  ): DrizzleCanonicalProgramRepository {
     return new DrizzleCanonicalProgramRepository(db, new CanonicalProgramValidator(), events)
   }
 
@@ -49,6 +56,11 @@ export class DrizzleCanonicalProgramRepository implements CanonicalProgramReposi
         target: canonicalPrograms.canonicalId,
         set: { slug: row.slug, data: row.data, updatedAt: row.updatedAt },
       })
+  }
+
+  /** Empties the store, for a full rebuild from an upstream source. */
+  async deleteAll(): Promise<void> {
+    await this.db.delete(canonicalPrograms)
   }
 
   async findBySlug(slug: string): Promise<CanonicalProgram | null> {
