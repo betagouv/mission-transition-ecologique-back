@@ -13,6 +13,7 @@ import { GeographicAreas } from '@/collections/GeographicAreas'
 import { ReviewComments } from '@/collections/ReviewComments'
 import { agirEndpoints } from '@/endpoints/agir/agirEndpoints'
 import { migrations } from '@/migrations'
+import { DatabaseUrl } from '@/utils/db/DatabaseUrl'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -58,7 +59,7 @@ export default buildConfig({
   // pushed automatically in dev only; elsewhere they ship as migrations.
   db: postgresAdapter({
     pool: {
-      connectionString: process.env.DATABASE_URI,
+      connectionString: DatabaseUrl.resolve(),
       // Small addon plans cap connections: keep the pool bounded.
       max: Number(process.env.DATABASE_POOL_MAX) || 5,
     },

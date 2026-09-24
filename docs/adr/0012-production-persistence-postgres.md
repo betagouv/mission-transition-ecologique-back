@@ -41,13 +41,15 @@ Une seule instance, deux **schémas** Postgres pour garder la séparation de l'A
 | `public` | Payload | Tables générées par `@payloadcms/db-postgres` |
 | `canonical` | `libs/canonical-store` | Table `canonical.canonical_programs` |
 
-Payload reste dans `public` : son option `schemaName` est **expérimentale** et n'apporte rien ici. Le store déclare son schéma avec `pgSchema('canonical')` de Drizzle. Les deux variables `DATABASE_URI` et `CANONICAL_DATABASE_URI` pointent vers la même URL (`$SCALINGO_POSTGRESQL_URL`) ; l'isolation se fait par le schéma, dans le code. Elles restent distinctes pour pouvoir séparer les bases plus tard sans toucher au code.
+Payload reste dans `public` : son option `schemaName` est **expérimentale** et n'apporte rien ici. Le store déclare son schéma avec `pgSchema('canonical')` de Drizzle. L'isolation se fait donc par le schéma, dans le code, les deux accès partageant la même URL.
+
+**Résolution de l'URL** : Scalingo injecte lui-même le DSN de l'addon dans `SCALINGO_POSTGRESQL_URL` sur l'app (prod et préprod), sans intervention. Le code lit donc `DATABASE_URI` en priorité (local, CI, ou surcharge ponctuelle) puis retombe sur `SCALINGO_POSTGRESQL_URL` ; si aucune des deux n'est définie, il lève une erreur explicite au démarrage. Rien n'est à configurer sur le serveur, et les deux variables applicatives (`DATABASE_URI` pour Payload, `CANONICAL_DATABASE_URI` pour le store) restent distinctes pour pouvoir séparer les bases plus tard sans toucher au code.
 
 Pour un changement de CMS, on supprime le schéma `public` et on garde `canonical`.
 
 ### 3. Payload : adaptateur Postgres et migrations versionnées
 
-- `@payloadcms/db-sqlite` est remplacé par **`@payloadcms/db-postgres`** (`pool.connectionString = DATABASE_URI`).
+- `@payloadcms/db-sqlite` est remplacé par **`@payloadcms/db-postgres`**, la chaîne de connexion venant de `DatabaseUrl.resolve()` (`DATABASE_URI`, sinon `SCALINGO_POSTGRESQL_URL`).
 - Le mode `push` (synchronisation automatique du schéma) reste actif **en dev uniquement** (comportement par défaut de Payload, désactivé quand `NODE_ENV=production`).
 - En prod, le schéma évolue par **migrations versionnées** (`apps/cms/src/migrations/`, générées par `payload migrate:create`) et appliquées **au démarrage du serveur** via l'option `prodMigrations`. On n'a donc pas besoin d'étape `postdeploy` : un conteneur qui démarre applique d'abord les migrations en attente.
 - Nouvelle règle de travail : **tout changement de champ ou de collection s'accompagne d'une migration** commitée. Cela remplace le « reset + reseed » actuel (voir mémo sur les changements de type de champ).
@@ -56,7 +58,7 @@ Pour un changement de CMS, on supprime le schéma `public` et on garde `canonica
 
 - `schema.ts` passe de `sqlite-core` à `pg-core` (`pgSchema('canonical').table(...)`). Colonne `data` conservée en **`text`** : le repository (`JSON.stringify` / `JSON.parse`) ne change pas. Le passage en `jsonb` (requêtes sur le contenu) est hors périmètre.
 - `db.ts` passe de `@libsql/client` à `node-postgres` (`drizzle-orm/node-postgres`). L'amorçage idempotent reste en place (`CREATE SCHEMA IF NOT EXISTS canonical` + `CREATE TABLE IF NOT EXISTS`) : une table unique ne justifie pas encore `drizzle-kit`.
-- `createCanonicalProgramRepository()` garde son contrat (le CMS ne connaît toujours pas la localisation de la base). La résolution par défaut vers `libs/canonical-store/canonical.db` disparaît : `CANONICAL_DATABASE_URI` devient **obligatoire** et une absence lève une erreur explicite.
+- `createCanonicalProgramRepository()` garde son contrat (le CMS ne connaît toujours pas la localisation de la base). La résolution par défaut vers `libs/canonical-store/canonical.db` disparaît : le store lit `CANONICAL_DATABASE_URI`, sinon `SCALINGO_POSTGRESQL_URL`, et lève une erreur explicite si aucune n'est définie.
 - **Tests du store** : [PGlite](https://pglite.dev/) (Postgres compilé en WASM, en mémoire, supporté par `drizzle-orm/pglite`) remplace libSQL `:memory:`. On garde des tests rapides, sans Docker, sur le vrai dialecte. `DrizzleCanonicalProgramRepository` reçoit donc une instance Drizzle Postgres (node-postgres en prod, PGlite en test) plutôt qu'une URL.
 
 Je n'ai pas retenu un store multi-dialecte (libSQL ou Postgres selon le préfixe de l'URL) : il faudrait deux `schema.ts`, deux jeux de tests et une dérive quasi certaine.

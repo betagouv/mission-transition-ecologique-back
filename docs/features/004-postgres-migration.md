@@ -25,6 +25,7 @@ Sur Scalingo, le système de fichiers d'un conteneur est éphémère : les deux 
 | Payload | `@payloadcms/db-postgres`, `push` en dev seulement, migrations versionnées appliquées au démarrage via `prodMigrations` |
 | Store canonical | Dialecte unique `pg-core` + `node-postgres`, `data` reste en `text`, amorçage `CREATE SCHEMA/TABLE IF NOT EXISTS` |
 | Tests du store | PGlite en mémoire (remplace libSQL `:memory:`) |
+| URL de connexion | `DATABASE_URI` (local, CI) sinon `SCALINGO_POSTGRESQL_URL` (injecté par Scalingo en prod et préprod) ; erreur explicite si aucune |
 | Dev local | Conteneur Docker dédié (`docker-compose.yml`, service `postgres`) : bases `tee` (dev) et `tee_test` (tests d'intégration) créées au premier démarrage, volume nommé |
 | Préprod | Addon PostgreSQL Scalingo (plus petite offre), bascule répétée ici avant la prod |
 | CI | Service `postgres` sur `test` et `e2e` ; E2E = migrate + seed, plus de `.db` commitée |
@@ -42,6 +43,7 @@ Sur Scalingo, le système de fichiers d'un conteneur est éphémère : les deux 
 | `docker-compose.yml` | Créer : service `postgres` (version alignée sur l'addon), `POSTGRES_DB=tee`, port `5432`, volume nommé, healthcheck, montage de `docker/postgres/init/` |
 | `docker/postgres/init/01-create-test-db.sql` | Créer : `CREATE DATABASE tee_test` (exécuté une seule fois, au premier démarrage du volume) |
 | `apps/cms/payload.config.ts` | Modifier : `postgresAdapter({ pool: { connectionString, max }, migrationDir, prodMigrations })` |
+| `apps/cms/src/utils/db/DatabaseUrl.ts` | Créer : résout `DATABASE_URI`, sinon `SCALINGO_POSTGRESQL_URL` (injecté par Scalingo en prod et préprod), erreur explicite si aucune |
 | `apps/cms/src/migrations/` | Créer : migration initiale générée (`payload migrate:create initial`) + `index.ts` généré |
 | `apps/cms/project.json` | Modifier : targets `migrate`, `migrate:create`, `migrate:status` (`payload migrate…`, cwd projet) |
 | `apps/cms/.env.example` | Modifier : `DATABASE_URI` et `CANONICAL_DATABASE_URI` en `postgres://tee:tee@localhost:5432/tee` |
@@ -51,7 +53,7 @@ Sur Scalingo, le système de fichiers d'un conteneur est éphémère : les deux 
 | `libs/canonical-store/src/schema.ts` | Modifier : `pgSchema('canonical').table('canonical_programs', …)` |
 | `libs/canonical-store/src/db.ts` | Modifier : `drizzle-orm/node-postgres` + `Pool` borné, amorçage `CREATE SCHEMA IF NOT EXISTS` + `CREATE TABLE IF NOT EXISTS` |
 | `libs/canonical-store/src/DrizzleCanonicalProgramRepository.ts` | Modifier : `create(url)` ouvre un pool Postgres ; ajouter une construction depuis une instance Drizzle déjà ouverte (PGlite en test) |
-| `libs/canonical-store/src/createCanonicalProgramRepository.ts` | Modifier : `CANONICAL_DATABASE_URI` obligatoire, suppression du défaut ancré au workspace (`findWorkspaceRoot`) |
+| `libs/canonical-store/src/createCanonicalProgramRepository.ts` | Modifier : `CANONICAL_DATABASE_URI` sinon `SCALINGO_POSTGRESQL_URL`, erreur explicite si aucune ; suppression du défaut ancré au workspace (`findWorkspaceRoot`) |
 | `libs/canonical-store/tests/DrizzleCanonicalProgramRepository.spec.ts` | Modifier : PGlite au lieu de libSQL `:memory:` |
 | `apps/cms/tests/unit/CanonicalProgramService.spec.ts` | Modifier : idem si elle ouvre un store réel |
 | `libs/format-adapters/scripts/import-tee.ts` | Modifier : remplacement complet dans une transaction (`DELETE` + inserts) au lieu de dépendre d'un `rm -f` du fichier |
@@ -86,7 +88,7 @@ Sur Scalingo, le système de fichiers d'un conteneur est éphémère : les deux 
 ### Lot 2 : store canonical sur Postgres
 
 6. Réécrire `schema.ts` en `pgSchema('canonical')`, `db.ts` en `node-postgres` avec amorçage du schéma et de la table.
-7. Adapter `DrizzleCanonicalProgramRepository` (construction depuis une instance Drizzle Postgres) et `createCanonicalProgramRepository` (`CANONICAL_DATABASE_URI` obligatoire, erreur explicite sinon).
+7. Adapter `DrizzleCanonicalProgramRepository` (construction depuis une instance Drizzle Postgres) et `createCanonicalProgramRepository` (`CANONICAL_DATABASE_URI`, sinon `SCALINGO_POSTGRESQL_URL`, erreur explicite si aucune).
 8. Passer les tests du store sur PGlite ; vérifier upsert, `findBySlug`, `findAll` et l'événement `program_dropped` en lecture.
 9. Adapter `import-tee.ts` : remplacement complet transactionnel, pour refléter les suppressions amont sans effacer de fichier.
 
@@ -107,7 +109,7 @@ Sur Scalingo, le système de fichiers d'un conteneur est éphémère : les deux 
 
 Les étapes 17 à 21 se font d'abord sur la **préprod**, puis à l'identique sur la **prod** une fois la préprod validée.
 
-17. Provisionner l'addon PostgreSQL Scalingo ; définir `DATABASE_URI=$SCALINGO_POSTGRESQL_URL` et `CANONICAL_DATABASE_URI=$SCALINGO_POSTGRESQL_URL`.
+17. Provisionner l'addon PostgreSQL Scalingo. Aucune variable de base à définir : le DSN est injecté dans `SCALINGO_POSTGRESQL_URL` et l'app le lit en repli de `DATABASE_URI` / `CANONICAL_DATABASE_URI`.
 18. Vérifier que les dépendances nécessaires au seed (`tsx`, `nx`) sont disponibles dans le conteneur Scalingo (le buildpack Node peut élaguer les `devDependencies`) ; sinon prévoir un script de seed prod compilé ou déplacer les dépendances requises.
 19. Déployer : au démarrage, `prodMigrations` crée le schéma Payload ; le store amorce `canonical`.
 20. `scalingo run` : seed des référentiels (sans utilisateurs de dev), puis création manuelle du premier super-admin.
