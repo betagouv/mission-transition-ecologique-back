@@ -87,7 +87,7 @@ Le **routage** est déclaratif : `RoutingCanonicalEventSink` dispatche chaque é
 - Pas de suppression du canonical sur unpublish / archive (l'entrée reste).
 - Gate de validation **bloquante** au publish pas encore en place : aujourd'hui le hook émet un événement et n'écrit pas l'invalide (les drops écriture/lecture sont désormais observables, cf. §6).
 - Fiabilisation du **mapping durée** dans le seed (`ProgramMapper`) : certains dispositifs `etude` / `formation` n'ont pas de `duree` en source et sont donc rejetés par la règle `refineDuree` (volontairement conservée). Fix prévu dans une autre PR.
-- Migration **Postgres** (Payload + store) : réalisée, voir ADR 0012. Le store vit désormais dans le schéma `canonical` d'une base PostgreSQL ; les mentions de libSQL et du défaut `canonical.db` ci-dessus sont caduques.
+- Migration **Postgres** (Payload + store) : réalisée, voir ADR 0012. La base « dédiée » y devient un **schéma dédié** (`canonical`) dans la base de Payload : compromis assumé, réversible par simple configuration, documenté dans l'ADR 0012 §2. Le store vit désormais dans le schéma `canonical` d'une base PostgreSQL ; les mentions de libSQL et du défaut `canonical.db` ci-dessus sont caduques.
 
 **Contrainte technique**
 - Les libs `canonical` et `canonical-store` portent un `package.json` minimal avec `"type": "module"` : sans lui, node / `tsx` (le seed) traite leurs `.ts` comme du CommonJS et le linking des exports nommés ESM casse.

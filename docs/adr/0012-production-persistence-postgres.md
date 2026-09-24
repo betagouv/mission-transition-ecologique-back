@@ -47,6 +47,13 @@ Payload reste dans `public` : son option `schemaName` est **expérimentale** et 
 
 Pour un changement de CMS, on supprime le schéma `public` et on garde `canonical`.
 
+**Écart assumé vis-à-vis de l'ADR 0008**, qui prévoyait une base *dédiée* pour le canonical. Décision reconfirmée le 2026-09-24 : on reste sur deux schémas dans une même base.
+
+- *Ce qui est préservé* : l'anti-lock-in (le canonical survit à la suppression de `public`) et l'indépendance du code (les deux variables restent distinctes, le store crée son schéma tout seul).
+- *Ce qui est perdu* : les **sauvegardes et restaurations sont communes**. Restaurer Payload à une date antérieure ramène le canonical avec lui, sans restauration indépendante possible. S'y ajoutent l'absence d'isolation des ressources (une requête lourde du CMS pénalise les endpoints publics) et des droits d'accès séparés plus difficiles à poser.
+- *Pourquoi maintenant* : une base = un addon Scalingo, donc deux bases = double coût et double exploitation pour un POC. Un addon managé n'autorise par ailleurs généralement pas la création d'une seconde base dans la même instance (à vérifier au provisionnement).
+- *Porte de sortie* : passer à une base dédiée est un **changement de configuration, pas de code** : provisionner un second addon et pointer `CANONICAL_DATABASE_URI` dessus (en local, une base `tee_canonical` de plus dans le conteneur). À faire le jour où le canonical porte une obligation de service (consommation réelle par AGIR et Grist), où la restauration indépendante devient un besoin.
+
 ### 3. Payload : adaptateur Postgres et migrations versionnées
 
 - `@payloadcms/db-sqlite` est remplacé par **`@payloadcms/db-postgres`**, la chaîne de connexion venant de `Config.databaseUrl()` (`DATABASE_URI`, sinon `SCALINGO_POSTGRESQL_URL`).
@@ -127,4 +134,4 @@ Avec une base persistante partagée, le chemin 2 tel quel **écraserait** chaque
 - **Changer d'hébergeur pour un disque persistant** (VPS, instance avec volume) : garde SQLite, mais l'exploitation (sauvegardes, mises à jour, supervision) passe à ma charge. Disproportionné pour ce projet.
 - **MongoDB (addon Scalingo)** : supporté par Payload mais pas par Drizzle pour le store canonical ; on aurait deux moteurs.
 - **SQLite en local et en préprod, Postgres en prod seulement** : possible (adaptateur Payload choisi selon l'URL, deux implémentations du port `CanonicalProgramRepository`), mais la prod deviendrait le premier environnement où tournent les migrations Postgres et où se révèlent les écarts de comportement SQLite/Postgres (casse des recherches, tri, typage, contraintes, concurrence). La préprod ne jouerait plus son rôle de répétition, et le code du store serait en double. Écarté au profit de Postgres partout.
-- **Deux instances Postgres** (une par base) : isolation maximale mais double coût et double exploitation, sans bénéfice à ce stade ; les deux variables d'environnement distinctes permettent d'y venir plus tard.
+- **Deux instances Postgres** (une par base, comme prévu par l'ADR 0008) : isolation maximale, sauvegardes et restaurations indépendantes, mais double coût et double exploitation pour un POC. Écartée pour l'instant, avec une porte de sortie sans changement de code (voir §2).
