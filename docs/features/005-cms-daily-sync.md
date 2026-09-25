@@ -47,7 +47,7 @@ Constats (vérifiés sur la base de dev le 2026-09-25) :
 | Dispositifs disparus de l'amont | Revu le 2026-09-25 après lecture du dépôt TEE : chez TEE un dispositif **archivé reste dans `programs.json`** (s'il a déjà été en ligne), marqué seulement par sa `fin de validité` ; seuls les remplacés (via `redirects.json`) et les retirés en disparaissent. Donc : disparu **avec** redirection → `remplace` + `replacedBy` (reste dans AGIR, état `remplace`) ; disparu **sans** redirection → `annule` (retiré du canonical et de l'API, fiche et historique gardés dans le CMS) |
 | Dispositifs archivés | Restent exposés dans l'API AGIR (`statut_edition: 'pret_prod'`, `statut_dispositif: 'archive'`), comme le site TEE qui garde la page avec un bandeau « Date de fin de l'aide ». Un dispositif présent en amont avec une fin de validité passée reste `publie` avec sa `date_cloture` |
 | Dispositifs créés uniquement dans le CMS | Aucun en prod à ce jour ; la sync ne touche qu'aux slugs présents en amont ou déjà importés |
-| Copie locale | JSON versionné, rafraîchi par un script `data:snapshot` ; utilisé **en dev uniquement** si GitHub est injoignable. **En prod, GitHub injoignable = échec du job** (code de sortie non nul), jamais de repli |
+| Copie locale | JSON versionné, rafraîchi par un script `data:snapshot` ; utilisé **sur demande explicite** (`TEE_UPSTREAM_LOCAL_FALLBACK=1`, usage local) si GitHub est en panne. **Refusé sur Scalingo** : GitHub injoignable = échec du job (code de sortie non nul), jamais de repli |
 | Lecteur du format amont | Un seul : `TeeImporter` (brut → `CanonicalProgramInput` non validé), suivi d'un `CanonicalToPayloadMapper` (canonical → Payload). Suppression du lecteur propre au seed |
 | Identité canonical | `canonicalId = SlugCanonicalId(slug)` à la création par la sync, pour aligner les deux écrivains |
 | Écritures | Idempotentes, uniquement sur différence (empreinte du contenu importé) : pas de version Payload ni d'écriture canonical si rien n'a changé |
@@ -71,7 +71,7 @@ Constats (vérifiés sur la base de dev le 2026-09-25) :
 | `apps/cms/src/services/workflow/SystemWorkflowContext.ts` | **Fait** : marqueur `req.context` des écritures de scripts ; déjà posé par `ProgramImporter` (seed) |
 | `apps/cms/src/collections/Programs.ts` | **Fait (lot 3)** : champ `temporarilyUnavailable` (sidebar). Reste lot 5 : `linkedProjects` en `join` sur `projects.programs` |
 | `apps/cms/src/services/canonical/ProgramCanonicalMapper.ts` | **Fait** : `temporarilyUnavailable` → `temporairement_indisponible` (dispositif en ligne seulement) |
-| `libs/format-adapters/src/tee/UpstreamJsonSource.ts` | **Fait** : `projects.json`, options objet, timeout réseau, repli local optionnel ; `forEnvironment()` l'active seulement hors production |
+| `libs/format-adapters/src/tee/UpstreamJsonSource.ts` | **Fait** : `projects.json`, options objet, timeout réseau, repli local optionnel ; `fromSettings()` l'active seulement si `UpstreamFallbackSettings` le permet (opt-in, refusé sur Scalingo, pannes seulement) |
 | `libs/format-adapters/src/tee/LocalJsonSnapshot.ts`, `UpstreamFile.ts` | **Fait** : lecture/écriture de la copie versionnée |
 | `libs/format-adapters/static/upstream/` | **Fait** : copies versionnées `programs.json` (276), `projects.json` (91), `redirects.json` au 2026-09-25 |
 | `libs/format-adapters/scripts/snapshot-upstream.ts` | **Fait** : rafraîchit les copies depuis GitHub, sans repli (`pnpm data:snapshot`, target `snapshot:upstream`) |
@@ -80,7 +80,7 @@ Constats (vérifiés sur la base de dev le 2026-09-25) :
 | `apps/cms/src/services/canonical/rich-text/` | **Fait** : port `MarkdownToRichText` + `PayloadMarkdownToRichText` |
 | `apps/cms/src/scripts/sync/` | Créer : commande de sync CMS (upsert sur différence, archivage des disparus, projets), partagée par le seed et le daily |
 | `apps/cms/src/scripts/seed/programs/` | **Fait** : `TeeImporter` → `CanonicalToPayloadMapper` ; `ProgramMapper`, `VariantMapper`, `types.ts` supprimés. Reste lot 4 : passer par la commande de sync |
-| `apps/cms/src/scripts/seed/projects/`, `run.ts` | **Fait** : source `UpstreamJsonSource.forEnvironment(Config.isProduction())` |
+| `apps/cms/src/scripts/seed/projects/`, `run.ts` | **Fait** : source `UpstreamJsonSource.fromSettings(Config.upstreamFallback())` |
 | `apps/cms/tests/` | **Fait** : `unit/CanonicalToPayloadMapper.spec.ts`, `int/upstream-roundtrip.int.spec.ts` (aller-retour sur les 276 dispositifs, en intégration car il faut Payload pour Lexical et les relations) |
 | `apps/cms/src/migrations/` | **Fait (lot 3)** : `20260925_131616_program_temporarily_unavailable`. Reste lot 5 : suppression de `linkedProjects` dans `programs_rels` / `_programs_v_rels` |
 | `package.json`, `cron.json` | Modifier : `data:daily` = sync CMS → vérification CMS = canonical → `grist-setup` → `export:grist --push` ; script `data:snapshot` |
@@ -97,9 +97,9 @@ Constats (vérifiés sur la base de dev le 2026-09-25) :
 4. Tests : `CanonicalSyncPolicy.spec.ts` (unitaire), `canonical-sync.int.spec.ts` (intégration Postgres).
 
 ### Lot 2 : source amont : **fait**
-1. `UpstreamJsonSource` : `projects.json`, repli local en dev uniquement (erreur franche en prod), timeout réseau de 30 s.
+1. `UpstreamJsonSource` : `projects.json`, repli local sur demande explicite, refusé sur Scalingo (erreur franche), timeout réseau de 30 s.
 2. Script `data:snapshot` et copies versionnées dans `libs/format-adapters/static/upstream/` (distinctes des fixtures de test `static/input/*-tests.json`).
-3. `import-tee.ts --remote` passe par `forEnvironment()`.
+3. `import-tee.ts --remote` passe par `fromSettings(UpstreamFallbackSettings.fromEnv())`.
 4. Reste à faire hors code : ajouter `TEE_PROJECTS_URL` (commenté) dans `apps/cms/.env.example`.
 
 ### Lot 3 : un seul lecteur : **fait**

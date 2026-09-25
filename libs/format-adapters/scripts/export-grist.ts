@@ -10,6 +10,7 @@
 // GRIST_API_KEY (and optionally GRIST_BASE_URL) to be set.
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { CanonicalProgramService } from '@tee-backoffice/canonical'
 import { createCanonicalProgramRepository } from '@tee-backoffice/canonical-store'
 import { GristExporter } from '../src/schema/GristExporter'
@@ -18,7 +19,10 @@ import type { TechnicalData } from '../src/grist/grist.types'
 import { GristConfig } from '../src/grist/GristConfig'
 import { GristClient } from '../src/grist/GristClient'
 
-const OUTPUT_PATH = resolve(process.cwd(), 'static/exports/grist-records.json')
+// Resolved from this file, not the cwd: `pnpm data:daily` runs from the repo root, nx from the lib.
+const LIB_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+
+const OUTPUT_PATH = resolve(LIB_ROOT, 'static/exports/grist-records.json')
 
 function reportFit(records: { technical: string }[]): void {
   let core = 0

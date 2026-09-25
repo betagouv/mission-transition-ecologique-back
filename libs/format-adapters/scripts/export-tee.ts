@@ -11,12 +11,16 @@
 // The feed export itself is permanent.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { CanonicalProgramService } from '@tee-backoffice/canonical'
 import { createCanonicalProgramRepository } from '@tee-backoffice/canonical-store'
 import { TeeExporter } from '../src/tee/TeeExporter'
 
-const OUTPUT_PATH = resolve(process.cwd(), 'static/exports/tee-programs.json')
-const REFERENCE_PATH = resolve(process.cwd(), 'static/input/programs-tests.json')
+// Resolved from this file, not the cwd: `pnpm data:daily` runs from the repo root, nx from the lib.
+const LIB_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+
+const OUTPUT_PATH = resolve(LIB_ROOT, 'static/exports/tee-programs.json')
+const REFERENCE_PATH = resolve(LIB_ROOT, 'static/input/programs-tests.json')
 
 // Keys we never compare (not part of the canonical model).
 const EXCLUDED_KEYS = ['publicodes', 'activable en autonomie', 'illustration']

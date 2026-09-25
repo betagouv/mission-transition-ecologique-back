@@ -24,6 +24,7 @@
     "export:tee": "nx run @tee-backoffice/format-adapters:export:tee",
     "data:snapshot": "tsx libs/format-adapters/scripts/snapshot-upstream.ts",
     "data:daily": "tsx libs/format-adapters/scripts/import-tee.ts --remote && tsx libs/format-adapters/scripts/grist-setup.ts && tsx libs/format-adapters/scripts/export-grist.ts --push",
+    "data:daily:dev": "nx run @tee-backoffice/format-adapters:import:tee --remote && nx run @tee-backoffice/format-adapters:setup:grist && nx run @tee-backoffice/format-adapters:export:grist --push",
     "test": "nx run @tee-backoffice/cms:test",
     "test:unit": "nx run @tee-backoffice/cms:test:unit"
   },

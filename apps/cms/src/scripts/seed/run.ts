@@ -8,9 +8,9 @@ import type { SourceProject } from './projects/types'
 import { UsersSeed } from './users'
 import { Config } from '@/config/Config'
 
-// Upstream GitHub files are the source of truth; the versioned local copy is a
-// development fallback only, production fails instead.
-const source = UpstreamJsonSource.forEnvironment(Config.isProduction())
+// Upstream GitHub files are the source of truth; the versioned local copy is an
+// opt-in development fallback, refused on Scalingo.
+const source = UpstreamJsonSource.fromSettings(Config.upstreamFallback())
 process.stdout.write(`Source : ${source.describe()}\n`)
 const programs = await source.programs<TeeRecord[]>()
 const projects = await source.projects<SourceProject[]>()

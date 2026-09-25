@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { ExportLogger } from '../shared/ExportLogger'
 import { LocalJsonSnapshot } from './LocalJsonSnapshot'
+import { UpstreamFallbackSettings } from './UpstreamFallbackSettings'
 import { UpstreamJsonSource } from './UpstreamJsonSource'
 
 const ok = (body: unknown) => Promise.resolve(new Response(JSON.stringify(body), { status: 200 }))
@@ -106,14 +107,34 @@ describe('UpstreamJsonSource', () => {
     })
   })
 
-  describe('forEnvironment', () => {
-    it("n'a pas de copie locale en production", () => {
-      const source = UpstreamJsonSource.forEnvironment(true)
+  describe('repli limité aux pannes', () => {
+    it('ne bascule pas sur un 404 : le fichier a vraiment bougé en amont', async () => {
+      const source = new UpstreamJsonSource({
+        fetchImpl: () => Promise.resolve(new Response('', { status: 404 })),
+        fallback: snapshotWith({ programs: [{ id: 'local' }] }),
+        logger: new RecordingLogger(),
+      })
+      await expect(source.programs()).rejects.toMatchObject({ status: 404 })
+    })
+
+    it('ne bascule pas sur un JSON invalide', async () => {
+      const source = new UpstreamJsonSource({
+        fetchImpl: () => Promise.resolve(new Response('{tronqué', { status: 200 })),
+        fallback: snapshotWith({ programs: [{ id: 'local' }] }),
+        logger: new RecordingLogger(),
+      })
+      await expect(source.programs()).rejects.toThrow(SyntaxError)
+    })
+  })
+
+  describe('fromSettings', () => {
+    it("n'a pas de copie locale sans TEE_UPSTREAM_LOCAL_FALLBACK", () => {
+      const source = UpstreamJsonSource.fromSettings(UpstreamFallbackSettings.fromEnv({}))
       expect(source.describe()).not.toContain('copie locale')
     })
 
-    it('active la copie locale hors production', () => {
-      const source = UpstreamJsonSource.forEnvironment(false)
+    it('active la copie locale quand TEE_UPSTREAM_LOCAL_FALLBACK est posée', () => {
+      const source = UpstreamJsonSource.fromSettings(UpstreamFallbackSettings.fromEnv({ TEE_UPSTREAM_LOCAL_FALLBACK: '1' }))
       expect(source.describe()).toContain(LocalJsonSnapshot.defaultDirectory())
     })
   })

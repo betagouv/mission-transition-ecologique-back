@@ -32,9 +32,9 @@ Le point d'entrée est `apps/cms/src/scripts/seed/run.ts`.
 
 ## Source des données
 
-- `UpstreamJsonSource.forEnvironment(Config.isProduction())` lit les fichiers sur GitHub (timeout 30 s).
-- **Hors production**, si GitHub est injoignable, repli sur la copie versionnée `libs/format-adapters/static/upstream/`, avec un avertissement.
-- **En production**, pas de repli : le seed échoue.
+- `UpstreamJsonSource.fromSettings(Config.upstreamFallback())` lit les fichiers sur GitHub (timeout 30 s).
+- **Avec `TEE_UPSTREAM_LOCAL_FALLBACK=1`** dans le `.env` (usage local), une panne GitHub (réseau, timeout, 5xx) bascule sur la copie versionnée `libs/format-adapters/static/upstream/`, avec un avertissement. Un 404 ou un JSON invalide échoue toujours : c'est un vrai changement amont.
+- **Sans la variable**, pas de repli : le seed échoue. Sur Scalingo, la variable est **refusée** (erreur explicite), même si elle est posée.
 - `docs/sources/` n'est plus lu par le code (archive de la reprise historique).
 
 ---

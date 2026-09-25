@@ -13,7 +13,8 @@
 // untouched, non-zero exit) when it holds no valid program or would remove more
 // than the guard allows; `--allow-mass-removal` lifts that ceiling on purpose.
 import { existsSync, readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import {
   CanonicalProgramService,
   CanonicalSnapshotGuard,
@@ -26,20 +27,24 @@ import { RedirectTombstoneBuilder } from '../src/tee/RedirectTombstoneBuilder'
 import { SlugCanonicalId } from '../src/tee/SlugCanonicalId'
 import { TeeImporter } from '../src/tee/TeeImporter'
 import type { TeeRecord } from '../src/tee/TeeImporter'
+import { UpstreamFallbackSettings } from '../src/tee/UpstreamFallbackSettings'
 import { UpstreamJsonSource } from '../src/tee/UpstreamJsonSource'
 
 const REMOTE = process.argv.includes('--remote')
 const ALLOW_MASS_REMOVAL = process.argv.includes('--allow-mass-removal')
 
+// Resolved from this file, not the cwd: `pnpm data:daily` runs from the repo root, nx from the lib.
+const LIB_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+
 // Live upstream input (the daily workflow overwrites it). Falls back to the
 // frozen round-trip fixture so a local run works without fetching first.
-const LIVE_PATH = resolve(process.cwd(), 'static/input/programs.json')
-const FIXTURE_PATH = resolve(process.cwd(), 'static/input/programs-tests.json')
+const LIVE_PATH = resolve(LIB_ROOT, 'static/input/programs.json')
+const FIXTURE_PATH = resolve(LIB_ROOT, 'static/input/programs-tests.json')
 
 // Slug redirects (former → current), fetched next to programs.json by the daily
 // workflow. Falls back to the frozen fixture; absent → redirects step skipped.
-const LIVE_REDIRECTS_PATH = resolve(process.cwd(), 'static/input/redirects.json')
-const FIXTURE_REDIRECTS_PATH = resolve(process.cwd(), 'static/input/redirects-tests.json')
+const LIVE_REDIRECTS_PATH = resolve(LIB_ROOT, 'static/input/redirects.json')
+const FIXTURE_REDIRECTS_PATH = resolve(LIB_ROOT, 'static/input/redirects-tests.json')
 
 type RedirectsFile = ConstructorParameters<typeof ProgramRedirects>[0]
 
@@ -47,7 +52,7 @@ type RedirectsFile = ConstructorParameters<typeof ProgramRedirects>[0]
 async function loadInputs(): Promise<{ records: TeeRecord[]; redirects: ProgramRedirects }> {
   if (!REMOTE) return { records: loadLocalRecords(), redirects: loadLocalRedirects() }
 
-  const source = UpstreamJsonSource.forEnvironment()
+  const source = UpstreamJsonSource.fromSettings(UpstreamFallbackSettings.fromEnv())
   process.stdout.write(`Source distante : ${source.describe()}\n`)
   const records = await source.programs<TeeRecord[]>()
   const redirects = await source.redirects<RedirectsFile>()

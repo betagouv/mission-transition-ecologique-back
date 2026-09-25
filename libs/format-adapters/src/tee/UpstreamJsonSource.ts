@@ -2,6 +2,7 @@ import { ConsoleExportLogger } from '../shared/ConsoleExportLogger'
 import type { ExportLogger } from '../shared/ExportLogger'
 import { LocalJsonSnapshot } from './LocalJsonSnapshot'
 import { UpstreamFetchError } from './UpstreamFetchError'
+import type { UpstreamFallbackSettings } from './UpstreamFallbackSettings'
 import type { UpstreamFile } from './UpstreamFile'
 
 export interface UpstreamJsonSourceOptions {
@@ -48,12 +49,12 @@ export class UpstreamJsonSource {
     this.timeoutMs = options.timeoutMs ?? 30_000
   }
 
-  /** Source for the current runtime: the local fallback is enabled everywhere but in production. */
-  static forEnvironment(
-    isProduction: boolean = process.env['NODE_ENV'] === 'production',
+  /** Source whose local fallback is enabled only when the settings explicitly allow it. */
+  static fromSettings(
+    settings: UpstreamFallbackSettings,
     options: Omit<UpstreamJsonSourceOptions, 'fallback'> = {},
   ): UpstreamJsonSource {
-    const fallback = isProduction ? undefined : new LocalJsonSnapshot()
+    const fallback = settings.allowsLocalFallback() ? new LocalJsonSnapshot() : undefined
     return new UpstreamJsonSource({ ...options, fallback })
   }
 
@@ -92,12 +93,21 @@ export class UpstreamJsonSource {
     try {
       return await this.fetchJson<T>(this.urls[file])
     } catch (error) {
-      if (!this.fallback?.has(file)) throw error
+      if (!UpstreamJsonSource.isOutage(error) || !this.fallback?.has(file)) throw error
       this.logger.warn(
         `Amont injoignable (${(error as Error).message}), copie locale utilisée : ${this.fallback.path(file)}`,
       )
       return this.fallback.read<T>(file)
     }
+  }
+
+  /**
+   * Only an outage (network, timeout, 5xx) may be papered over by the local
+   * copy: a 404 or a broken JSON is a real upstream change and must surface.
+   */
+  private static isOutage(error: unknown): boolean {
+    if (error instanceof UpstreamFetchError) return error.status >= 500
+    return !(error instanceof SyntaxError)
   }
 
   private async fetchJson<T>(url: string): Promise<T> {

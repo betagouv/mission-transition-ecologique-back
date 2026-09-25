@@ -197,7 +197,15 @@ l'amont `programs.json` comme source de vérité du flux open data.
 ## Pipeline quotidien (tâche planifiée Scalingo)
 
 `cron.json` à la racine lance `pnpm data:daily` chaque nuit (03h17 UTC) dans un
-conteneur one-off de l'application :
+conteneur one-off de l'application. La commande appelle les scripts en `tsx`
+direct, **sans nx** : `nx` est une devDependency (absente du conteneur de prod),
+`tsx` une dépendance de prod. Aucun `.env` n'est lu, les variables viennent de
+Scalingo. En local, lancer **`pnpm data:daily:dev`** : même enchaînement via les
+targets nx, qui chargent le `.env` racine (voir `.env.example`). Les scripts
+résolvent leurs chemins (`static/input/`, `static/exports/`) depuis leur propre
+fichier : le résultat ne dépend pas du répertoire de lancement.
+
+Étapes :
 
 1. `import:tee --remote` : lecture HTTP de `programs.json` **et** `redirects.json`
    amont (`UpstreamJsonSource`, betagouv/mission-transition-ecologique), puis

@@ -1,3 +1,5 @@
+import { UpstreamFallbackSettings } from '@tee-backoffice/format-adapters'
+
 export interface ObjectStorageSettings {
   bucket: string
   accessKeyId: string
@@ -43,6 +45,11 @@ export class Config {
 
   static isProduction(): boolean {
     return process.env.NODE_ENV === 'production'
+  }
+
+  /** Local copy of the upstream files as a fallback: opt-in (TEE_UPSTREAM_LOCAL_FALLBACK), refused on Scalingo. */
+  static upstreamFallback(): UpstreamFallbackSettings {
+    return UpstreamFallbackSettings.fromEnv(process.env)
   }
 
   /**
