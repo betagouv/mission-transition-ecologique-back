@@ -27,7 +27,7 @@ describe('canonical sync hooks', () => {
   beforeAll(async () => {
     const payloadConfig = await config
     payload = await getPayload({ config: payloadConfig })
-    await new ProgramsSeed(payload, programsFixture).run()
+    await ProgramsSeed.fromFile(payload, programsFixture).run()
     canonical = await getCanonicalProgramRepository(payload.logger)
 
     const result = await payload.find({

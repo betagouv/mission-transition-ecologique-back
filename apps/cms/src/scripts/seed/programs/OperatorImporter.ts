@@ -1,11 +1,12 @@
 import type { Payload } from 'payload'
-import type { SourceProgram } from './types'
+import type { CanonicalProgramInput } from '@tee-backoffice/canonical'
 import { Slugify } from '@/utils/Slugify'
 
+/** Upserts every operator named by the programs (contact, others, variants) and returns name → id. */
 export class OperatorImporter {
   constructor(private readonly payload: Payload) {}
 
-  async import(programs: SourceProgram[]): Promise<Map<string, number>> {
+  async import(programs: CanonicalProgramInput[]): Promise<Map<string, number>> {
     const slugToName = this.buildSlugToNameMap(programs)
     process.stdout.write(`Found ${slugToName.size.toString()} unique operators. Upserting...\n`)
 
@@ -15,16 +16,16 @@ export class OperatorImporter {
     return idByName
   }
 
-  private buildSlugToNameMap(programs: SourceProgram[]): Map<string, string> {
+  private buildSlugToNameMap(programs: CanonicalProgramInput[]): Map<string, string> {
     const slugToName = new Map<string, string>()
     for (const program of programs) {
-      const variantOperators = (program['champs conditionnels'] ?? []).flatMap((variant) => [
-        variant['opérateur de contact'],
-        ...(variant['autres opérateurs'] ?? []),
+      const variantOperators = (program.variantes ?? []).flatMap((variante) => [
+        variante.modifications.operateurs?.contact?.nom,
+        ...(variante.modifications.operateurs?.autres ?? []).map((operateur) => operateur.nom),
       ])
       const allNames = [
-        program['opérateur de contact'],
-        ...(program['autres opérateurs'] ?? []),
+        program.operateurs.contact.nom,
+        ...(program.operateurs.autres ?? []).map((operateur) => operateur.nom),
         ...variantOperators,
       ].filter((name): name is string => Boolean(name))
       for (const name of allNames) {

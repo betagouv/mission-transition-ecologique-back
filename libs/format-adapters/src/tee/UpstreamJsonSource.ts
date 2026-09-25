@@ -49,10 +49,10 @@ export class UpstreamJsonSource {
 
   /** Source for the current runtime: the local fallback is enabled everywhere but in production. */
   static forEnvironment(
-    env: NodeJS.ProcessEnv = process.env,
+    isProduction: boolean = process.env['NODE_ENV'] === 'production',
     options: Omit<UpstreamJsonSourceOptions, 'fallback'> = {},
   ): UpstreamJsonSource {
-    const fallback = env['NODE_ENV'] === 'production' ? undefined : new LocalJsonSnapshot()
+    const fallback = isProduction ? undefined : new LocalJsonSnapshot()
     return new UpstreamJsonSource({ ...options, fallback })
   }
 

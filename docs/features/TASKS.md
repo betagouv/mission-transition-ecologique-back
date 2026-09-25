@@ -6,4 +6,4 @@
 | 002 | Workflow de validation des programmes | done (superseded par 003) | — | 2026-03-16 |
 | 003 | Workflow des programmes — états étendus | done | feat/workflow | 2026-04-30 |
 | 004 | Migration PostgreSQL (persistance de production) | in progress (lots 1 à 3 faits) | feat/postgres-migration | 2026-09-22 |
-| 005 | Synchronisation quotidienne du CMS depuis l'amont | in progress (lots 1 et 2 faits) | feat/cms-upstream-sync | 2026-09-25 |
+| 005 | Synchronisation quotidienne du CMS depuis l'amont | in progress (lots 1 à 3 faits) | feat/cms-upstream-sync | 2026-09-25 |

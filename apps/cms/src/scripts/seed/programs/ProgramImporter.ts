@@ -1,6 +1,6 @@
 import type { Payload } from 'payload'
-import type { SourceProgram } from './types'
-import type { ProgramMapper } from './ProgramMapper'
+import type { CanonicalProgramInput } from '@tee-backoffice/canonical'
+import type { CanonicalToPayloadMapper } from '@/services/canonical/to-payload/CanonicalToPayloadMapper'
 import { ProgressBar } from '@/utils/ProgressBar'
 import { SystemWorkflowContext } from '@/services/workflow/SystemWorkflowContext'
 
@@ -8,56 +8,48 @@ export interface ImportResult {
   created: number
   updated: number
   errors: number
+  /** Occurrences of each data-loss warning raised by the mapper. */
+  warnings: Map<string, number>
 }
 
 export class ProgramImporter {
   constructor(
     private readonly payload: Payload,
-    private readonly mapper: ProgramMapper,
+    private readonly mapper: CanonicalToPayloadMapper,
   ) {}
 
-  async import(
-    programs: SourceProgram[],
-    operatorIdByName: Map<string, number>,
-    regionIdByName: Map<string, number>,
-  ): Promise<ImportResult> {
-    const existingIdBySlug = await this.fetchExisting(programs.map((p) => p.id))
+  async import(programs: CanonicalProgramInput[]): Promise<ImportResult> {
+    const existingIdBySlug = await this.fetchExisting(programs.map((p) => p.slug))
 
     const progress = new ProgressBar(programs.length)
-    let created = 0
-    let updated = 0
-    let errors = 0
+    const result: ImportResult = { created: 0, updated: 0, errors: 0, warnings: new Map() }
 
     await Promise.all(programs.map(async (program) => {
       try {
-        const data = this.mapper.map(program, operatorIdByName, regionIdByName)
-        if (!data) {
-          process.stderr.write(`Operator not found for program "${program.id}" — skipping.\n`)
-          errors++
-          return
-        }
+        const { data, warnings } = this.mapper.map(program)
+        for (const warning of warnings) result.warnings.set(warning, (result.warnings.get(warning) ?? 0) + 1)
 
         // The source status wins over the editorial workflow (e.g. re-publishing
         // an archived program), so the import writes as the system.
         const context = SystemWorkflowContext.create()
-        const existingId = existingIdBySlug.get(program.id)
+        const existingId = existingIdBySlug.get(program.slug)
         if (existingId !== undefined) {
           await this.payload.update({ collection: 'programs', id: existingId, data, draft: true, context })
-          updated++
+          result.updated++
         } else {
           await this.payload.create({ collection: 'programs', data, draft: true, context })
-          created++
+          result.created++
         }
       } catch (err) {
-        process.stderr.write(`Error importing program "${program.id}": ${String(err)}\n`)
-        errors++
+        process.stderr.write(`Error importing program "${program.slug}": ${String(err)}\n`)
+        result.errors++
       } finally {
         progress.tick()
       }
     }))
 
     progress.done()
-    return { created, updated, errors }
+    return result
   }
 
   private async fetchExisting(slugs: string[]): Promise<Map<string, number>> {

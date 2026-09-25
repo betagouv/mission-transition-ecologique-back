@@ -78,12 +78,12 @@ describe('UpstreamJsonSource', () => {
 
   describe('forEnvironment', () => {
     it("n'a pas de copie locale en production", () => {
-      const source = UpstreamJsonSource.forEnvironment({ NODE_ENV: 'production' })
+      const source = UpstreamJsonSource.forEnvironment(true)
       expect(source.describe()).not.toContain('copie locale')
     })
 
     it('active la copie locale hors production', () => {
-      const source = UpstreamJsonSource.forEnvironment({ NODE_ENV: 'development' })
+      const source = UpstreamJsonSource.forEnvironment(false)
       expect(source.describe()).toContain(LocalJsonSnapshot.defaultDirectory())
     })
   })

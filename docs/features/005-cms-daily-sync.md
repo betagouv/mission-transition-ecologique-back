@@ -69,19 +69,20 @@ Constats (vérifiés sur la base de dev le 2026-09-25) :
 | `libs/canonical-store/src/DrizzleCanonicalProgramRepository.ts` | **Fait** : `delete` |
 | `apps/cms/src/hooks/programs/beforeChangeWorkflow.ts` | **Fait** : identité système (`SystemWorkflowContext`) dispensée du contrôle de rôle et des règles de transition |
 | `apps/cms/src/services/workflow/SystemWorkflowContext.ts` | **Fait** : marqueur `req.context` des écritures de scripts ; déjà posé par `ProgramImporter` (seed) |
-| `apps/cms/src/collections/Programs.ts` | Modifier : champ « temporairement indisponible », `linkedProjects` en `join` sur `projects.programs` |
-| `apps/cms/src/services/canonical/ProgramCanonicalMapper.ts` | Modifier : statut indisponible |
+| `apps/cms/src/collections/Programs.ts` | **Fait (lot 3)** : champ `temporarilyUnavailable` (sidebar). Reste lot 5 : `linkedProjects` en `join` sur `projects.programs` |
+| `apps/cms/src/services/canonical/ProgramCanonicalMapper.ts` | **Fait** : `temporarilyUnavailable` → `temporairement_indisponible` (dispositif en ligne seulement) |
 | `libs/format-adapters/src/tee/UpstreamJsonSource.ts` | **Fait** : `projects.json`, options objet, timeout réseau, repli local optionnel ; `forEnvironment()` l'active seulement hors production |
 | `libs/format-adapters/src/tee/LocalJsonSnapshot.ts`, `UpstreamFile.ts` | **Fait** : lecture/écriture de la copie versionnée |
 | `libs/format-adapters/static/upstream/` | **Fait** : copies versionnées `programs.json` (276), `projects.json` (91), `redirects.json` au 2026-09-25 |
 | `libs/format-adapters/scripts/snapshot-upstream.ts` | **Fait** : rafraîchit les copies depuis GitHub, sans repli (`pnpm data:snapshot`, target `snapshot:upstream`) |
-| `libs/format-adapters/src/tee/TeeImporter.ts` (et `ThemeMapper`, `TypeAideMapper`, `RegionNameResolver`) | Modifier : retirer les mentions « ONE-SHOT » ; code permanent |
-| `apps/cms/src/services/canonical/CanonicalToPayloadMapper.ts` | Créer : `CanonicalProgramInput` → données Payload (markdown → Lexical, opérateurs, zones via `inseeCode`, variantes, thèmes) |
+| `libs/format-adapters/src/tee/TeeImporter.ts` (et `ThemeMapper`, `TypeAideMapper`, `RegionNameResolver`) | **Fait** : mentions « ONE-SHOT » retirées ; code permanent |
+| `apps/cms/src/services/canonical/to-payload/` | **Fait** : `CanonicalToPayloadMapper`, `CanonicalVariantToPayloadMapper`, port `ProgramRelations` + `PayloadProgramRelations`, `GeographicAreaResolver` (déplacé du seed) ; avertissements pour les données non portables |
+| `apps/cms/src/services/canonical/rich-text/` | **Fait** : port `MarkdownToRichText` + `PayloadMarkdownToRichText` |
 | `apps/cms/src/scripts/sync/` | Créer : commande de sync CMS (upsert sur différence, archivage des disparus, projets), partagée par le seed et le daily |
-| `apps/cms/src/scripts/seed/programs/` | Modifier : passe par la sync ; supprimer `ProgramMapper` (partie lecture), `VariantMapper`, `GeographicAreaResolver`, `types.ts` |
-| `apps/cms/src/scripts/seed/projects/` | Modifier : source `UpstreamJsonSource` |
-| `apps/cms/tests/unit/` | Créer : test aller-retour `ProgramCanonicalMapper(CanonicalToPayloadMapper(x)) ≈ x` sur tout l'amont, tests du hook |
-| `apps/cms/src/migrations/` | Créer : migration (champ indisponible, suppression de `linkedProjects` dans `programs_rels` / `_programs_v_rels`) |
+| `apps/cms/src/scripts/seed/programs/` | **Fait** : `TeeImporter` → `CanonicalToPayloadMapper` ; `ProgramMapper`, `VariantMapper`, `types.ts` supprimés. Reste lot 4 : passer par la commande de sync |
+| `apps/cms/src/scripts/seed/projects/`, `run.ts` | **Fait** : source `UpstreamJsonSource.forEnvironment(Config.isProduction())` |
+| `apps/cms/tests/` | **Fait** : `unit/CanonicalToPayloadMapper.spec.ts`, `int/upstream-roundtrip.int.spec.ts` (aller-retour sur les 276 dispositifs, en intégration car il faut Payload pour Lexical et les relations) |
+| `apps/cms/src/migrations/` | **Fait (lot 3)** : `20260925_131616_program_temporarily_unavailable`. Reste lot 5 : suppression de `linkedProjects` dans `programs_rels` / `_programs_v_rels` |
 | `package.json`, `cron.json` | Modifier : `data:daily` = sync CMS → vérification CMS = canonical → `grist-setup` → `export:grist --push` ; script `data:snapshot` |
 | `CLAUDE.md`, `docs/adr/0012-*.md`, `docs/adr/0003-*.md`, `docs/adr/0008-*.md` | Modifier : nouveau flux, avenant « amont → CMS → canonical », liaison `join` |
 
@@ -101,10 +102,11 @@ Constats (vérifiés sur la base de dev le 2026-09-25) :
 3. `import-tee.ts --remote` passe par `forEnvironment()`.
 4. Reste à faire hors code : ajouter `TEE_PROJECTS_URL` (commenté) dans `apps/cms/.env.example`.
 
-### Lot 3 : un seul lecteur
-1. Champ « temporairement indisponible » + migration.
-2. `CanonicalToPayloadMapper` + test aller-retour sur les 276 dispositifs amont.
-3. Le seed passe par `TeeImporter` + `CanonicalToPayloadMapper` ; suppression de l'ancien lecteur (corrige les thématiques).
+### Lot 3 : un seul lecteur : **fait**
+1. Champ `temporarilyUnavailable` + migration (générée sur une base vierge `tee_migrate`).
+2. `CanonicalToPayloadMapper` + test aller-retour sur les 276 dispositifs amont : aucun écart sur les champs portés.
+3. Le seed passe par `TeeImporter` + `CanonicalToPayloadMapper` ; ancien lecteur supprimé. Corrige les thématiques (276/276 renseignées, vérifié par le test aller-retour) et le contact « formulaire » (82 dispositifs, perdu auparavant) ; les secteurs viennent des sections NAF structurées au lieu de mots-clés.
+4. Pertes restantes, signalées en fin de seed : voir `docs/context/seed.md` (micro-entreprises, montant de financement d'une étude, liens conseiller, durée de prêt, zones d'outre-mer en variante).
 
 ### Lot 4 : sync quotidienne du CMS
 1. Commande de sync idempotente (écriture sur différence, `canonicalId` dérivé du slug, disparus traités selon `redirects.json` : `remplace` ou `annule`, projets).

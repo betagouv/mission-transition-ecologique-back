@@ -25,11 +25,9 @@ interface SourceCompany {
 }
 
 /**
- * ⚠️ ONE-SHOT IMPORT (Baserow → Payload) — ephemeral code. Used only for the
- * single import of the historical TEE data into the pivot. Once the migration is
- * done, the only remaining direction is export (pivot → TEE). DELETE after
- * migration together with the whole import path (see the cleanup checklist in
- * README.md).
+ * The single reader of the upstream `programs.json` format: the daily canonical
+ * import and the CMS seed (through `CanonicalToPayloadMapper`) both go through
+ * it, so a format change is handled in one place.
  *
  * Rebuilds a raw `CanonicalProgramInput` from an iso `programs.json` record
  * (without `publicodes` or `activable en autonomie`). Inverse of

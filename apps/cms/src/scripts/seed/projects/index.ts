@@ -9,13 +9,16 @@ import { LinkedProjectsUpdater } from './LinkedProjectsUpdater'
 export class ProjectsSeed {
   constructor(
     private readonly payload: Payload,
-    private readonly projectsPath: string,
+    private readonly projects: SourceProject[],
   ) {}
 
+  static fromFile(payload: Payload, path: string): ProjectsSeed {
+    return new ProjectsSeed(payload, JSON.parse(readFileSync(path, 'utf-8')) as SourceProject[])
+  }
+
   async run(): Promise<void> {
-    process.stdout.write('Reading projects.json...\n')
-    const projects = JSON.parse(readFileSync(this.projectsPath, 'utf-8')) as SourceProject[]
-    process.stdout.write(`Found ${projects.length.toString()} projects in source file.\n`)
+    const projects = this.projects
+    process.stdout.write(`Found ${projects.length.toString()} projects in source.\n`)
 
     const programsResult = await this.payload.find({
       collection: 'programs',

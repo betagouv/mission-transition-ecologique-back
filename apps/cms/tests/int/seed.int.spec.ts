@@ -3,12 +3,13 @@ import type { Payload } from 'payload'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { describe, it, beforeAll, expect } from 'vitest'
+import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import { fileURLToPath } from 'url'
 import { GeographicAreasSeed } from '@/scripts/seed/geographic-areas'
 import { DEPARTEMENTS, REGIONS } from '@/scripts/seed/geographic-areas/fixtures'
 import { ProgramsSeed } from '@/scripts/seed/programs'
-import { GeographicAreaResolver } from '@/scripts/seed/programs/GeographicAreaResolver'
+import { GeographicAreaResolver } from '@/services/canonical/to-payload/GeographicAreaResolver'
 
 const fixturesDir = fileURLToPath(new URL('../fixtures', import.meta.url))
 const programsFixture = resolve(fixturesDir, 'programs.json')
@@ -19,33 +20,57 @@ const EXPECTED_GEOGRAPHIC_AREAS = REGIONS.length + DEPARTEMENTS.length
 
 let payload: Payload
 
+// Other test files seed the same database: scope every count to this fixture.
+const fixture = JSON.parse(readFileSync(programsFixture, 'utf-8')) as {
+  id: string
+  'opérateur de contact': string
+  'autres opérateurs'?: string[]
+  eligibilityData?: { priorityObjectives?: string[] }
+}[]
+const fixturePrograms = { slug: { in: fixture.map((program) => program.id) } }
+const fixtureOperatorNames = [
+  ...new Set(fixture.flatMap((program) => [program['opérateur de contact'], ...(program['autres opérateurs'] ?? [])])),
+]
+
 describe('ProgramsSeed', () => {
   beforeAll(async () => {
     const payloadConfig = await config
     payload = await getPayload({ config: payloadConfig })
 
-    await new ProgramsSeed(payload, programsFixture).run()
+    await ProgramsSeed.fromFile(payload, programsFixture).run()
   }, 60_000)
 
   it(`creates ${FIXTURE_OPERATORS} unique operators`, async () => {
-    const result = await payload.find({ collection: 'operators', limit: 0 })
+    const result = await payload.find({
+      collection: 'operators',
+      where: { name: { in: fixtureOperatorNames } },
+      limit: 0,
+    })
     expect(result.totalDocs).toBe(FIXTURE_OPERATORS)
   })
 
   it(`creates ${FIXTURE_PROGRAMS} programs`, async () => {
-    const result = await payload.find({ collection: 'programs', limit: 0 })
+    const result = await payload.find({ collection: 'programs', where: fixturePrograms, limit: 0 })
     expect(result.totalDocs).toBe(FIXTURE_PROGRAMS)
   })
 
+  it('fills the themes from the upstream priority objectives', async () => {
+    const result = await payload.find({ collection: 'programs', where: fixturePrograms, limit: 0, depth: 0 })
+    for (const program of result.docs) {
+      const source = fixture.find((entry) => entry.id === program.slug)
+      expect([...(program.themes ?? [])].sort()).toEqual([...(source?.eligibilityData?.priorityObjectives ?? [])].sort())
+    }
+  })
+
   it('each program has an operator', async () => {
-    const result = await payload.find({ collection: 'programs', limit: FIXTURE_PROGRAMS, depth: 0 })
+    const result = await payload.find({ collection: 'programs', where: fixturePrograms, limit: 0, depth: 0 })
     for (const program of result.docs) {
       expect(program.operator).toBeDefined()
     }
   })
 
   it('description is a valid lexical editor state', async () => {
-    const result = await payload.find({ collection: 'programs', limit: 1 })
+    const result = await payload.find({ collection: 'programs', where: fixturePrograms, limit: 1 })
     const program = result.docs[0]
     expect(program?.description).toMatchObject({
       root: expect.objectContaining({
@@ -56,7 +81,7 @@ describe('ProgramsSeed', () => {
   })
 
   it('description contains lexical nodes from markdown (not flat text)', async () => {
-    const result = await payload.find({ collection: 'programs', limit: FIXTURE_PROGRAMS })
+    const result = await payload.find({ collection: 'programs', where: fixturePrograms, limit: 0 })
     const hasStructuredNodes = result.docs.some((program) => {
       const root = (program.description as { root?: { children?: Array<{ type: string }> } })?.root
       return root?.children?.some((node) => ['list', 'heading'].includes(node.type))
@@ -65,7 +90,7 @@ describe('ProgramsSeed', () => {
   })
 
   it('step descriptions are valid lexical editor states (not flat text)', async () => {
-    const result = await payload.find({ collection: 'programs', limit: FIXTURE_PROGRAMS })
+    const result = await payload.find({ collection: 'programs', where: fixturePrograms, limit: 0 })
     const programWithSteps = result.docs.find(
       (program) => Array.isArray(program.steps) && program.steps.length > 0,
     )
@@ -93,7 +118,7 @@ describe('ProgramsSeed', () => {
   })
 
   it('covers all 5 aid types', async () => {
-    const result = await payload.find({ collection: 'programs', limit: FIXTURE_PROGRAMS })
+    const result = await payload.find({ collection: 'programs', where: fixturePrograms, limit: 0 })
     const aidTypes = new Set(result.docs.map((p) => p.aidType))
     expect(aidTypes).toContain('diagnostic-etude')
     expect(aidTypes).toContain('financement')
@@ -106,7 +131,7 @@ describe('ProgramsSeed', () => {
     const before = await payload.find({ collection: 'programs', limit: 0 })
     const beforeOperators = await payload.find({ collection: 'operators', limit: 0 })
 
-    await new ProgramsSeed(payload, programsFixture).run()
+    await ProgramsSeed.fromFile(payload, programsFixture).run()
 
     const after = await payload.find({ collection: 'programs', limit: 0 })
     const afterOperators = await payload.find({ collection: 'operators', limit: 0 })
