@@ -1,5 +1,6 @@
 import { buildConfig } from 'payload'
 import { postgresAdapter } from '@payloadcms/db-postgres'
+import { s3Storage } from '@payloadcms/storage-s3'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -17,6 +18,28 @@ import { Config } from '@/config/Config'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
+
+// Scalingo's filesystem is throwaway, so Media uploads go to object storage
+// (Scaleway, S3 API). Without a configured bucket (development), Payload keeps
+// its local disk storage. Registered as a plugin: this Payload version has no
+// top-level `storage` key yet.
+const objectStorage = Config.objectStorage()
+const storagePlugins = objectStorage
+  ? [
+      s3Storage({
+        collections: { media: true },
+        bucket: objectStorage.bucket,
+        config: {
+          endpoint: objectStorage.endpoint,
+          region: objectStorage.region,
+          credentials: {
+            accessKeyId: objectStorage.accessKeyId,
+            secretAccessKey: objectStorage.secretAccessKey,
+          },
+        },
+      }),
+    ]
+  : []
 
 export default buildConfig({
   admin: {
@@ -79,5 +102,5 @@ export default buildConfig({
       },
     },
   },
-  plugins: [],
+  plugins: storagePlugins,
 })

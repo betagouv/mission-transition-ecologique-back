@@ -30,7 +30,7 @@ Sur Scalingo, le système de fichiers d'un conteneur est éphémère : les deux 
 | Préprod | Addon PostgreSQL Scalingo (plus petite offre), bascule répétée ici avant la prod |
 | CI | Service `postgres` sur `test` et `e2e` ; E2E = migrate + seed, plus de `.db` commitée |
 | Seed prod | `UsersSeed` jamais exécuté en prod ; premier super-admin créé à la main |
-| Media | `@payloadcms/storage-s3` vers un bucket français (lot séparé possible) |
+| Media | `@payloadcms/storage-s3` vers **Scaleway Object Storage** (`fr-par`), activé par la présence de `S3_BUCKET` ; sans bucket, stockage disque inchangé |
 | Pipeline quotidien | Option A tranchée : l'amont reste maître, tâche planifiée Scalingo (`cron.json`), hook CMS laissé actif (ses écritures sont écrasées par l'import) |
 
 ---
@@ -43,7 +43,7 @@ Sur Scalingo, le système de fichiers d'un conteneur est éphémère : les deux 
 | `docker-compose.yml` | Créer : service `postgres` (version alignée sur l'addon), `POSTGRES_DB=tee`, port `5432`, volume nommé, healthcheck, montage de `docker/postgres/init/` |
 | `docker/postgres/init/01-create-test-db.sql` | Créer : `CREATE DATABASE tee_test` (exécuté une seule fois, au premier démarrage du volume) |
 | `apps/cms/payload.config.ts` | Modifier : `postgresAdapter({ pool: { connectionString, max }, migrationDir, prodMigrations })` |
-| `apps/cms/src/config/Config.ts` | Créer : point d'entrée unique des variables d'environnement du CMS (URL de base avec repli `SCALINGO_POSTGRESQL_URL`, taille du pool, secret Payload, URL publique), avec valeurs par défaut et erreurs explicites |
+| `apps/cms/src/config/Config.ts` | Créer (+ `objectStorage()` pour Scaleway) : point d'entrée unique des variables d'environnement du CMS (URL de base avec repli `SCALINGO_POSTGRESQL_URL`, taille du pool, secret Payload, URL publique), avec valeurs par défaut et erreurs explicites |
 | `apps/cms/src/endpoints/agir/agirEndpoints.ts` | Modifier : `PUBLIC_BASE_URL` lu via `Config` |
 | `apps/cms/src/migrations/` | Créer : migration initiale générée (`payload migrate:create initial`) + `index.ts` généré |
 | `apps/cms/project.json` | Modifier : targets `migrate`, `migrate:create`, `migrate:status` (`payload migrate…`, cwd projet) |
@@ -123,7 +123,7 @@ Sur Scalingo, le système de fichiers d'un conteneur est éphémère : les deux 
 
 14. ~~Trancher la question ouverte de l'ADR 0012~~ **fait** : option A (amont maître), hook laissé actif, ADR passé en « Accepté ».
 15. **Fait** : `daily_data.yml` supprimé, remplacé par `cron.json` (tâche planifiée Scalingo) et le script `pnpm data:daily` (import distant, amorçage Grist, export Grist avec push). Les fichiers amont sont lus par HTTP (`UpstreamJsonSource`), plus aucun commit de données. Le hook reste actif, conformément à la décision.
-16. Media : ajouter `@payloadcms/storage-s3` (bucket, clés en variables d'environnement Scalingo). Lot livrable séparément.
+16. **Fait** : `@payloadcms/storage-s3` branché sur Scaleway Object Storage, activé par la présence de `S3_BUCKET` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` (`Config.objectStorage()`), sinon stockage disque local inchangé. Vérifié dans les deux cas au démarrage (`media adapter = local disk` / `s3`). Reste à créer le bucket et à poser les variables sur les apps Scalingo.
 
 ### Lot 5 : bascule (préprod, puis prod)
 

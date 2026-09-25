@@ -1,3 +1,11 @@
+export interface ObjectStorageSettings {
+  bucket: string
+  accessKeyId: string
+  secretAccessKey: string
+  region: string
+  endpoint: string
+}
+
 /**
  * Single entry point for every environment variable read by the CMS: no
  * `process.env` access anywhere else, so the settings, their defaults and their
@@ -35,6 +43,26 @@ export class Config {
 
   static isProduction(): boolean {
     return process.env.NODE_ENV === 'production'
+  }
+
+  /**
+   * Object storage for the Media uploads (Scaleway Object Storage, S3 API).
+   * Undefined when the bucket is not configured: uploads then stay on the local
+   * disk, which suits development but loses them at every Scalingo deploy.
+   */
+  static objectStorage(): ObjectStorageSettings | undefined {
+    const bucket = Config.string('S3_BUCKET')
+    const accessKeyId = Config.string('S3_ACCESS_KEY_ID')
+    const secretAccessKey = Config.string('S3_SECRET_ACCESS_KEY')
+    if (!bucket || !accessKeyId || !secretAccessKey) return undefined
+
+    return {
+      bucket,
+      accessKeyId,
+      secretAccessKey,
+      region: Config.string('S3_REGION') ?? 'fr-par',
+      endpoint: Config.string('S3_ENDPOINT') ?? 'https://s3.fr-par.scw.cloud',
+    }
   }
 
   private static string(name: string): string | undefined {

@@ -89,9 +89,15 @@ La première mise en service se fait par un script ponctuel lancé dans un conte
 
 Si des éditions faites en prod doivent être conservées avant la bascule, on ne les récupère pas depuis le conteneur (éphémère) : les ressaisir ou les exporter via l'API avant de basculer.
 
-### 7. Uploads `Media` : stockage objet S3
+### 7. Uploads `Media` : stockage objet Scaleway
 
-Même problème, solution distincte : plugin **`@payloadcms/storage-s3`** vers un bucket S3 hébergé en France (Outscale, Scaleway ou OVH, à arbitrer selon le marché ADEME et beta.gouv). Scalingo ne fournit pas de stockage objet. Ce point peut être livré séparément de la bascule Postgres.
+Même problème, solution distincte : Scalingo ne fournit **aucun stockage objet** (ni addon, ni service intégré), donc les fichiers de la collection `Media` disparaissent à chaque déploiement comme le faisait la base.
+
+Décision (2026-09-25) : **Scaleway Object Storage** (API S3, région `fr-par` par défaut), via le plugin **`@payloadcms/storage-s3`**, enregistré dans `plugins` (cette version de Payload n'a pas encore de clé `storage` de premier niveau).
+
+- Activation par la seule présence de `S3_BUCKET`, `S3_ACCESS_KEY_ID` et `S3_SECRET_ACCESS_KEY` (`Config.objectStorage()`). `S3_REGION` et `S3_ENDPOINT` ont des valeurs par défaut Scaleway Paris.
+- **Sans bucket configuré, rien ne change** : Payload garde son stockage disque, ce qui convient au développement, à la CI et aux tests.
+- Les fichiers restent servis **par Payload** (contrôle d'accès natif conservé) : le bucket n'a pas besoin d'être public. Passer en accès direct (`disablePayloadAccessControl`) est possible plus tard si la bande passante le justifie.
 
 ## Qui écrit dans le canonical de production (tranché le 2026-09-24)
 
