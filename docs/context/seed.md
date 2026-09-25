@@ -8,10 +8,11 @@ Le script `apps/cms/src/seed/programs.ts` importe les 234 programmes d'aide à l
 
 ## Prérequis
 
-1. La base de données doit exister et être migrée (lancer `pnpm nx run @tee-backoffice/cms:dev` une première fois suffit).
-2. Les variables d'environnement doivent être configurées (`.env.local` dans `apps/cms/`) :
+1. Le PostgreSQL local doit tourner (`pnpm db:up`) et la base doit avoir son schéma : en dev, lancer `pnpm dev` une fois suffit (mode `push`) ; sur une base vierge hors dev, `pnpm migrate`.
+2. Les variables d'environnement doivent être configurées (`.env` dans `apps/cms/`, voir `.env.example`) :
    ```
-   DATABASE_URI=file:./tee-poc.db
+   DATABASE_URI=postgres://tee:tee@localhost:5432/tee
+   CANONICAL_DATABASE_URI=postgres://tee:tee@localhost:5432/tee
    PAYLOAD_SECRET=<une-chaine-secrete>
    ```
 
@@ -70,7 +71,7 @@ Les tests d'intégration du seed se trouvent dans `apps/cms/tests/int/seed.int.s
 pnpm nx run @tee-backoffice/cms:test
 ```
 
-Ils vérifient sur une base SQLite isolée (`test.db`) :
+Ils vérifient sur la base PostgreSQL de test (`tee_test`, vidée avant chaque exécution) :
 - Les opérateurs sont créés
 - Les programmes sont créés et chacun possède un opérateur
 - Le champ `description` est un état Lexical valide (nœud `root`)

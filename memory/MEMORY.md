@@ -9,7 +9,7 @@
 - **Code** (variables, fonctions, classes, fichiers, commentaires inline) : anglais
 
 ## Stack
-- NX 22 + PayloadCMS 3 + Next.js 15 + SQLite (POC)
+- NX 22 + PayloadCMS 3 + Next.js 15 + PostgreSQL (Docker en local, addon Scalingo en prod : ADR 0012)
 - pnpm 10, Node.js v24 (nvm)
 - ESLint 9 flat config, TypeScript strict
 

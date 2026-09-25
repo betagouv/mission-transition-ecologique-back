@@ -13,7 +13,7 @@ description: >
 
 Créer un git worktree dans `../{project-name}-{branch-slug}` et l'initialiser
 complètement pour qu'il soit prêt à développer immédiatement (dépendances,
-artefacts Payload générés, base SQLite seedée, port de dev propre).
+artefacts Payload générés, base PostgreSQL dédiée et seedée, port de dev propre).
 
 ## Paramètre requis
 
@@ -58,17 +58,21 @@ Le `<branch-name-résolu>` peut contenir `/` (ex: `feat/operator-form`) — le
 script remplace automatiquement `/` par `-` pour nommer le dossier worktree.
 
 Le script effectue dans l'ordre — **toutes les étapes sont obligatoires** (les
-artefacts Payload et la base SQLite sont gitignorés et absents du worktree sans
-génération/seed explicites) :
+artefacts Payload sont gitignorés et absents du worktree sans génération
+explicite, et la base du worktree part vide) :
 
 1. `git worktree add` (crée la branche si elle n'existe pas)
 2. Copie des fichiers gitignored essentiels : `.env` (racine, si présent) et
-   `apps/cms/.env`. Les bases `tee-*.db` ne sont **pas** copiées : chaque
-   worktree obtient une base SQLite fraîche, seedée à l'étape 5.
+   `apps/cms/.env`.
+2b. **Base PostgreSQL dédiée** : démarrage du conteneur Docker, création de la
+   base `tee_<branche>` et réécriture de `DATABASE_URI` / `CANONICAL_DATABASE_URI`
+   dans le `apps/cms/.env` copié. Sans cette étape, tous les worktrees
+   écriraient dans la base de dev commune (un seed effacerait les données des
+   autres branches). Docker indisponible : le script avertit et poursuit.
 3. `pnpm install` — **obligatoire** (node_modules absent)
 4. `pnpm generate` — **obligatoire** : régénère `apps/cms/payload-types.ts` et
    `importMap.js`, tous deux gitignorés donc absents du worktree
-5. `pnpm seed` — **lancé par défaut** (base SQLite vide au départ), sauté avec
+5. `pnpm seed` — **lancé par défaut** (base vide au départ), sauté avec
    `--no-seed`. Peuple opérateurs, programmes, projets, zones géographiques et
    utilisateurs de dev (`super.admin@tee.test`, etc.). **Non bloquant** : si le
    seed échoue, le worktree reste utilisable, le script affiche un `WARNING` et

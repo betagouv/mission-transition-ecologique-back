@@ -36,6 +36,8 @@ libs/canonical-store (infra libSQL/Drizzle)  ──▶ libs/canonical (domaine)
 
 ### 3. Store libSQL/Drizzle indépendant de Payload (`libs/canonical-store`)
 
+> ⚠️ **Caduc depuis l'ADR 0012** : le store tourne désormais sur **PostgreSQL**, dans un schéma dédié `canonical` de la base de Payload. Le principe (adaptateur d'un port, indépendant du CMS) reste valable ; libSQL, le fichier `canonical.db` et sa résolution par défaut ne le sont plus.
+
 - `DrizzleCanonicalProgramRepository` implémente le port (libSQL + Drizzle).
 - Base **dédiée** `canonical.db` (variable `CANONICAL_DATABASE_URI`, défaut `file:./canonical.db`), **distincte** de la base Payload : la donnée canonique survit à un changement de CMS.
 - La **localisation de la DB est portée par le store** : la factory `createCanonicalProgramRepository()` résout elle-même `CANONICAL_DATABASE_URI` et retourne un repository prêt à l'emploi. Le CMS demande un repository configuré sans connaître l'emplacement ni le driver.
@@ -77,7 +79,7 @@ Le **routage** est déclaratif : `RoutingCanonicalEventSink` dispatche chaque é
 
 **Positif**
 - Changer de CMS = réécrire l'adaptateur (mapper) et éventuellement le composition root. Domaine, port, service et store restent inchangés ; le canonical persisté survit.
-- Testabilité : domaine testé avec un fake repository (framework-free) ; infra testée en libSQL `:memory:` ; injection mockable.
+- Testabilité : domaine testé avec un fake repository (framework-free) ; infra testée en base en mémoire (libSQL à l'époque, PGlite depuis l'ADR 0012) ; injection mockable.
 
 **Coûts / limites**
 - Une base et une couche d'accès supplémentaires, indépendantes de Payload.

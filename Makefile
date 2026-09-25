@@ -1,22 +1,23 @@
-DB_FILE := apps/cms/tee-poc.db
-
 SHELL := /usr/bin/env bash
 .SHELLFLAGS := -c
 
 NVM_SH := $(HOME)/.nvm/nvm.sh
 PNPM = source $(NVM_SH) >/dev/null && nvm use --silent && pnpm
 
-.PHONY: help db-reset db-seed db-reinit
+.PHONY: help db-up db-reset db-seed db-reinit
 
 help:
 	@echo "Cibles disponibles :"
-	@echo "  make db-reset   — supprime la base SQLite locale"
-	@echo "  make db-seed    — exécute le seed (operators + programs + projects + users)"
-	@echo "  make db-reinit  — reset puis seed"
+	@echo "  make db-up      : démarre le PostgreSQL local (Docker)"
+	@echo "  make db-reset   : remet le PostgreSQL local à zéro (supprime le volume)"
+	@echo "  make db-seed    : exécute le seed (operators + programs + projects + users)"
+	@echo "  make db-reinit  : reset puis seed"
+
+db-up:
+	@$(PNPM) db:up
 
 db-reset:
-	@rm -f $(DB_FILE) $(DB_FILE)-journal $(DB_FILE)-wal $(DB_FILE)-shm
-	@echo "Base supprimée : $(DB_FILE)"
+	@$(PNPM) db:reset
 
 db-seed:
 	@$(PNPM) seed

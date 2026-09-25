@@ -64,8 +64,8 @@ Sur Scalingo, le système de fichiers d'un conteneur est éphémère : les deux 
 | `cron.json` | Créer : tâche planifiée Scalingo quotidienne (`pnpm data:daily`) |
 | `libs/format-adapters/src/tee/UpstreamJsonSource.ts` | Créer : lecture HTTP des fichiers amont (`TEE_PROGRAMS_URL` / `TEE_REDIRECTS_URL`), consommés en mémoire |
 | `package.json` | Modifier : script `data:daily` ; `tsx` passe en dépendance de production (le conteneur Scalingo élague les devDependencies) |
-| `.gitignore` | Modifier : ignorer `*.db` sans exception |
-| `apps/cms/tee-poc.db`, `libs/canonical-store/canonical.db` | Supprimer du dépôt (`git rm`) après bascule |
+| `.gitignore` | **Fait** : `*.db` ignoré sans exception |
+| `apps/cms/tee-poc.db`, `libs/canonical-store/canonical.db` | **Fait** : supprimés du dépôt ; `Makefile` et `README.md` mis à jour (cibles Docker, variables PostgreSQL) |
 | `CLAUDE.md` | Modifier : stack (PostgreSQL), sections `libs/canonical-store` et Seed, commandes `db:up`/`migrate`, index ADR |
 | `docs/adr/0008-canonical-persistence-ddd.md` | Modifier : gap « Migration Postgres » renvoyé vers l'ADR 0012, défaut `canonical.db` marqué obsolète |
 
@@ -117,7 +117,7 @@ Sur Scalingo, le système de fichiers d'un conteneur est éphémère : les deux 
 - **Piège trouvé** : un seed lancé en mode dev pousse le schéma et marque la base comme « poussée en dev » (ligne `dev`, batch -1 de `payload_migrations`). Le démarrage suivant en production demande alors une confirmation interactive et le serveur ne répond jamais (E2E en échec sur un timeout). D'où le `NODE_ENV: production` sur l'étape de seed de la CI.
 - **Piège trouvé (corrigé)** : les variables déclarées dans `test.env` de vitest ne s'appliquent qu'aux fichiers de test, **pas au global setup**. Une première version lisait `DATABASE_URI` dans le global setup et a donc vidé la base de **dev**. L'URL de test vit désormais dans une constante partagée (`tests/support/testDatabaseUrl.ts`).
 - Vérifié en local dans les conditions de la CI : migrations puis seed sur base vierge, build de production, 7 tests E2E verts, 22 tests d'intégration verts.
-- `apps/cms/tee-poc.db` et `libs/canonical-store/canonical.db` ne servent plus à rien mais restent commités : leur suppression est au lot 5.
+- `apps/cms/tee-poc.db` et `libs/canonical-store/canonical.db` ont été supprimés du dépôt (avec le `Makefile` et le README remis à jour, et `*.db` désormais ignoré), en avance sur le lot 5.
 
 ### Lot 4 : décision pipeline et Media
 
@@ -134,7 +134,7 @@ Les étapes 17 à 21 se font d'abord sur la **préprod**, puis à l'identique su
 19. Déployer : au démarrage, `prodMigrations` crée le schéma Payload ; le store amorce `canonical`.
 20. `scalingo run` : seed des référentiels (sans utilisateurs de dev), puis création manuelle du premier super-admin.
 21. Contrôles : connexion admin, édition et publication d'un dispositif, présence dans `/api/agir/…`, **redéploiement puis vérification que les données sont toujours là**.
-22. Nettoyage : `git rm` des deux `.db`, `.gitignore`, mise à jour de `CLAUDE.md`, ADR 0008 et mémos obsolètes.
+22. Nettoyage : ~~`git rm` des deux `.db`, `.gitignore`~~ **fait**, reste la relecture finale de `CLAUDE.md`, de l'ADR 0008 et des mémos après la bascule.
 
 ---
 

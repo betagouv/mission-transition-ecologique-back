@@ -45,8 +45,8 @@ else
 fi
 
 # ─── 2. Copy gitignored essential files ───────────────────────────────────────
-# DB files (tee-*.db) are intentionally NOT copied: each worktree gets a fresh
-# local SQLite database, seeded at step 5.
+# The copied apps/cms/.env points at the main dev database, so step 2b rewrites
+# it: each worktree gets its own PostgreSQL database, seeded at step 5.
 
 echo "==> Copying gitignored essential files..."
 
@@ -63,6 +63,33 @@ copy_if_exists() {
 copy_if_exists ".env"
 copy_if_exists "apps/cms/.env"
 
+# ─── 2b. Dedicated PostgreSQL database for this worktree ─────────────────────
+# Sharing the dev database between worktrees means a seed on one branch rewrites
+# the data of the others, and a schema pushed by one branch breaks the next.
+
+WORKTREE_DB="tee_$(echo "$BRANCH_SLUG" | tr '[:upper:]-' '[:lower:]_' | tr -cd 'a-z0-9_')"
+WORKTREE_DB_URL="postgres://tee:tee@localhost:5432/${WORKTREE_DB}"
+WORKTREE_CMS_ENV="${WORKTREE_PATH}/apps/cms/.env"
+
+echo "==> Preparing the worktree database (${WORKTREE_DB})..."
+if (cd "$PROJECT_ROOT" && docker compose up -d --wait postgres >/dev/null 2>&1); then
+  # `CREATE DATABASE` has no IF NOT EXISTS: ignore the "already exists" error.
+  (cd "$PROJECT_ROOT" && docker compose exec -T postgres \
+    psql -q -U tee -d tee -c "CREATE DATABASE ${WORKTREE_DB}" >/dev/null 2>&1) || true
+
+  if [ -f "$WORKTREE_CMS_ENV" ]; then
+    sed -i.bak -E "s#^(DATABASE_URI|CANONICAL_DATABASE_URI)=.*#\1=${WORKTREE_DB_URL}#" "$WORKTREE_CMS_ENV"
+    rm -f "${WORKTREE_CMS_ENV}.bak"
+  else
+    printf 'DATABASE_URI=%s\nCANONICAL_DATABASE_URI=%s\n' "$WORKTREE_DB_URL" "$WORKTREE_DB_URL" \
+      >> "$WORKTREE_CMS_ENV"
+    echo "   WARNING: apps/cms/.env was missing — PAYLOAD_SECRET still has to be set." >&2
+  fi
+  echo "   database: ${WORKTREE_DB}"
+else
+  echo "   WARNING: Docker unavailable — start it, then create ${WORKTREE_DB} and point apps/cms/.env at it." >&2
+fi
+
 # ─── 3. Install dependencies ─────────────────────────────────────────────────
 
 echo "==> Installing Node dependencies (pnpm install)..."
@@ -76,7 +103,7 @@ pnpm install
 echo "==> Generating Payload types + import map (pnpm generate)..."
 pnpm generate
 
-# ─── 5. Seed the local SQLite database ────────────────────────────────────────
+# ─── 5. Seed the worktree database ───────────────────────────────────────────
 
 # Seed is non-fatal: the worktree stays usable even if seed data is broken on
 # the branch, so warn and continue to port assignment instead of aborting.
