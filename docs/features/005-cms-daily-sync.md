@@ -44,7 +44,8 @@ Constats (vérifiés sur la base de dev le 2026-09-25) :
 | Source de vérité | Le fichier distant du dépôt GitHub amont, pour la prod comme pour le dev |
 | Sens du flux quotidien | Amont → **CMS** (Payload) → canonical via le hook `syncCanonicalOnPublish`. `import:tee` sort du pipeline et reste un outil de secours (reconstruction du canonical sans Payload) |
 | Modifications faites dans le back-office | **Écrasées** par la sync quotidienne : l'amont est la source vérifiée et officielle |
-| Dispositifs disparus de l'amont | **Archivés** dans le CMS (transition `archive`), donc transmis au canonical |
+| Dispositifs disparus de l'amont | Revu le 2026-09-25 après lecture du dépôt TEE : chez TEE un dispositif **archivé reste dans `programs.json`** (s'il a déjà été en ligne), marqué seulement par sa `fin de validité` ; seuls les remplacés (via `redirects.json`) et les retirés en disparaissent. Donc : disparu **avec** redirection → `remplace` + `replacedBy` (reste dans AGIR, état `remplace`) ; disparu **sans** redirection → `annule` (retiré du canonical et de l'API, fiche et historique gardés dans le CMS) |
+| Dispositifs archivés | Restent exposés dans l'API AGIR (`statut_edition: 'pret_prod'`, `statut_dispositif: 'archive'`), comme le site TEE qui garde la page avec un bandeau « Date de fin de l'aide ». Un dispositif présent en amont avec une fin de validité passée reste `publie` avec sa `date_cloture` |
 | Dispositifs créés uniquement dans le CMS | Aucun en prod à ce jour ; la sync ne touche qu'aux slugs présents en amont ou déjà importés |
 | Copie locale | JSON versionné, rafraîchi par un script `data:snapshot` ; utilisé **en dev uniquement** si GitHub est injoignable. **En prod, GitHub injoignable = échec du job** (code de sortie non nul), jamais de repli |
 | Lecteur du format amont | Un seul : `TeeImporter` (brut → `CanonicalProgramInput` non validé), suivi d'un `CanonicalToPayloadMapper` (canonical → Payload). Suppression du lecteur propre au seed |
@@ -106,9 +107,10 @@ Constats (vérifiés sur la base de dev le 2026-09-25) :
 3. Le seed passe par `TeeImporter` + `CanonicalToPayloadMapper` ; suppression de l'ancien lecteur (corrige les thématiques).
 
 ### Lot 4 : sync quotidienne du CMS
-1. Commande de sync idempotente (écriture sur différence, `canonicalId` dérivé du slug, archivage des disparus, projets).
-2. Vérification CMS = canonical en fin de job (sortie non nulle sinon).
-3. Nouveau `data:daily` ; `import:tee` retiré du pipeline.
+1. Commande de sync idempotente (écriture sur différence, `canonicalId` dérivé du slug, disparus traités selon `redirects.json` : `remplace` ou `annule`, projets).
+2. Archiver un dispositif dans le CMS pose sa date de fin (`validityEnd`) si elle est vide, pour que l'API AGIR ne le présente pas comme actif.
+3. Vérification CMS = canonical en fin de job (sortie non nulle sinon).
+4. Nouveau `data:daily` ; `import:tee` retiré du pipeline.
 
 ### Lot 5 : liaison projets ↔ dispositifs
 1. `Programs.linkedProjects` en `join` sur `projects.programs`, migration, `payload-types.ts`, import map.
@@ -132,4 +134,4 @@ Contrôles attendus sur la base de dev :
 - `programs_themes` non vide, 276 dispositifs.
 - Un dispositif affiche ses projets liés (champ `join`).
 - Un second `data:daily` sans changement amont ne crée aucune version Payload.
-- Un dispositif retiré de la copie locale passe en `archive` et le canonical le reflète.
+- Un dispositif retiré de la copie locale sans redirection passe en `annule` et sort du canonical ; avec redirection, il passe en `remplace`.
