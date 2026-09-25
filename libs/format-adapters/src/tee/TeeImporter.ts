@@ -105,7 +105,7 @@ export class TeeImporter {
     const contact = this.contactQuestion(record)
     if (contact) input.contact_question = contact
 
-    const url = this.str(record['url'])
+    const url = this.url(record['url'])
     if (url) input.url_source = url
 
     const dateOuverture = this.isoDate(record['début de validité'])
@@ -176,7 +176,7 @@ export class TeeImporter {
     const operateurs = this.varianteOperateurs(champ)
     if (operateurs) modifications.operateurs = operateurs
 
-    const url = this.str(champ['url'])
+    const url = this.url(champ['url'])
     if (url) modifications.url_source = url
 
     const montant = this.str(champ['Montant du dispositif'])
@@ -232,7 +232,7 @@ export class TeeImporter {
     if (!value) return undefined
     if (value.startsWith('mailto:')) return { type: 'email', valeur: value.slice('mailto:'.length) }
     if (value === 'formulaire') return { type: 'conseiller_entreprise' }
-    return { type: 'url', valeur: value }
+    return { type: 'url', valeur: this.url(value) ?? value }
   }
 
   /** A single montant/duree pair: the dynamic key carries the label (a "durée …" key → duree). */
@@ -273,7 +273,7 @@ export class TeeImporter {
     return liens
       .map((lien): LienInput | undefined => {
         if (lien['formulaire'] === true) return { conseiller_entreprise: true }
-        const url = this.str(lien['lien'])
+        const url = this.url(lien['lien'])
         const texte = this.str(lien['texte'])
         return url && texte ? { texte, url } : undefined
       })
@@ -349,6 +349,12 @@ export class TeeImporter {
 
   private str(value: unknown): string | undefined {
     return typeof value === 'string' && value.length > 0 ? value : undefined
+  }
+
+  /** Upstream sometimes wraps a link in markdown autolink brackets: `<https://…>`. */
+  private url(value: unknown): string | undefined {
+    const url = this.str(value)?.trim()
+    return url?.replace(/^<(.+)>$/, '$1') || undefined
   }
 
   private strArray(value: unknown): string[] {

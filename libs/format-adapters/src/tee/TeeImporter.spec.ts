@@ -42,6 +42,20 @@ describe('TeeImporter', () => {
     })
   })
 
+  it('retire les chevrons d’autolien markdown autour des URL', () => {
+    const input = importer.import({
+      ...base,
+      url: '<https://source.fr>',
+      'contact question': '<https://contact.fr>',
+      objectifs: [{ description: 'Étape', liens: [{ texte: 'Lien', lien: ' <https://www.opcoep.fr/nous-contacter> ' }] }],
+    })
+    expect(input.url_source).toBe('https://source.fr')
+    expect(input.contact_question).toEqual({ type: 'url', valeur: 'https://contact.fr' })
+    expect(input.etapes_activation?.[0]?.liens).toEqual([
+      { texte: 'Lien', url: 'https://www.opcoep.fr/nous-contacter' },
+    ])
+  })
+
   it('mappe la sentinelle « aide temporairement indisponible »', () => {
     expect(importer.import({ ...base, 'aide temporairement indisponible': 'oui' }).statut_dispositif).toBe(
       'temporairement_indisponible',
