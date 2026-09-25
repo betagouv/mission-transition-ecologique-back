@@ -71,9 +71,39 @@ describe('UpstreamJsonSource', () => {
     await expect(source.programs()).rejects.toThrow('fetch failed')
   })
 
-  it('renvoie null pour des redirections absentes partout', async () => {
-    const source = new UpstreamJsonSource({ fetchImpl: unreachable, fallback: snapshotWith({}) })
-    expect(await source.redirects()).toBeNull()
+  describe('redirections', () => {
+    const answering = (status: number): typeof fetch => () => Promise.resolve(new Response('', { status }))
+
+    it('renvoie null quand le fichier est absent en amont (404)', async () => {
+      const source = new UpstreamJsonSource({ fetchImpl: answering(404) })
+      expect(await source.redirects()).toBeNull()
+    })
+
+    it('propage une erreur serveur au lieu de la prendre pour un fichier absent', async () => {
+      const source = new UpstreamJsonSource({ fetchImpl: answering(503) })
+      await expect(source.redirects()).rejects.toMatchObject({ name: 'UpstreamFetchError', status: 503 })
+    })
+
+    it('propage une panne réseau', async () => {
+      const source = new UpstreamJsonSource({ fetchImpl: unreachable })
+      await expect(source.redirects()).rejects.toThrow('fetch failed')
+    })
+
+    it('propage un JSON illisible', async () => {
+      const source = new UpstreamJsonSource({
+        fetchImpl: () => Promise.resolve(new Response('{tronqué', { status: 200 })),
+      })
+      await expect(source.redirects()).rejects.toThrow(SyntaxError)
+    })
+
+    it('renvoie null sur un 404 même avec une copie locale sans redirections', async () => {
+      const source = new UpstreamJsonSource({
+        fetchImpl: answering(404),
+        fallback: snapshotWith({}),
+        logger: new RecordingLogger(),
+      })
+      expect(await source.redirects()).toBeNull()
+    })
   })
 
   describe('forEnvironment', () => {

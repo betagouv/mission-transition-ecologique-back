@@ -7,6 +7,7 @@ export * from './tee/ProgramRedirects';
 export * from './tee/RedirectTombstoneBuilder';
 export * from './tee/UpstreamFile';
 export * from './tee/LocalJsonSnapshot';
+export * from './tee/UpstreamFetchError';
 export * from './tee/UpstreamJsonSource';
 export * from './shared/ExportLogger';
 export * from './shared/ConsoleExportLogger';

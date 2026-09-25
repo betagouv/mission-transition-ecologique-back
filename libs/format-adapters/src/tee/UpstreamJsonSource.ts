@@ -1,6 +1,7 @@
 import { ConsoleExportLogger } from '../shared/ConsoleExportLogger'
 import type { ExportLogger } from '../shared/ExportLogger'
 import { LocalJsonSnapshot } from './LocalJsonSnapshot'
+import { UpstreamFetchError } from './UpstreamFetchError'
 import type { UpstreamFile } from './UpstreamFile'
 
 export interface UpstreamJsonSourceOptions {
@@ -68,12 +69,17 @@ export class UpstreamJsonSource {
     return this.load<T>('projects')
   }
 
-  /** Redirects are optional upstream: a missing file skips the redirect step. */
+  /**
+   * Redirects are optional upstream: only a 404 means "no file" and skips the
+   * redirect step. Any other failure (5xx, timeout, broken JSON) propagates, so
+   * an outage never silently drops the redirect tombstones.
+   */
   async redirects<T>(): Promise<T | null> {
     try {
       return await this.load<T>('redirects')
-    } catch {
-      return null
+    } catch (error) {
+      if (error instanceof UpstreamFetchError && error.isNotFound) return null
+      throw error
     }
   }
 
@@ -96,9 +102,7 @@ export class UpstreamJsonSource {
 
   private async fetchJson<T>(url: string): Promise<T> {
     const response = await this.fetchImpl(url, { signal: AbortSignal.timeout(this.timeoutMs) })
-    if (!response.ok) {
-      throw new Error(`Téléchargement impossible (${response.status.toString()}) : ${url}`)
-    }
+    if (!response.ok) throw new UpstreamFetchError(url, response.status)
     return (await response.json()) as T
   }
 }

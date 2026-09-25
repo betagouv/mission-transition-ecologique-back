@@ -21,7 +21,7 @@ async function main(): Promise<void> {
   for (const file of UPSTREAM_FILES) {
     const data = await loaders[file]()
     if (data === null) {
-      process.stdout.write(`${file} : absent en amont, copie inchangée\n`)
+      process.stdout.write(`${file} : absent en amont (404), copie inchangée\n`)
       continue
     }
     snapshot.write(file, data)
