@@ -41,7 +41,7 @@ type RedirectsFile = ConstructorParameters<typeof ProgramRedirects>[0]
 async function loadInputs(): Promise<{ records: TeeRecord[]; redirects: ProgramRedirects }> {
   if (!REMOTE) return { records: loadLocalRecords(), redirects: loadLocalRedirects() }
 
-  const source = new UpstreamJsonSource()
+  const source = UpstreamJsonSource.forEnvironment()
   process.stdout.write(`Source distante : ${source.describe()}\n`)
   const records = await source.programs<TeeRecord[]>()
   const redirects = await source.redirects<RedirectsFile>()

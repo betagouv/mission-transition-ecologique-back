@@ -190,7 +190,7 @@ supprimé (ADR 0012).
 
 **Variables requises sur l'app Scalingo** : `GRIST_BASE_URL` (⚠️ obligatoire ici,
 l'instance n'est pas celle par défaut), `GRIST_DOC_ID`, `GRIST_TABLE_ID`,
-`GRIST_API_KEY`, éventuellement `TEE_PROGRAMS_URL` / `TEE_REDIRECTS_URL`.
+`GRIST_API_KEY`, éventuellement `TEE_PROGRAMS_URL` / `TEE_PROJECTS_URL` / `TEE_REDIRECTS_URL`.
 
 **Surveillance** : les logs partent dans ceux de l'application (`scalingo logs`),
 les tâches se listent avec `scalingo cron-tasks`. Scalingo ne notifie pas l'échec

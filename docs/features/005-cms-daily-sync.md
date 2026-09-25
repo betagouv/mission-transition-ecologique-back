@@ -70,9 +70,10 @@ Constats (vérifiés sur la base de dev le 2026-09-25) :
 | `apps/cms/src/services/workflow/SystemWorkflowContext.ts` | **Fait** : marqueur `req.context` des écritures de scripts ; déjà posé par `ProgramImporter` (seed) |
 | `apps/cms/src/collections/Programs.ts` | Modifier : champ « temporairement indisponible », `linkedProjects` en `join` sur `projects.programs` |
 | `apps/cms/src/services/canonical/ProgramCanonicalMapper.ts` | Modifier : statut indisponible |
-| `libs/format-adapters/src/tee/UpstreamJsonSource.ts` | Modifier : ajouter `projects.json` ; repli local optionnel, activé seulement hors production |
-| `libs/format-adapters/static/input/` | Modifier : copies versionnées `programs.json`, `projects.json`, `redirects.json` |
-| `libs/format-adapters/scripts/snapshot-upstream.ts` | Créer : rafraîchit les copies locales depuis GitHub (`pnpm data:snapshot`) |
+| `libs/format-adapters/src/tee/UpstreamJsonSource.ts` | **Fait** : `projects.json`, options objet, timeout réseau, repli local optionnel ; `forEnvironment()` l'active seulement hors production |
+| `libs/format-adapters/src/tee/LocalJsonSnapshot.ts`, `UpstreamFile.ts` | **Fait** : lecture/écriture de la copie versionnée |
+| `libs/format-adapters/static/upstream/` | **Fait** : copies versionnées `programs.json` (276), `projects.json` (91), `redirects.json` au 2026-09-25 |
+| `libs/format-adapters/scripts/snapshot-upstream.ts` | **Fait** : rafraîchit les copies depuis GitHub, sans repli (`pnpm data:snapshot`, target `snapshot:upstream`) |
 | `libs/format-adapters/src/tee/TeeImporter.ts` (et `ThemeMapper`, `TypeAideMapper`, `RegionNameResolver`) | Modifier : retirer les mentions « ONE-SHOT » ; code permanent |
 | `apps/cms/src/services/canonical/CanonicalToPayloadMapper.ts` | Créer : `CanonicalProgramInput` → données Payload (markdown → Lexical, opérateurs, zones via `inseeCode`, variantes, thèmes) |
 | `apps/cms/src/scripts/sync/` | Créer : commande de sync CMS (upsert sur différence, archivage des disparus, projets), partagée par le seed et le daily |
@@ -93,9 +94,11 @@ Constats (vérifiés sur la base de dev le 2026-09-25) :
 3. Identité système dans `beforeChangeWorkflow`, utilisée par le seed.
 4. Tests : `CanonicalSyncPolicy.spec.ts` (unitaire), `canonical-sync.int.spec.ts` (intégration Postgres).
 
-### Lot 2 : source amont
-1. `UpstreamJsonSource` : `projects.json`, repli local en dev uniquement (erreur franche en prod).
-2. Script `data:snapshot` et copies versionnées.
+### Lot 2 : source amont : **fait**
+1. `UpstreamJsonSource` : `projects.json`, repli local en dev uniquement (erreur franche en prod), timeout réseau de 30 s.
+2. Script `data:snapshot` et copies versionnées dans `libs/format-adapters/static/upstream/` (distinctes des fixtures de test `static/input/*-tests.json`).
+3. `import-tee.ts --remote` passe par `forEnvironment()`.
+4. Reste à faire hors code : ajouter `TEE_PROJECTS_URL` (commenté) dans `apps/cms/.env.example`.
 
 ### Lot 3 : un seul lecteur
 1. Champ « temporairement indisponible » + migration.

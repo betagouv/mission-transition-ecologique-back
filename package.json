@@ -22,6 +22,7 @@
     "migrate:create": "nx run @tee-backoffice/cms:migrate:create",
     "migrate:status": "nx run @tee-backoffice/cms:migrate:status",
     "export:tee": "nx run @tee-backoffice/format-adapters:export:tee",
+    "data:snapshot": "tsx libs/format-adapters/scripts/snapshot-upstream.ts",
     "data:daily": "tsx libs/format-adapters/scripts/import-tee.ts --remote && tsx libs/format-adapters/scripts/grist-setup.ts && tsx libs/format-adapters/scripts/export-grist.ts --push",
     "test": "nx run @tee-backoffice/cms:test",
     "test:unit": "nx run @tee-backoffice/cms:test:unit"
