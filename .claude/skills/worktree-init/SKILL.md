@@ -64,7 +64,7 @@ explicite, et la base du worktree part vide) :
 1. `git worktree add` (crée la branche si elle n'existe pas)
 2. Copie des fichiers gitignored essentiels : `.env` (racine, si présent) et
    `apps/cms/.env`.
-2b. **Base PostgreSQL dédiée** : démarrage du conteneur Docker, création de la
+2b. **Base PostgreSQL dédiée** (ménage : `make wt-db-list`, `make wt-db-drop BRANCH=…`, `make wt-db-prune`) : démarrage du conteneur Docker, création de la
    base `tee_<branche>` et réécriture de `DATABASE_URI` / `CANONICAL_DATABASE_URI`
    dans le `apps/cms/.env` copié. Sans cette étape, tous les worktrees
    écriraient dans la base de dev commune (un seed effacerait les données des

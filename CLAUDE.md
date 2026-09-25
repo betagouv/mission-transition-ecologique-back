@@ -49,7 +49,13 @@ pnpm migrate:status                        # état des migrations
 pnpm test                                  # tests d'intégration (base `tee_test`, Docker requis)
 pnpm test:unit                             # tests unitaires (aucune base requise)
 pnpm e2e                                   # tests E2E Playwright (Docker requis)
+
+make wt-db-list                            # bases des worktrees (taille, worktree encore présent ?)
+make wt-db-drop BRANCH=feat/ma-branche     # supprime la base d'une branche
+make wt-db-prune                           # supprime les bases dont le worktree a disparu
 ```
+
+Chaque worktree créé par le skill `worktree-init` a **sa propre base** `tee_<branche>` : le `make wt-db-*` ci-dessus (script `scripts/worktree-db.sh`) sert à les lister et à faire le ménage. Les bases `tee` et `tee_test` du dépôt principal sont protégées contre la suppression.
 
 Les tests d'intégration et E2E ont besoin du Postgres local (`pnpm db:up`). Les tests d'intégration visent la base **`tee_test`**, vidée avant chaque exécution : ils ne touchent jamais aux données de dev. Le store canonical y utilise le schéma `canonical` de la même base, et les tests du store tournent sur PGlite (Postgres en mémoire), donc sans Docker.
 

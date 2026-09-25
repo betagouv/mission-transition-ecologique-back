@@ -57,6 +57,8 @@ Voir `apps/cms/.env.example` pour la liste complète (uploads Scaleway, export G
 
 La base tourne dans un conteneur Docker : `pnpm db:up` avant tout `pnpm dev`, `pnpm seed` ou `pnpm test`.
 
+Chaque worktree a sa propre base `tee_<branche>`. Pour les lister ou les nettoyer : `make wt-db-list`, `make wt-db-drop BRANCH=<branche>`, `make wt-db-prune` (supprime celles dont le worktree a disparu).
+
 ## Fixtures (seed)
 
 La commande `pnpm seed` initialise la base de données avec des données de développement (idempotente — peut être relancée sans risque).
