@@ -77,11 +77,40 @@ describe('DrizzleCanonicalProgramRepository', () => {
     expect(await repo.findAll()).toHaveLength(1)
   })
 
-  it('deleteAll empties the store', async () => {
+  it('listKeys lists every row, including one that no longer validates', async () => {
+    const { db, repo } = await newRepository()
+    await repo.save(program)
+    await db.update(canonicalPrograms).set({ data: '{not valid json' })
+
+    expect(await repo.listKeys()).toEqual([
+      { canonicalId: 'a1b2c3d4e5f6g7h8i9j0klmn', slug: 'diagnostic-energie-pme' },
+    ])
+  })
+
+  it('applyChanges deletes first, so a new id can take over an existing slug', async () => {
     const { repo } = await newRepository()
     await repo.save(program)
-    await repo.deleteAll()
-    expect(await repo.findAll()).toEqual([])
+    const sameSlug = new CanonicalProgramValidator().parse({ ...validInput, id: 'b1b2c3d4e5f6g7h8i9j0klmn' })
+
+    await repo.applyChanges({ delete: ['a1b2c3d4e5f6g7h8i9j0klmn'], save: [sameSlug] })
+
+    expect((await repo.findAll()).map((p) => p.id)).toEqual(['b1b2c3d4e5f6g7h8i9j0klmn'])
+  })
+
+  it('applyChanges rolls everything back when one write fails', async () => {
+    const { repo } = await newRepository()
+    await repo.save(program)
+    const clash = new CanonicalProgramValidator().parse({ ...validInput, id: 'b1b2c3d4e5f6g7h8i9j0klmn' })
+    const other = new CanonicalProgramValidator().parse({
+      ...validInput,
+      id: 'c1b2c3d4e5f6g7h8i9j0klmn',
+      slug: 'autre-dispositif',
+    })
+
+    // `clash` reuses the stored slug without deleting its row: unique violation.
+    await expect(repo.applyChanges({ delete: [], save: [other, clash] })).rejects.toThrow()
+
+    expect((await repo.findAll()).map((p) => p.slug)).toEqual(['diagnostic-energie-pme'])
   })
 
   describe('format drift on read', () => {

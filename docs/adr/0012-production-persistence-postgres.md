@@ -101,14 +101,14 @@ Décision (2026-09-25) : **Scaleway Object Storage** (API S3, région `fr-par` p
 
 ## Qui écrit dans le canonical de production (tranché le 2026-09-24)
 
-Deux chemins alimentent le store : le **hook `syncCanonicalOnPublish`** (publication dans le CMS) et le **pipeline quotidien** (reconstruction complète depuis le `programs.json` amont, lui-même issu d'une transformation de données Baserow).
+Deux chemins alimentent le store : le **hook `syncCanonicalOnPublish`** (publication dans le CMS) et le **pipeline quotidien** (alignement sur le `programs.json` amont : upserts + retrait des dispositifs disparus, sans jamais vider le store, lui-même issu d'une transformation de données Baserow).
 
 **Décision : l'amont reste maître (option A).** La production n'est pas éditée par des utilisateurs ; elle est mise à jour par une tâche planifiée quotidienne. Le hook **reste actif** (pas d'interrupteur à poser) : il écrit simplement dans un store que le prochain import écrasera. C'est assumé, et ça garde le chemin de synchronisation vivant et testé.
 
 Conséquences à connaître :
 
-- **Une publication faite dans le back-office de prod ne survit pas à l'import suivant.** Le pipeline vide le store puis le réécrit depuis l'amont.
-- **L'identifiant canonique d'un même dispositif diffère selon l'écrivain** : le hook porte le cuid2 immuable du CMS (`assignCanonicalId`), l'import dérive le sien du slug (`SlugCanonicalId`). Après chaque import, les identifiants sont ceux dérivés du slug. Les exports AGIR et Grist étant clés sur le **slug**, l'impact reste interne ; un consommateur externe qui indexerait sur `id` verrait des variations.
+- **Une publication faite dans le back-office de prod ne survit pas à l'import suivant.** Le pipeline réécrit chaque dispositif depuis l'amont et retire ceux qui en ont disparu. Il refuse un snapshot vide ou trop destructeur (garde-fou `CanonicalSnapshotGuard`, voir `docs/context/schema-grist-export.md`).
+- **L'identifiant canonique d'un même dispositif diffère selon l'écrivain** : le hook porte le cuid2 immuable du CMS (`assignCanonicalId`), l'import dérive le sien du slug (`SlugCanonicalId`). Après chaque import, les identifiants sont ceux dérivés du slug : une ligne écrite par le hook sous l'id du CMS est remplacée (« réidentifiée ») au lieu d'entrer en conflit sur le slug. Les exports AGIR et Grist étant clés sur le **slug**, l'impact reste interne ; un consommateur externe qui indexerait sur `id` verrait des variations.
 
 **Bascule prévue vers le CMS maître (option B)** le jour où l'amont cesse d'être mis à jour (arrêt de la transformation Baserow vers `programs.json`) : il suffira alors de désactiver la tâche planifiée, le hook étant déjà en place.
 

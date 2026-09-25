@@ -145,8 +145,9 @@ La table Grist porte les colonnes du schéma **entreprise** (l'`id` Etalab sous
 canonical **directement depuis `static/input/programs.json`**, sans Payload :
 `TeeImporter` mappe chaque dispositif, `SlugCanonicalId` lui donne un id stable
 dérivé du slug (cuid2 déterministe : diff minimal d'un jour à
-l'autre), `date_mise_a_jour` = heure du run, puis `CanonicalProgramService.save`
-valide + upsert. Les invalides sont ignorés et listés.
+l'autre), `date_mise_a_jour` = heure du run, puis
+`CanonicalProgramService.applySnapshot` aligne le store sur ce snapshot (voir
+plus bas). Les invalides sont ignorés et listés.
 
 **Redirections** (`static/input/redirects.json`, fallback `redirects-tests.json`) :
 après l'import, `ProgramRedirects` lit la table `program_redirects` (ancien slug
@@ -166,10 +167,24 @@ workflow) et retombe sur `static/input/programs-tests.json` (copie **figée**,
 fixture du round-trip) si la première est absente — un run local fonctionne donc
 sans `fetch` préalable.
 
-L'import est une **régénération complète** : le store est vidé puis réécrit,
-donc les suppressions amont sont reflétées. Le vidage n'intervient qu'une fois
-les entrées mappées et validées, pour ne jamais écraser un bon store sur une
-source cassée. Comme `TeeImporter` marque tout en `pret_prod`/`valide`, ce store
+L'import **aligne** le store sur l'amont sans jamais le vider
+(`CanonicalProgramService.applySnapshot`) :
+
+1. toutes les entrées (dispositifs + tombstones) sont validées avant toute écriture ;
+2. `CanonicalSnapshotPlan` compare aux lignes stockées (`listKeys`, lignes
+   illisibles comprises) : upsert des dispositifs valides, suppression de ceux
+   **absents de l'amont**, suppression d'une ligne stockée sous un autre id pour
+   le même slug (id aléatoire écrit par le CMS : « réidentifiée »), et
+   **conservation** de la ligne d'un dispositif dont l'entrée amont est invalide ;
+3. `CanonicalSnapshotGuard` refuse le snapshot, store inchangé et code de sortie
+   non nul (la suite de `data:daily`, dont le push Grist, ne tourne pas), s'il ne
+   contient aucun dispositif valide ou s'il retirerait plus de
+   `max(5, 10 % du store)` dispositifs. `--allow-mass-removal` lève ce plafond
+   pour un nettoyage amont volontaire ;
+4. suppressions puis upserts sont appliqués dans **une transaction**
+   (`applyChanges`) : tout passe, ou rien.
+
+Comme `TeeImporter` marque tout en `pret_prod`/`valide`, ce store
 contient **tout** l'amont (~280), plus large que le store alimenté par le CMS
 (filtré par le workflow éditorial Payload). C'est voulu : ce chemin traite
 l'amont `programs.json` comme source de vérité du flux open data.
