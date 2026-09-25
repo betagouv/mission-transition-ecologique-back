@@ -30,8 +30,8 @@ export interface RedirectApplication {
  * The `remplace_par` pointer reuses the replacement's canonical id (a cuid2), so
  * `RemplaceParResolver` resolves it back to the replacing slug on export. A
  * redirect whose replacement is absent is skipped and reported (never guessed).
- * Former slugs that are not valid canonical slugs (e.g. apostrophes) still
- * produce a tombstone here; validation drops it downstream, loudly.
+ * A former slug that is not kebab-case (apostrophe, capital letter) is kept
+ * verbatim: the canonical accepts it on a `remplace` program only.
  */
 export class RedirectTombstoneBuilder {
   build(redirects: ProgramRedirects, inputsBySlug: Map<string, CanonicalProgramInput>): RedirectApplication {

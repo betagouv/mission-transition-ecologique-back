@@ -27,6 +27,7 @@ Règles communes :
   lui, restreint à `valide`/`temporairement_indisponible` (`SchemaExportPolicy`,
   indépendant d'AGIR).
 - `404` si slug inconnu ou non exportable, `200` + corps JSON sinon.
+- Le slug est encodé dans `urlDetail`/`urlPivot` (`encodeURIComponent`) : un tombstone `remplace` peut garder un ancien slug avec apostrophe ou majuscule. Payload décode le paramètre de route avant la recherche.
 - Pas de pagination au MVP (volume faible).
 
 ## Vocabulaire AGIR — ⚠️ choix à confirmer

@@ -40,8 +40,8 @@ export class AgirListeExporter {
       source: AgirSourceMapper.toAgir(d.source),
       dateDispositif,
       etatDispositif: AgirEtatMapper.toEtat(d.statut_dispositif),
-      urlDetail: `${this.baseUrl}/api/agir/programs/${d.slug}/detail`,
-      urlPivot: `${this.baseUrl}/api/agir/programs/${d.slug}/pivot`,
+      urlDetail: `${this.baseUrl}/api/agir/programs/${encodeURIComponent(d.slug)}/detail`,
+      urlPivot: `${this.baseUrl}/api/agir/programs/${encodeURIComponent(d.slug)}/pivot`,
     }
     if (d.date_mise_a_jour) out.dateDerniereModification = d.date_mise_a_jour
 

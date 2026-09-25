@@ -158,9 +158,14 @@ cible sous l'ancien slug, avec `statut_dispositif = remplace` et `remplace_par` 
 id de la cible (résolu en slug à l'export). AGIR sert alors l'ancien slug avec
 `statut: remplace` + le nouveau slug (redirection suivable) ; ces tombstones
 **n'entrent pas** dans l'export Grist (`SchemaExportPolicy` filtre `remplace`).
-Les redirections dont la cible est absente, ou dont l'ancien slug n'est pas un
-slug canonical valide (apostrophes), sont ignorées/journalisées, jamais en
-silence.
+Les redirections dont la cible est absente sont ignorées et journalisées, jamais
+en silence. Un ancien slug hors kebab-case (apostrophe droite ou typographique,
+majuscule, ex. `contrat-3S-occitanie`) est **conservé tel quel** : le canonical
+l'accepte sur un dispositif `remplace` uniquement, et AGIR l'encode dans ses URLs
+(`encodeURIComponent`), si bien que toutes les redirections amont sont servies.
+
+`TeeImporter` retire aussi les chevrons d'autolien markdown autour d'une URL amont
+(`<https://…>`), qui faisaient rejeter le dispositif à la validation.
 
 L'import lit `static/input/programs.json` (copie **vivante** amont, écrasée par le
 workflow) et retombe sur `static/input/programs-tests.json` (copie **figée**,

@@ -23,7 +23,7 @@ Référence consolidée du format **pivot interne** implémenté dans `libs/cano
 | Champ | Type | Requis | Notes |
 |---|---|---|---|
 | `id` | `Cuid2` | ✔ | Généré en amont, seulement validé. |
-| `slug` | `Slug` (kebab-case) | ✔ | Identifiant lisible unique (URLs). |
+| `slug` | `Slug` (kebab-case) | ✔ | Identifiant lisible unique (URLs). Exception : un dispositif `remplace` (tombstone de redirection) garde son ancien slug tel quel (apostrophe, majuscule), sans espace ni `/`. |
 | `source` | `ADEME` \| `INTERNE` \| `SCHEMA` | ✔ | Provenance. |
 | `date_mise_a_jour` | date-heure ISO | ✔ | Dernière modif réelle du contenu. |
 

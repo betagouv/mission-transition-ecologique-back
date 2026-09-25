@@ -1,3 +1,4 @@
+import { CanonicalProgramValidator } from '@tee-backoffice/canonical'
 import { AdemePivotExporter } from './AdemePivotExporter'
 import { RemplaceParResolver } from './RemplaceParResolver'
 import {
@@ -110,6 +111,13 @@ describe('AdemePivotExporter', () => {
       const out = new AdemePivotExporter(resolver).export(remplaceProgram)
       expect(out.statut).toBe('remplace')
       expect(out.remplace_par).toBe('aide-remplacante')
+    })
+
+    it('transmet un tombstone sous son ancien slug non kebab-case', () => {
+      const tombstone = new CanonicalProgramValidator().parse({ ...remplaceProgram.toJSON(), slug: 'contrat-3S-occitanie' })
+      const out = new AdemePivotExporter(resolver).export(tombstone)
+      expect(out.id).toBe('contrat-3S-occitanie')
+      expect(out.statut).toBe('remplace')
     })
 
     it('omet remplace_par sans resolver (cuid2 non résolu)', () => {

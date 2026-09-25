@@ -72,6 +72,35 @@ describe('canonicalProgramSchema', () => {
     })
   })
 
+  describe('cross-field: kebab-case slug, except for a remplace tombstone', () => {
+    const tombstone = (slug: string) => {
+      const input = cloneMinimal()
+      input['slug'] = slug
+      input['statut_dispositif'] = 'remplace'
+      input['remplace_par'] = 'b1b2c3d4e5f6g7h8i9j0klmn'
+      return input
+    }
+
+    it.each(["etude-qualite-de-l'air", 'etude-qualite-de-l’air', 'contrat-3S-occitanie'])(
+      'accepts the former slug %s on a remplace program',
+      (slug) => {
+        expect(canonicalProgramSchema.safeParse(tombstone(slug)).success).toBe(true)
+      },
+    )
+
+    it('rejects the same former slug on a live program', () => {
+      const input = cloneMinimal()
+      input['slug'] = 'contrat-3S-occitanie'
+      const result = canonicalProgramSchema.safeParse(input)
+      expect(result.success).toBe(false)
+      expect(result.error?.issues[0]?.path).toEqual(['slug'])
+    })
+
+    it.each(['avec espace', 'avec/slash', ''])('rejects %j even on a remplace program', (slug) => {
+      expect(canonicalProgramSchema.safeParse(tombstone(slug)).success).toBe(false)
+    })
+  })
+
   describe('contact_question discriminated union', () => {
     it('rejects an invalid email', () => {
       const input = cloneMinimal()
