@@ -6,6 +6,7 @@ import { normalizeGeographicCoverage } from '@/hooks/programs/normalizeGeographi
 import { trackLastModifiedBy } from '@/hooks/programs/trackLastModifiedBy'
 import { assignCanonicalId } from '@/hooks/programs/assignCanonicalId'
 import { syncCanonicalOnPublish } from '@/hooks/programs/syncCanonicalOnPublish'
+import { removeCanonicalOnDelete } from '@/hooks/programs/removeCanonicalOnDelete'
 import { THEMES_OPTIONS } from '@/constants/themesOptions'
 import { COMPANY_SIZE_OPTIONS } from '@/constants/companySizeOptions'
 import { ACTIVITY_SECTOR_OPTIONS } from '@/constants/activitySectorOptions'
@@ -82,6 +83,7 @@ export const Programs: CollectionConfig = {
       beforeChangeWorkflow,
     ],
     afterChange: [syncCanonicalOnPublish],
+    afterDelete: [removeCanonicalOnDelete],
   },
   access: {
     read: ProgramAccessPolicy.read,

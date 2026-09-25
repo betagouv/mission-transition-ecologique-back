@@ -17,6 +17,11 @@ class InMemoryRepository implements CanonicalProgramRepository {
   async findAll(): Promise<CanonicalProgram[]> {
     return [...this.saved.values()]
   }
+  async delete(canonicalId: string): Promise<void> {
+    for (const [slug, program] of this.saved) {
+      if (program.id === canonicalId) this.saved.delete(slug)
+    }
+  }
   async deleteAll(): Promise<void> {
     this.saved.clear()
   }
@@ -85,5 +90,22 @@ describe('CanonicalProgramService', () => {
     const [event] = events.events
     expect(event.type).toBe('program_dropped')
     expect(event).toMatchObject({ severity: 'warning', phase: 'write', slug: 'diagnostic-energie-pme' })
+  })
+
+  it('removes a program through the repository and emits a removed event', async () => {
+    const repository = new InMemoryRepository()
+    const events = new RecordingSink()
+    const service = new CanonicalProgramService(repository, events)
+    await service.save(validInput)
+
+    await service.remove('a1b2c3d4e5f6g7h8i9j0klmn', 'diagnostic-energie-pme')
+
+    expect(repository.saved.size).toBe(0)
+    expect(events.events.at(-1)).toEqual({
+      type: 'program_removed',
+      severity: 'info',
+      slug: 'diagnostic-energie-pme',
+      canonicalId: 'a1b2c3d4e5f6g7h8i9j0klmn',
+    })
   })
 })

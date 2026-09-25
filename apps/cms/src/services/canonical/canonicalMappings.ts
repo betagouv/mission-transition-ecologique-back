@@ -43,7 +43,8 @@ export const AID_TYPE_TO_CANONICAL: Record<AidType, TypeAide> = {
 /**
  * Editorial status (`statut_edition`) — content authoring progress. No canonical
  * state matches "en-relecture" exactly; it is folded into `en_creation` (content
- * not yet final).
+ * not yet final). An archived program keeps final content (`pret_prod`): its
+ * archiving is carried by `statut_dispositif`, so AGIR still receives it.
  */
 export const WORKFLOW_STATUS_TO_EDITION: Record<WorkflowStatus, StatutEdition> = {
   'en-creation': 'en_creation',
@@ -53,7 +54,7 @@ export const WORKFLOW_STATUS_TO_EDITION: Record<WorkflowStatus, StatutEdition> =
   'en-cours-modification': 'en_reecriture',
   importe: 'inconnu',
   annule: 'abandonne',
-  archive: 'archive',
+  archive: 'pret_prod',
   remplace: 'pret_prod',
 }
 

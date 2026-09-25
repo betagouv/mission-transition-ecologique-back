@@ -2,6 +2,7 @@ import type { Payload } from 'payload'
 import type { SourceProgram } from './types'
 import type { ProgramMapper } from './ProgramMapper'
 import { ProgressBar } from '@/utils/ProgressBar'
+import { SystemWorkflowContext } from '@/services/workflow/SystemWorkflowContext'
 
 export interface ImportResult {
   created: number
@@ -36,12 +37,15 @@ export class ProgramImporter {
           return
         }
 
+        // The source status wins over the editorial workflow (e.g. re-publishing
+        // an archived program), so the import writes as the system.
+        const context = SystemWorkflowContext.create()
         const existingId = existingIdBySlug.get(program.id)
         if (existingId !== undefined) {
-          await this.payload.update({ collection: 'programs', id: existingId, data, draft: true })
+          await this.payload.update({ collection: 'programs', id: existingId, data, draft: true, context })
           updated++
         } else {
-          await this.payload.create({ collection: 'programs', data, draft: true })
+          await this.payload.create({ collection: 'programs', data, draft: true, context })
           created++
         }
       } catch (err) {

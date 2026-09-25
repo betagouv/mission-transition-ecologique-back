@@ -55,6 +55,28 @@ describe('DrizzleCanonicalProgramRepository', () => {
     expect(all.map((p) => p.slug)).toEqual(['diagnostic-energie-pme'])
   })
 
+  it('delete removes only the program with that canonical id', async () => {
+    const { repo } = await newRepository()
+    const other = new CanonicalProgramValidator().parse({
+      ...validInput,
+      id: 'b1b2c3d4e5f6g7h8i9j0klmn',
+      slug: 'autre-dispositif',
+    })
+    await repo.save(program)
+    await repo.save(other)
+
+    await repo.delete('a1b2c3d4e5f6g7h8i9j0klmn')
+
+    expect((await repo.findAll()).map((p) => p.slug)).toEqual(['autre-dispositif'])
+  })
+
+  it('delete is a no-op for an unknown canonical id', async () => {
+    const { repo } = await newRepository()
+    await repo.save(program)
+    await repo.delete('zzzzzzzzzzzzzzzzzzzzzzzz')
+    expect(await repo.findAll()).toHaveLength(1)
+  })
+
   it('deleteAll empties the store', async () => {
     const { repo } = await newRepository()
     await repo.save(program)

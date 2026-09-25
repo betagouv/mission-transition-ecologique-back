@@ -54,14 +54,19 @@ Les **ports** vivent dans le domaine, les **implémentations concrètes** sont i
 
 ### 5. Synchronisation au publish (chemin unique)
 
-- Hook `syncCanonicalOnPublish` (afterChange sur `Programs`) : un dispositif publié (`_status === 'published'`) est mappé, validé, persisté. Les issues sont **émises comme événements** (`program_dropped`, `sync_failed`) via le sink (voir §6) et **ne bloquent jamais** l'écriture CMS.
+- Hook `syncCanonicalOnPublish` (afterChange sur `Programs`) : l'action dépend du `workflowStatus`, décidée par `CanonicalSyncPolicy` (révisé le 2026-09-25, feature 005) :
+  - `publie`, `archive`, `remplace` : le dispositif est mappé, validé, persisté. Archivé et remplacé sont transmis avec leur statut (`statut_edition: 'pret_prod'`, `statut_dispositif: 'archive'` ou `'remplace'`) : l'API AGIR continue de les servir en les signalant comme tels, l'export Grist (open data) les écarte. Auparavant seul `_status === 'published'` était synchronisé : un dispositif archivé depuis le CMS restait `valide` dans le canonical, et son `statut_edition` aurait été `archive`, ce qui l'aurait fait disparaître de l'API AGIR (404) alors que l'archivage doit y être transmis.
+  - `annule` : le dispositif est retiré du canonical (`CanonicalProgramService.remove`, événement `program_removed`).
+  - états en cours (`en-creation`, `en-relecture`, `en-cours-publication`, `en-cours-modification`, `importe`) : le canonical n'est pas touché, la version publiée reste en ligne pendant une réécriture.
+- Hook `removeCanonicalOnDelete` (afterDelete) : une suppression définitive retire aussi le dispositif du canonical (port `CanonicalProgramRepository.delete`).
+- Les issues sont **émises comme événements** (`program_dropped`, `sync_failed`) via le sink (voir §6) et **ne bloquent jamais** l'écriture CMS.
 - Le **seed** n'a **pas** d'étape canonical dédiée : `ProgramMapper` écrit les dispositifs publiés en `_status: 'published'`, ce qui déclenche le même hook. Le store est donc peuplé par le hook, en seed comme en prod (un seul chemin de sync). Une étape batch `CanonicalSeed` a existé puis a été retirée car redondante avec le hook (elle resynchronisait le même ensemble, doublant le travail et les logs).
 
 ### 6. Observabilité des drops via un port à canaux pluggables
 
 La validation écarte de la donnée à deux endroits, sans le signaler : à l'**écriture** (au publish, hook : un input invalide n'est pas persisté) et surtout à la **lecture** (`findAll`/`findBySlug` : une row stockée qui ne valide plus, typiquement après une évolution de schéma, disparaît silencieusement). Ce dernier cas est quasi invisible.
 
-Décision : un **port d'observabilité** `CanonicalEventSink` dans le domaine (`libs/canonical/src/observability/`). Le domaine et le store **émettent** des `CanonicalEvent` typés (`program_saved`, `program_dropped` avec `phase: 'write' | 'read'`, `sync_failed`) sans savoir où ils partent. `emit` est fire-and-forget et ne jette jamais : l'observabilité ne peut pas casser un save ni une lecture.
+Décision : un **port d'observabilité** `CanonicalEventSink` dans le domaine (`libs/canonical/src/observability/`). Le domaine et le store **émettent** des `CanonicalEvent` typés (`program_saved`, `program_removed`, `program_dropped` avec `phase: 'write' | 'read'`, `sync_failed`) sans savoir où ils partent. `emit` est fire-and-forget et ne jette jamais : l'observabilité ne peut pas casser un save ni une lecture.
 
 Les **canaux** sont des adaptateurs implémentant le port, injectés au composition root (`apps/cms`) :
 - `PayloadLoggerEventSink` (logs, toujours actif aujourd'hui).
@@ -73,7 +78,7 @@ Le **routage** est déclaratif : `RoutingCanonicalEventSink` dispatche chaque é
 
 - **Aller simple** `CMS → canonical` (le retour `canonical → CMS` et les flux entrants viendront plus tard).
 - **Lossy assumé** : on perd le propre au CMS (`workflowHistory`, contributeurs assignés…), on garde la donnée métier du dispositif.
-- **Publiés uniquement** (les brouillons sont hors sujet pour l'instant).
+- **Publiés, archivés et remplacés** (les brouillons restent hors sujet, voir §5).
 
 ## Conséquences
 

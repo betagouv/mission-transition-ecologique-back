@@ -58,6 +58,10 @@ export class DrizzleCanonicalProgramRepository implements CanonicalProgramReposi
       })
   }
 
+  async delete(canonicalId: string): Promise<void> {
+    await this.db.delete(canonicalPrograms).where(eq(canonicalPrograms.canonicalId, canonicalId))
+  }
+
   /** Empties the store, for a full rebuild from an upstream source. */
   async deleteAll(): Promise<void> {
     await this.db.delete(canonicalPrograms)

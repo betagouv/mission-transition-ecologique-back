@@ -13,6 +13,8 @@ export interface CanonicalProgramRepository {
   findBySlug(slug: string): Promise<CanonicalProgram | null>
   /** Returns every stored program. */
   findAll(): Promise<CanonicalProgram[]>
+  /** Removes the program identified by its canonical id; a no-op when absent. */
+  delete(canonicalId: string): Promise<void>
   /** Empties the store, for a full rebuild from an upstream source. */
   deleteAll(): Promise<void>
 }

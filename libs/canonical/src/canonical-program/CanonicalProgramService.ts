@@ -15,7 +15,7 @@ export type CanonicalSaveResult =
  * Domain service for canonical programs. Orchestrates the use cases over the
  * repository port, independent of any source (CMS, external feed) or storage
  * technology. The concrete repository is injected by the caller. Grows with the
- * needs (save and getAll today, get next).
+ * needs (save, remove and getAll today, get next).
  */
 export class CanonicalProgramService {
   private readonly validator = new CanonicalProgramValidator()
@@ -46,6 +46,15 @@ export class CanonicalProgramService {
       canonicalId: result.program.id,
     })
     return { status: 'saved', slug: result.program.slug }
+  }
+
+  /**
+   * Withdraws a program from the canonical, e.g. when it is deleted at the
+   * source. The removal is emitted so consumers losing a program is traceable.
+   */
+  async remove(canonicalId: string, slug: string): Promise<void> {
+    await this.repository.delete(canonicalId)
+    this.events.emit({ type: 'program_removed', severity: 'info', slug, canonicalId })
   }
 
   async getAll(): Promise<CanonicalProgram[]> {
