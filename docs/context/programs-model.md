@@ -128,6 +128,8 @@ Default à la création : 3 étapes (les 2 premières contiennent un lien vide).
 
 `slug`, `workflowStatus`, `workflowHistory`, `_status`, `assignedContributors`, `metaTitle`, `metaDescription`.
 
+`temporarilyUnavailable` (case à cocher, sidebar, feature 005) : aide publiée mais signalée comme indisponible ; exportée en `statut_dispositif: 'temporairement_indisponible'` tant que le dispositif est publié. Alimentée par `aide temporairement indisponible: "oui"` de l'amont.
+
 ---
 
 ## Mapping export → restore (legacy → new)

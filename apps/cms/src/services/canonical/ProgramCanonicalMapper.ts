@@ -119,7 +119,7 @@ export class ProgramCanonicalMapper {
     const workflowStatus = program.workflowStatus ?? 'en-creation'
     return {
       statut_edition: WORKFLOW_STATUS_TO_EDITION[workflowStatus],
-      statut_dispositif: WORKFLOW_STATUS_TO_DISPOSITIF[workflowStatus],
+      statut_dispositif: this.mapStatutDispositif(program, workflowStatus),
       date_ouverture: toIsoDate(program.validityStart),
       date_cloture: toIsoDate(program.validityEnd),
       remplace_par: this.mapRemplacePar(program),
@@ -131,6 +131,15 @@ export class ProgramCanonicalMapper {
       url_source: clean(program.url),
       etapes_activation: this.mapEtapes(program),
     }
+  }
+
+  private mapStatutDispositif(
+    program: Program,
+    workflowStatus: NonNullable<Program['workflowStatus']>,
+  ): CanonicalProgramInput['statut_dispositif'] {
+    const statut = WORKFLOW_STATUS_TO_DISPOSITIF[workflowStatus]
+    // Unavailability only qualifies a live aid, not an archived or replaced one.
+    return statut === 'valide' && program.temporarilyUnavailable ? 'temporairement_indisponible' : statut
   }
 
   private mapRemplacePar(program: Program): string | undefined {

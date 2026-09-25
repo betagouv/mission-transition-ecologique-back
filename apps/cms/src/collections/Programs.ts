@@ -880,6 +880,16 @@ export const Programs: CollectionConfig = {
       }),
     },
     {
+      name: 'temporarilyUnavailable',
+      type: 'checkbox',
+      label: 'Aide temporairement indisponible',
+      defaultValue: false,
+      admin: {
+        position: 'sidebar',
+        description: "L'aide reste publiée mais est signalée comme indisponible.",
+      },
+    },
+    {
       name: 'lastModifiedBy',
       type: 'relationship',
       label: 'Dernière modification par',

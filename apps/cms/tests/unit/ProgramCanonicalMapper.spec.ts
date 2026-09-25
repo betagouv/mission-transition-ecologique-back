@@ -227,6 +227,19 @@ describe('ProgramCanonicalMapper', () => {
     })
   })
 
+  describe('temporary unavailability', () => {
+    it('flags a live program as temporarily unavailable', () => {
+      const data = mapAndValidate(buildProgram({ temporarilyUnavailable: true }))
+      expect(data.statut_dispositif).toBe('temporairement_indisponible')
+    })
+
+    it('keeps the archived status of an archived program', () => {
+      const data = mapAndValidate(buildProgram({ workflowStatus: 'archive', temporarilyUnavailable: true }))
+      expect(data.statut_dispositif).toBe('archive')
+      expect(data.statut_edition).toBe('pret_prod')
+    })
+  })
+
   describe('replacement', () => {
     it('carries the replacing program canonicalId into remplace_par', () => {
       const replacement = buildProgram({ id: 2, canonicalId: 'z9y8x7w6v5u4t3s2r1q0ponm' })
