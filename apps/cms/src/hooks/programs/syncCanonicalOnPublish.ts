@@ -13,12 +13,19 @@ import type { Program } from '../../../payload-types'
  * Outcomes (saved, removed, dropped, failed) are emitted as events and never
  * block the CMS write.
  */
-export const syncCanonicalOnPublish: CollectionAfterChangeHook<Program> = async ({ doc, req }) => {
+export const syncCanonicalOnPublish: CollectionAfterChangeHook<Program> = async ({ doc, previousDoc, req }) => {
   const action = CanonicalSyncPolicy.actionFor(doc.workflowStatus ?? 'en-creation')
   if (action === 'keep') return doc
 
   try {
     const service = await getCanonicalProgramService(req.payload.logger)
+
+    // A system write realigned the canonical id: drop the row stored under the
+    // old one, which would otherwise keep the slug and reject the new row.
+    const previousId = previousDoc?.canonicalId
+    if (previousId && previousId !== doc.canonicalId) {
+      await service.remove(previousId, String(previousDoc.slug ?? ''))
+    }
 
     if (action === 'remove') {
       if (doc.canonicalId) await service.remove(doc.canonicalId, String(doc.slug ?? ''))

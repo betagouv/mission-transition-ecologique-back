@@ -3,6 +3,7 @@ import type { Payload } from 'payload'
 import { getPayload } from 'payload'
 import config from '@payload-config'
 import { describe, it, beforeAll, expect } from 'vitest'
+import { createId } from '@paralleldrive/cuid2'
 import { resolve } from 'path'
 import { fileURLToPath } from 'url'
 import type { CanonicalProgramRepository } from '@tee-backoffice/canonical'
@@ -33,11 +34,11 @@ describe('canonical sync hooks', () => {
     const result = await payload.find({
       collection: 'programs',
       where: { workflowStatus: { equals: 'publie' } },
-      limit: 6,
+      limit: 8,
       depth: 0,
     })
     published = result.docs
-    expect(published).toHaveLength(6)
+    expect(published).toHaveLength(8)
   }, 60_000)
 
   it('mirrors a published program into the canonical', async () => {
@@ -91,6 +92,28 @@ describe('canonical sync hooks', () => {
     const program = published[3]!
     await systemUpdate(program.id, { workflowStatus: 'annule' })
     expect(await canonical.findBySlug(program.slug!)).toBeNull()
+  })
+
+  it('lets a system write realign the canonical id, moving the stored row', async () => {
+    const program = published[6]!
+    const realigned = createId()
+
+    await systemUpdate(program.id, { canonicalId: realigned })
+
+    const doc = await payload.findByID({ collection: 'programs', id: program.id, depth: 0 })
+    expect(doc.canonicalId).toBe(realigned)
+    const stored = await canonical.findBySlug(program.slug!)
+    expect(stored?.id).toBe(realigned)
+    expect((await canonical.listKeys()).filter((key) => key.slug === program.slug)).toHaveLength(1)
+  })
+
+  it('ignores a canonical id sent outside the system context', async () => {
+    const program = published[7]!
+
+    await payload.update({ collection: 'programs', id: program.id, data: { canonicalId: createId(), title: `${program.title} ` } })
+
+    const doc = await payload.findByID({ collection: 'programs', id: program.id, depth: 0 })
+    expect(doc.canonicalId).toBe(program.canonicalId)
   })
 
   it('withdraws a hard-deleted program', async () => {

@@ -24,7 +24,7 @@ Constats (vérifiés sur la base de dev le 2026-09-25) :
 | 5 | Le back-office ne voit pas les nouveautés amont | Seul le seed écrit dans Payload |
 | 6 | Archivage et remplacement jamais transmis au canonical par le hook | `archive`/`remplace` retombent en `_status: 'draft'`, le hook ignore les brouillons |
 | 7 | Aucun moyen de retirer un dispositif du canonical | Port sans `delete`, pas de hook `afterDelete` ; masqué par le `deleteAll` quotidien |
-| 8 | Deux `canonicalId` pour un même dispositif | CMS : cuid2 aléatoire ; `import:tee` : dérivé du slug (`SlugCanonicalId`) |
+| 8 | Deux `canonicalId` pour un même dispositif | CMS : cuid2 aléatoire ; `import:tee` : dérivé du slug (`SlugCanonicalId`). **Résolu** : `assignCanonicalId` accepte l'id dérivé du slug fourni par une écriture système, et le hook retire la ligne de l'ancien id (ADR 0012) |
 | 9 | Un script ne peut pas changer un statut workflow | `beforeChangeWorkflow` lève `401` sans `req.user` |
 | 10 | Statut « aide temporairement indisponible » absent du CMS (1 dispositif amont) | Aucun champ Payload ; seul `TeeImporter` le lit |
 | 11 | Code quotidien marqué « ONE-SHOT, à supprimer » | Commentaires hérités de la reprise historique (`TeeImporter`, `ThemeMapper`, `TypeAideMapper`, `RegionNameResolver`) |
