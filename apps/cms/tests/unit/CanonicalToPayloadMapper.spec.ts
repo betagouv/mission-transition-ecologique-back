@@ -149,11 +149,11 @@ describe('CanonicalToPayloadMapper', () => {
     expect(warnings).toHaveLength(1)
   })
 
-  it('maps variants and reports a zone missing from the CMS', () => {
+  it('maps variants and reports a zone unknown to the CMS', () => {
     const { data, warnings } = map({
       variantes: [
         {
-          conditions: { effectif: { max: 49 }, regions: ['REG-53', 'OM-975'] },
+          conditions: { effectif: { max: 49 }, regions: ['REG-53', 'COM-99999'] },
           modifications: { montant: { type: 'Montant du dispositif', valeur: '80 %' } },
         },
       ],
@@ -163,6 +163,6 @@ describe('CanonicalToPayloadMapper', () => {
       { conditionType: 'companySize', companySizeValue: ['0-9', '10-19', '20-49'] },
     ])
     expect(data.variants?.[0]?.modifications).toEqual([{ field: 'montant', newValue: '80 %' }])
-    expect(warnings).toEqual(['zone OM-975 absente des zones géographiques du CMS (condition de variante ignorée)'])
+    expect(warnings).toEqual(['zone COM-99999 inconnue du CMS (condition de variante ignorée)'])
   })
 })

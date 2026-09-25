@@ -54,7 +54,7 @@ Le format brut de `programs.json` n'est interprété que par `TeeImporter` (`lib
 Pour chaque dispositif, `CanonicalToPayloadMapper` :
 1. résout les relations (opérateurs, zones géographiques par nom ou code COG) via `PayloadProgramRelations` ;
 2. convertit le markdown en Lexical (`PayloadMarkdownToRichText`) ;
-3. traduit thèmes, type d'aide, montant/durée, contact (`formulaire` → conseiller), effectif (bornes structurées, tranche exacte sinon « taille spécifique »), secteurs NAF (les 21 sections → « tous secteurs »), territoires, critères (ancienneté + autres), variantes, statut « temporairement indisponible » ;
+3. traduit thèmes, zones (les collectivités d'outre-mer, stockées comme régions à code INSEE à 3 chiffres, portent le niveau COG `OM`), type d'aide, montant/durée, contact (`formulaire` → conseiller), effectif (bornes structurées, tranche exacte sinon « taille spécifique »), secteurs NAF (les 21 sections → « tous secteurs »), territoires, critères (ancienneté + autres), variantes, statut « temporairement indisponible » ;
 4. publie (`publie`) si l'URL et tous les liens d'étape sont valides, sinon laisse en `en-creation`.
 
 L'écriture est un **upsert par `slug`**, faite sous `SystemWorkflowContext` : le statut de la source s'impose au workflow éditorial.
@@ -89,7 +89,7 @@ Seed complete: 276 created, 0 updated, 0 errors.
 | Montant de financement d'une étude | 53 | une seule case montant par type d'aide (coût restant à charge pour une étude) |
 | Lien d'étape vers le formulaire conseiller | 31 | un lien Payload exige une URL |
 | Durée d'un prêt | 10 | pas de champ durée pour les prêts |
-| Collectivités d'outre-mer (`OM-*`) dans une condition de variante | 5 | absentes de la collection `geographic-areas` |
+| Territoires mêlant départements et régions (ex. « Landes, Nouvelle-Aquitaine, Occitanie ») | 12 | le formulaire n'a qu'un niveau de couverture : le niveau départemental est retenu, les régions restent dans le texte de retour (`geographicAreaFeedback`) |
 | Texte libre d'effectif sans bornes (ex. « Moins de 250 salariés ») | 9 | on suit les bornes structurées, que le site TEE utilise pour l'éligibilité |
 | `publicodes`, `illustration` | tous | exclus du modèle CMS (ADR 0001) |
 

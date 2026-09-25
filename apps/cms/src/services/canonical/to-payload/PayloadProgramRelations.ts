@@ -1,5 +1,5 @@
 import type { Payload } from 'payload'
-import { COVERAGE_TYPE_TO_COG_PREFIX } from '../canonicalMappings'
+import { cogCodeOf } from '../canonicalMappings'
 import { GeographicAreaResolver, type ResolvedGeographic } from './GeographicAreaResolver'
 import type { ProgramRelations } from './ProgramRelations'
 
@@ -19,8 +19,8 @@ export class PayloadProgramRelations implements ProgramRelations {
     const areas = await payload.find({ collection: 'geographic-areas', limit: 0, depth: 0 })
     const areaIdByCode = new Map<string, number>()
     for (const area of areas.docs) {
-      const prefix = COVERAGE_TYPE_TO_COG_PREFIX[area.coverageType]
-      if (prefix && area.inseeCode) areaIdByCode.set(`${prefix}-${area.inseeCode}`, area.id)
+      const code = cogCodeOf(area)
+      if (code) areaIdByCode.set(code, area.id)
     }
     return new PayloadProgramRelations(
       operatorIdByName,

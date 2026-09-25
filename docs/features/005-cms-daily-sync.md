@@ -106,7 +106,8 @@ Constats (vérifiés sur la base de dev le 2026-09-25) :
 1. Champ `temporarilyUnavailable` + migration (générée sur une base vierge `tee_migrate`).
 2. `CanonicalToPayloadMapper` + test aller-retour sur les 276 dispositifs amont : aucun écart sur les champs portés.
 3. Le seed passe par `TeeImporter` + `CanonicalToPayloadMapper` ; ancien lecteur supprimé. Corrige les thématiques (276/276 renseignées, vérifié par le test aller-retour) et le contact « formulaire » (82 dispositifs, perdu auparavant) ; les secteurs viennent des sections NAF structurées au lieu de mots-clés.
-4. Pertes restantes, signalées en fin de seed : voir `docs/context/seed.md` (micro-entreprises, montant de financement d'une étude, liens conseiller, durée de prêt, zones d'outre-mer en variante).
+4. Pertes restantes, signalées en fin de seed : voir `docs/context/seed.md` (micro-entreprises, montant de financement d'une étude, liens conseiller, durée de prêt ; territoires mêlant départements et régions, limite du formulaire).
+5. Comparaison ponctuelle ancien `ProgramMapper` / nouveau chemin sur les 276 dispositifs (non commitée) : aucune donnée conservée par l'ancien lecteur n'est perdue. Elle a révélé que l'ancien seed classait 273 dispositifs en « 0 à 9 salariés » (mot-clé « micro-entreprise ») et contredisait l'amont sur les secteurs de 6 dispositifs, et un bug du nouveau mapper corrigé depuis : les collectivités d'outre-mer (stockées comme régions à code 3 chiffres) portent le niveau COG `OM`, dans les deux sens (`cogCodeOf`).
 
 ### Lot 4 : sync quotidienne du CMS
 1. Commande de sync idempotente (écriture sur différence, `canonicalId` dérivé du slug, disparus traités selon `redirects.json` : `remplace` ou `annule`, projets).

@@ -136,3 +136,15 @@ export const COVERAGE_TYPE_TO_COG_PREFIX: Record<CoverageType, string | null> = 
   epci: 'EPCI',
   autre: null,
 }
+
+/**
+ * COG code of a geographic area. Overseas collectivities (975, 987…) are stored
+ * as regions to match the source data, but COG gives them their own `OM` level:
+ * a 3-digit region code is one of them.
+ */
+export function cogCodeOf(area: Pick<GeographicArea, 'coverageType' | 'inseeCode'>): string | undefined {
+  const prefix = COVERAGE_TYPE_TO_COG_PREFIX[area.coverageType]
+  const code = area.inseeCode?.trim()
+  if (!prefix || !code) return undefined
+  return area.coverageType === 'region' && code.length === 3 ? `OM-${code}` : `${prefix}-${code}`
+}

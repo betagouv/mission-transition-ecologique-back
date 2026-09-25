@@ -37,7 +37,7 @@ export class CanonicalVariantToPayloadMapper {
     const areaIds: number[] = []
     for (const code of conditions.regions ?? []) {
       const id = this.relations.areaIdByCogCode(code)
-      if (id === undefined) warnings.push(`zone ${code} absente des zones géographiques du CMS (condition de variante ignorée)`)
+      if (id === undefined) warnings.push(`zone ${code} inconnue du CMS (condition de variante ignorée)`)
       else areaIds.push(id)
     }
     if (areaIds.length > 0) {

@@ -22,14 +22,13 @@ const normalizeName = (name: string) => name.trim().toLowerCase().replace(/[\s-]
 // multi-line blockquote gets a single `>` marker) without changing the content.
 const normalizeText = (text: string | undefined) => (text ?? '').replace(/[\\>\s]/g, '')
 const trim = (text: string | undefined) => text?.trim()
-// Overseas collectivities have no geographic area in the CMS: reported by the
-// seed, left out here.
-const withoutOverseasCollectivities = (codes: string[]) => codes.filter((code) => !code.startsWith('OM-'))
 
 /**
  * The fields the CMS must carry unchanged from upstream to the canonical. Known,
  * documented losses (see the seed warnings) are left out: headcount free text,
  * micro-entreprise restriction, advisor step links, amounts without a field.
+ * Territories are compared by name: a program mixing departments and regions
+ * keeps one coverage level in Payload, the other names going to the feedback text.
  */
 function project(input: CanonicalProgramInput | undefined) {
   const e = input?.eligibilite
@@ -62,7 +61,7 @@ function project(input: CanonicalProgramInput | undefined) {
       description: normalizeText(etape.description),
       urls: (etape.liens ?? []).flatMap((lien) => ('url' in lien ? [lien.url] : [])),
     })),
-    variantes: (input?.variantes ?? []).map((v) => withoutOverseasCollectivities([...(v.conditions.regions ?? [])]).sort()),
+    variantes: (input?.variantes ?? []).map((v) => [...(v.conditions.regions ?? [])].sort()),
   }
 }
 

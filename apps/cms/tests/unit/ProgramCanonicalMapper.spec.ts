@@ -209,14 +209,17 @@ describe('ProgramCanonicalMapper', () => {
           geographicAreas: [
             { id: 1, name: 'Bretagne', coverageType: 'region', inseeCode: '53', updatedAt: TIMESTAMP, createdAt: TIMESTAMP },
             { id: 2, name: 'Paris', coverageType: 'commune', inseeCode: '75056', updatedAt: TIMESTAMP, createdAt: TIMESTAMP },
+            { id: 3, name: 'Nouvelle-Calédonie', coverageType: 'region', inseeCode: '988', updatedAt: TIMESTAMP, createdAt: TIMESTAMP },
           ],
         }),
       )
       expect(data.eligibilite?.secteur_geographique?.structure?.inclusions).toEqual([
         'REG-53',
         'COM-75056',
+        // An overseas collectivity stored as a region keeps its own COG level.
+        'OM-988',
       ])
-      expect(data.eligibilite?.secteur_geographique?.texte).toEqual(['Bretagne', 'Paris'])
+      expect(data.eligibilite?.secteur_geographique?.texte).toEqual(['Bretagne', 'Paris', 'Nouvelle-Calédonie'])
     })
 
     it('maps other criteria to editorial texte', () => {
