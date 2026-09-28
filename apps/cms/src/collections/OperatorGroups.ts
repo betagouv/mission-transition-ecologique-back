@@ -16,9 +16,9 @@ export const OperatorGroups: CollectionConfig = {
   },
   access: {
     read: OperatorAccessPolicy.read,
-    create: AuthAccessPolicy.isSuperAdmin,
-    update: AuthAccessPolicy.isSuperAdmin,
-    delete: AuthAccessPolicy.isSuperAdmin,
+    create: AuthAccessPolicy.isAdmin,
+    update: AuthAccessPolicy.isAdmin,
+    delete: AuthAccessPolicy.isAdmin,
   },
   fields: [
     {

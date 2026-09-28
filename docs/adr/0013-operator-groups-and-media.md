@@ -30,7 +30,7 @@ Constats (2026-09-28) :
 
 ### 1. Modèle : collection `operator-groups` et relation plusieurs-à-plusieurs
 
-- Nouvelle collection **`operator-groups`** (`OperatorGroups.ts`) : `name` (unique), `slug` (unique), `logo` (upload vers `media`, optionnel). Lecture comme `Operators` (`OperatorAccessPolicy.read`), écriture réservée au super-admin, masquée de la navigation hors admins.
+- Nouvelle collection **`operator-groups`** (`OperatorGroups.ts`) : `name` (unique), `slug` (unique), `logo` (upload vers `media`, optionnel). Lecture comme `Operators` (`OperatorAccessPolicy.read`), création, modification et suppression ouvertes aux admins (`AuthAccessPolicy.isAdmin`, révision du 2026-09-28 : un admin gère les groupes comme il gère déjà les groupes et le logo d'un opérateur), masquée de la navigation hors admins.
 - Sur `Operators` : `groups` (relation `hasMany` vers `operator-groups`, dans l'ordre amont) et `logo` (upload vers `media`, optionnel). Colonnes de liste : nom, groupes, logo.
 - Sur `Projects` : `image` passe de `text` à **`upload` vers `media`** (révision de l'ADR 0003 §5).
 - Sur `Media` : `sourcePath` et `category` (voir §2), écriture réservée aux admins.
