@@ -117,6 +117,19 @@ describe('ProgramsSeed', () => {
     expect(program?.workflowStatus).toBe('en-creation')
   })
 
+  it('validates a published program on create, keeping one Payload refuses in creation', async () => {
+    const slug = 'fixture-invalid-contact-email'
+    const [source] = JSON.parse(readFileSync(programsFixture, 'utf-8')) as Record<string, unknown>[]
+    const record = { ...source, id: slug, 'contact question': 'mailto:pas un email' }
+
+    const seed = await new ProgramsSeed(payload, [record as never]).run()
+
+    expect(seed.errors).toBe(0)
+    expect([...seed.warnings.keys()].some((warning) => warning.includes(slug))).toBe(true)
+    const result = await payload.find({ collection: 'programs', where: { slug: { equals: slug } }, limit: 1 })
+    expect(result.docs[0]).toMatchObject({ _status: 'draft', workflowStatus: 'en-creation' })
+  })
+
   it('covers all 5 aid types', async () => {
     const result = await payload.find({ collection: 'programs', where: fixturePrograms, limit: 0 })
     const aidTypes = new Set(result.docs.map((p) => p.aidType))
