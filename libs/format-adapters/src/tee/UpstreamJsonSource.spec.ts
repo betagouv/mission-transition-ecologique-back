@@ -138,6 +138,20 @@ describe('UpstreamJsonSource', () => {
       expect(await source.operators()).toEqual([{ operator: 'CCI Bretagne', filterCategories: [] }])
     })
 
+    it('traite un logo ou des groupes vides ou null comme absents', async () => {
+      const source = new UpstreamJsonSource({
+        fetchImpl: () =>
+          ok([
+            { operator: 'CCI Bretagne', filterCategories: null, imagePath: '' },
+            { operator: 'CMA Corse', filterCategories: ['CMA'], imagePath: null },
+          ]),
+      })
+      expect(await source.operators()).toEqual([
+        { operator: 'CCI Bretagne', filterCategories: [] },
+        { operator: 'CMA Corse', filterCategories: ['CMA'] },
+      ])
+    })
+
     it('refuse une forme invalide', async () => {
       const source = new UpstreamJsonSource({ fetchImpl: () => ok([{ operator: '', filterCategories: 'OPCO' }]) })
       await expect(source.operators()).rejects.toMatchObject({ name: 'ZodError' })

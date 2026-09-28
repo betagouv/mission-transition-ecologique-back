@@ -61,14 +61,15 @@ Options écartées :
 
 ### 4. Règles d'écrasement au seed (décidées à l'implémentation)
 
-- **Groupes** : upsert par slug du nom (`OperatorGroupImporter`). Le logo par défaut n'est posé que si le groupe n'a **aucun logo** : un logo de groupe posé dans l'admin n'est jamais écrasé.
+- **Groupes** : upsert par slug du nom **ou par nom** (`OperatorGroupImporter`) : un groupe créé dans l'admin avec un slug à lui est retrouvé par son nom et garde son slug, au lieu d'être recréé (ce qui échouerait sur l'unicité du nom et arrêterait le seed). Le logo par défaut n'est posé que si le groupe n'a **aucun logo** : un logo de groupe posé dans l'admin n'est jamais écrasé.
 - **Rattachement opérateur → groupes** (`OperatorProfileImporter`, rapprochement par slug du nom, le même que `OperatorImporter`) : la liste `groups` d'un opérateur est **remplacée par la liste amont à chaque seed**. Une modification manuelle des groupes d'un opérateur est donc perdue au seed suivant, conformément à l'amont maître (ADR 0012).
-- **Logo d'un opérateur** :
+- **Logo d'un opérateur et image d'un projet**, même règle portée par `ImportedMediaPolicy` (`seed/media/`) :
   - un logo **uploadé à la main** (média sans `sourcePath`) n'est **jamais écrasé** ;
   - un logo **importé** (média avec `sourcePath`) suit l'amont : remplacé si l'amont change de chemin, **retiré** si l'amont n'a plus d'`imagePath` ;
   - un **téléchargement en échec garde le logo actuel** au lieu de le vider.
 - **Opérateur amont absent du CMS** : signalé, pas créé. Le CMS ne crée que les opérateurs cités par au moins un dispositif (`OperatorImporter`).
-- **Image d'un projet** : `ProjectImporter` résout le média avant d'appeler `ProjectMapper.map(project, imageId)`, qui reste synchrone.
+- **Image d'un projet** : `ProjectImporter` calcule l'image (`ImportedMediaPolicy`, projet existant lu en `depth: 1`) avant d'appeler `ProjectMapper.map(project)`, qui reste synchrone.
+- **Cellules vides de Baserow** : un `imagePath` ou des `filterCategories` vides (`''`) ou `null` dans `operators.json` valent « absent » (`teeOperatorSchema`), au lieu de faire échouer la validation et tout le seed.
 
 ### 5. Stockage objet : plugin toujours enregistré, fichiers publics
 

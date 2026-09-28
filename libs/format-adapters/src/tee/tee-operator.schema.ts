@@ -1,5 +1,8 @@
 import { z } from 'zod'
 
+// Baserow exports an empty cell as '' or null: both mean "absent", not a broken file.
+const emptyAsAbsent = (value: unknown) => (value === '' || value === null ? undefined : value)
+
 /**
  * One entry of upstream `operators.json`, generated from the Baserow operators
  * table. `filterCategories` are the operator groups (many-to-many); `imagePath`
@@ -8,8 +11,8 @@ import { z } from 'zod'
 export const teeOperatorSchema = z
   .object({
     operator: z.string().min(1),
-    filterCategories: z.array(z.string().min(1)).default([]),
-    imagePath: z.string().min(1).optional(),
+    filterCategories: z.preprocess(emptyAsAbsent, z.array(z.string().min(1)).default([])),
+    imagePath: z.preprocess(emptyAsAbsent, z.string().min(1).optional()),
     color: z.string().optional(),
   })
 

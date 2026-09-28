@@ -80,7 +80,8 @@ describe('OperatorGroupImporter and OperatorProfileImporter', () => {
       const logo = name === 'Fixture logo manuel' ? manualOperatorLogo : undefined
       await payload.create({ collection: 'operators', data: { name, slug: Slugify.slugify(name), logo } })
     }
-    await payload.create({ collection: 'operator-groups', data: { name: 'CMA', slug: 'cma', logo: manualCmaLogo } })
+    // Created in the admin with a slug of its own: the import must match it by name.
+    await payload.create({ collection: 'operator-groups', data: { name: 'CMA', slug: 'reseau-cma', logo: manualCmaLogo } })
 
     profiles = await runImport()
   })
@@ -97,6 +98,10 @@ describe('OperatorGroupImporter and OperatorProfileImporter', () => {
   it('creates each upstream group once', async () => {
     const groups = await payload.find({ collection: 'operator-groups', limit: 0 })
     expect(groups.docs.map((group) => group.name).sort()).toEqual(['CCI', 'CMA', 'Fixture OPCO'])
+  })
+
+  it('matches a group created in the admin by its name, keeping its slug', async () => {
+    expect((await findGroup('CMA'))?.slug).toBe('reseau-cma')
   })
 
   it('attaches an operator to all its groups, in upstream order', async () => {

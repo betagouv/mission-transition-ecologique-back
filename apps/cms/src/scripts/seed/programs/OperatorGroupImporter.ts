@@ -16,19 +16,22 @@ export class OperatorGroupImporter {
     const names = [...new Set(operators.flatMap((operator) => operator.filterCategories))]
     process.stdout.write(`Found ${names.length.toString()} operator groups. Upserting...\n`)
 
+    // Matched by name too: a group created in the admin may carry a slug of its
+    // own, and creating it again would break the unique name.
     const existing = await this.payload.find({
       collection: 'operator-groups',
-      where: { slug: { in: names.map((name) => Slugify.slugify(name)) } },
-      limit: names.length,
+      where: { or: [{ slug: { in: names.map((name) => Slugify.slugify(name)) } }, { name: { in: names } }] },
+      limit: 0,
       depth: 0,
     })
     const existingBySlug = new Map(existing.docs.map((doc) => [doc.slug, doc]))
+    const existingByName = new Map(existing.docs.map((doc) => [doc.name, doc]))
 
     const context = SystemWorkflowContext.create()
     const idByName = new Map<string, number>()
     for (const name of names) {
       const slug = Slugify.slugify(name)
-      const current = existingBySlug.get(slug)
+      const current = existingBySlug.get(slug) ?? existingByName.get(name)
       let id: number
       if (current) {
         id = current.id

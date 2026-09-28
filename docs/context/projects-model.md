@@ -138,7 +138,7 @@ Valeurs `NAF_SECTIONS_OPTIONS` (21 sections) :
 ```
 apps/cms/src/scripts/seed/projects/
 ├── types.ts                  # Interface SourceProject
-├── ProjectMapper.ts          # JSON → Payload data (Passe 1), map(project, imageId)
+├── ProjectMapper.ts          # JSON → Payload data (Passe 1), map(project), sans l'image (calculée par ProjectImporter)
 ├── ProjectImporter.ts        # Résout l'image en média, upsert + retourne Map<jsonId, payloadId>
 ├── LinkedProjectsUpdater.ts  # Résolution self-ref (Passe 2)
 └── index.ts                  # ProjectsSeed (orchestre les 2 passes)

@@ -14,8 +14,8 @@ export class ProjectMapper {
     private readonly programIdBySlug: Map<string, number>,
   ) {}
 
-  /** `imageId` is the media already imported for `project.image`, if any. */
-  map(project: SourceProject, imageId?: number) {
+  /** The image is resolved by `ProjectImporter` (media import), not here: mapping stays synchronous. */
+  map(project: SourceProject) {
     if (!project.title || !project.nameTag || !project.shortDescription || !project.longDescription || !project.mainTheme) {
       process.stderr.write(
         `[ProjectMapper] Missing required field(s) for project "${project.slug ?? '(no slug)'}": title=${project.title}, nameTag=${project.nameTag}, shortDescription=${project.shortDescription}, longDescription=${String(Boolean(project.longDescription))}, mainTheme=${project.mainTheme}\n`,
@@ -53,7 +53,6 @@ export class ProjectMapper {
       title: project.title,
       nameTag: project.nameTag,
       shortDescription: project.shortDescription,
-      image: imageId,
       titleLongDescription: project.titleLongDescription,
       longDescription,
       titleMoreDescription: project.titleMoreDescription,

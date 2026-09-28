@@ -3,6 +3,7 @@ import type { TeeOperator } from '@tee-backoffice/format-adapters'
 import type { Operator } from '../../../../payload-types'
 import { SystemWorkflowContext } from '@/services/workflow/SystemWorkflowContext'
 import { Slugify } from '@/utils/Slugify'
+import { ImportedMediaPolicy } from '../media/ImportedMediaPolicy'
 import type { UpstreamMediaImporter } from '../media/UpstreamMediaImporter'
 
 export interface OperatorProfileResult {
@@ -42,28 +43,15 @@ export class OperatorProfileImporter {
         .filter((id): id is number => id !== undefined)
       const data: { groups: number[]; logo?: number | null } = { groups }
 
-      if (OperatorProfileImporter.logoIsImported(cmsOperator)) {
-        if (!operator.imagePath) {
-          data.logo = null
-        } else {
-          // A failed download keeps the current logo rather than clearing it.
-          const logo = await this.media.findOrCreate(operator.imagePath, `Logo de ${operator.operator}`, 'operator-logo')
-          if (logo !== undefined) data.logo = logo
-        }
-      }
+      const logo = await ImportedMediaPolicy.nextValue(cmsOperator.logo, operator.imagePath, (path) =>
+        this.media.findOrCreate(path, `Logo de ${operator.operator}`, 'operator-logo'),
+      )
+      if (logo !== undefined) data.logo = logo
 
       await this.payload.update({ collection: 'operators', id: cmsOperator.id, data, context })
       result.updated++
     }
     return result
-  }
-
-  // Upstream is master for the logos it provided (media with a `sourcePath`); a
-  // logo uploaded by hand in the admin (no `sourcePath`) is never overwritten.
-  private static logoIsImported(operator: Operator): boolean {
-    const logo = operator.logo
-    if (logo === null || logo === undefined) return true
-    return typeof logo === 'object' && Boolean(logo.sourcePath)
   }
 
   private async fetchExisting(operators: TeeOperator[]): Promise<Map<string, Operator>> {

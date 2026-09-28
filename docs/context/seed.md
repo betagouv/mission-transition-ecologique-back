@@ -54,10 +54,10 @@ Le format brut de `programs.json` n'est interprété que par `TeeImporter` (`lib
 
 Puis, depuis `operators.json` :
 
-1. `OperatorGroupImporter` fait un upsert par slug des groupes (`filterCategories`, 12 au 2026-09-28) et pose le logo par défaut de 5 groupes (`OperatorGroupLogoDefaults` : Agence de l'eau, CCI, CMA, ADEME, Bpifrance), **sauf si le groupe a déjà un logo** (posé dans l'admin).
+1. `OperatorGroupImporter` fait un upsert des groupes, rapprochés par slug ou par nom (un groupe créé dans l'admin avec un slug à lui garde ce slug) (`filterCategories`, 12 au 2026-09-28) et pose le logo par défaut de 5 groupes (`OperatorGroupLogoDefaults` : Agence de l'eau, CCI, CMA, ADEME, Bpifrance), **sauf si le groupe a déjà un logo** (posé dans l'admin).
 2. `OperatorProfileImporter` rapproche chaque opérateur amont d'un opérateur CMS par le slug de son nom :
    - `groups` est **remplacé par la liste amont** (une modification manuelle est perdue) ;
-   - logo : un logo **uploadé à la main** (média sans `sourcePath`) n'est jamais écrasé ; un logo **importé** suit l'amont et est retiré si l'amont n'a plus d'`imagePath` ; un téléchargement en échec garde le logo actuel ;
+   - logo : un logo **uploadé à la main** (média sans `sourcePath`) n'est jamais écrasé ; un logo **importé** suit l'amont et est retiré si l'amont n'a plus d'`imagePath` ; un téléchargement en échec garde le logo actuel (`ImportedMediaPolicy`, même règle pour l'image des projets) ; un `imagePath` vide ou `null` vaut « pas de logo » ;
    - un opérateur amont inconnu du CMS est **signalé**, pas créé ; un opérateur du CMS absent d'`operators.json` n'est pas touché.
 
 ### Médias importés
@@ -76,7 +76,7 @@ L'écriture est un **upsert par `slug`**, faite sous `SystemWorkflowContext` : l
 
 ### Étape 3 : projets
 
-`ProjectsSeed` importe `projects.json` (liaison vers les dispositifs par slug, image importée en média via `UpstreamMediaImporter`, puis projets liés en seconde passe).
+`ProjectsSeed` importe `projects.json` (liaison vers les dispositifs par slug, image importée en média via `UpstreamMediaImporter`, selon la même règle que les logos d'opérateurs : image posée à la main conservée, image importée remplacée ou retirée selon l'amont, téléchargement en échec sans effet ; puis projets liés en seconde passe).
 
 ### Idempotence
 
