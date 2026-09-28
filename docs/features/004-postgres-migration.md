@@ -123,7 +123,12 @@ Sur Scalingo, le système de fichiers d'un conteneur est éphémère : les deux 
 
 14. ~~Trancher la question ouverte de l'ADR 0012~~ **fait** : option A (amont maître), hook laissé actif, ADR passé en « Accepté ».
 15. **Fait** : `daily_data.yml` supprimé, remplacé par `cron.json` (tâche planifiée Scalingo) et le script `pnpm data:daily` (import distant, amorçage Grist, export Grist avec push). Les fichiers amont sont lus par HTTP (`UpstreamJsonSource`), plus aucun commit de données. Le hook reste actif, conformément à la décision.
-16. **Fait** : `@payloadcms/storage-s3` branché sur Scaleway Object Storage, activé par la présence de `S3_BUCKET` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` (`Config.objectStorage()`), sinon stockage disque local inchangé. Vérifié dans les deux cas au démarrage (`media adapter = local disk` / `s3`). Reste à créer le bucket et à poser les variables sur les apps Scalingo.
+16. **Fait** : `@payloadcms/storage-s3` branché sur Scaleway Object Storage, activé par la présence de `S3_BUCKET` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` (`Config.objectStorage()`), sinon stockage disque local inchangé. Vérifié dans les deux cas au démarrage (`media adapter = local disk` / `s3`). **Mise en place faite le 2026-09-28** :
+    - buckets `tee-backoffice-media-pre-prod` et `tee-backoffice-media-prod` (`fr-par`, privés, versioning activé, règle de cycle de vie sur les versions non courantes) ;
+    - clé API d'une application IAM dédiée (`ObjectStorageFullAccess` sur le projet), variables `S3_BUCKET` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` posées sur les apps Scalingo, sans `S3_ENDPOINT` (la valeur par défaut est l'endpoint régional `https://s3.fr-par.scw.cloud` ; l'« Endpoint du bucket » de la console, qui contient le nom du bucket, fait échouer le SDK sur une erreur de certificat TLS) ;
+    - test de bout en bout en local sur le bucket de préprod, via l'API locale de Payload : `payload.create` d'un média → objet présent dans le bucket ; `payload.delete` → objet retiré. Avec le versioning, la suppression laisse une ancienne version et un marqueur de suppression dans le bucket (purgés après le test) ;
+    - reste à vérifier sur la préprod déployée : un média uploadé survit à un redéploiement.
+    - L'accès public en lecture aux fichiers (logos servis directement par le bucket) relève de la [feature 006](006-operator-groups-and-logos.md).
 
 ### Lot 5 : bascule (préprod, puis prod)
 
