@@ -3,7 +3,7 @@ import { readFileSync } from 'fs'
 import { editorConfigFactory } from '@payloadcms/richtext-lexical'
 import type { SourceProject } from './types'
 import { ProjectMapper } from './ProjectMapper'
-import { ProjectImporter } from './ProjectImporter'
+import { ProjectImporter, type ImportResult } from './ProjectImporter'
 import { LinkedProjectsUpdater } from './LinkedProjectsUpdater'
 
 export class ProjectsSeed {
@@ -16,7 +16,8 @@ export class ProjectsSeed {
     return new ProjectsSeed(payload, JSON.parse(readFileSync(path, 'utf-8')) as SourceProject[])
   }
 
-  async run(): Promise<void> {
+  /** Pass 2 link failures count as errors: a partial seed must not go unnoticed. */
+  async run(): Promise<ImportResult> {
     const projects = this.projects
     process.stdout.write(`Found ${projects.length.toString()} projects in source.\n`)
 
@@ -47,5 +48,6 @@ export class ProjectsSeed {
     process.stdout.write(
       `Pass 2 complete — ${updated.toString()} updated, ${errors.toString()} errors.\n`,
     )
+    return { ...result, errors: result.errors + errors }
   }
 }

@@ -17,8 +17,8 @@ const projects = await source.projects<SourceProject[]>()
 
 const payload = await getPayload({ config })
 await new GeographicAreasSeed(payload).run()
-await new ProgramsSeed(payload, programs).run()
-await new ProjectsSeed(payload, projects).run()
+const programsResult = await new ProgramsSeed(payload, programs).run()
+const projectsResult = await new ProjectsSeed(payload, projects).run()
 // The user fixtures use the email as password: never seed them in production,
 // where the first super-admin is created by hand.
 if (Config.isProduction()) {
@@ -26,4 +26,7 @@ if (Config.isProduction()) {
 } else {
   await new UsersSeed(payload).run()
 }
-process.exit(0)
+// A partial seed must fail the job (CI, deployment) rather than pass unnoticed.
+const errors = programsResult.errors + projectsResult.errors
+if (errors > 0) process.stderr.write(`Seed incomplet : ${errors.toString()} erreur(s).\n`)
+process.exit(errors > 0 ? 1 : 0)

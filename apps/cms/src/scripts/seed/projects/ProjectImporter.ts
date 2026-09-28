@@ -2,6 +2,7 @@ import type { Payload } from 'payload'
 import type { SourceProject } from './types'
 import type { ProjectMapper } from './ProjectMapper'
 import { ProgressBar } from '@/utils/ProgressBar'
+import { SeedErrorFormatter } from '../SeedErrorFormatter'
 
 export interface ImportResult {
   created: number
@@ -26,34 +27,34 @@ export class ProjectImporter {
     let updated = 0
     let errors = 0
 
-    await Promise.all(
-      projects.map(async (project) => {
-        try {
-          const data = this.mapper.map(project)
-          if (!data) {
-            process.stderr.write(`Required fields missing for project "${project.slug}" — skipping.\n`)
-            errors++
-            return
-          }
-
-          const existingId = existingIdBySlug.get(project.slug)
-          if (existingId !== undefined) {
-            await this.payload.update({ collection: 'projects', id: existingId, data })
-            jsonIdToPayloadId.set(project.id, existingId)
-            updated++
-          } else {
-            const createdDoc = await this.payload.create({ collection: 'projects', data })
-            jsonIdToPayloadId.set(project.id, createdDoc.id)
-            created++
-          }
-        } catch (err) {
-          process.stderr.write(`Error importing project "${project.slug}": ${String(err)}\n`)
+    // Sequential on purpose: concurrent writes to `projects_rels` can deadlock
+    // on Postgres (see `LinkedProjectsUpdater`).
+    for (const project of projects) {
+      try {
+        const data = this.mapper.map(project)
+        if (!data) {
+          process.stderr.write(`Required fields missing for project "${project.slug}" — skipping.\n`)
           errors++
-        } finally {
-          progress.tick()
+          continue
         }
-      }),
-    )
+
+        const existingId = existingIdBySlug.get(project.slug)
+        if (existingId !== undefined) {
+          await this.payload.update({ collection: 'projects', id: existingId, data })
+          jsonIdToPayloadId.set(project.id, existingId)
+          updated++
+        } else {
+          const createdDoc = await this.payload.create({ collection: 'projects', data })
+          jsonIdToPayloadId.set(project.id, createdDoc.id)
+          created++
+        }
+      } catch (err) {
+        process.stderr.write(`Error importing project "${project.slug}": ${SeedErrorFormatter.format(err)}\n`)
+        errors++
+      } finally {
+        progress.tick()
+      }
+    }
 
     progress.done()
     return { result: { created, updated, errors }, jsonIdToPayloadId }
