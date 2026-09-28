@@ -1,11 +1,20 @@
 import type { Payload } from 'payload'
 import { readFileSync } from 'fs'
-import { SlugCanonicalId, TeeImporter, type TeeRecord } from '@tee-backoffice/format-adapters'
+import { SlugCanonicalId, TeeImporter, type TeeOperator, type TeeRecord } from '@tee-backoffice/format-adapters'
 import { PayloadMarkdownToRichText } from '@/services/canonical/rich-text/PayloadMarkdownToRichText'
 import { CanonicalToPayloadMapper } from '@/services/canonical/to-payload/CanonicalToPayloadMapper'
 import { PayloadProgramRelations } from '@/services/canonical/to-payload/PayloadProgramRelations'
+import type { UpstreamMediaImporter } from '../media/UpstreamMediaImporter'
+import { OperatorGroupImporter } from './OperatorGroupImporter'
 import { OperatorImporter } from './OperatorImporter'
+import { OperatorProfileImporter } from './OperatorProfileImporter'
 import { ProgramImporter, type ImportResult } from './ProgramImporter'
+
+/** Upstream `operators.json` entries and the importer that turns their logos into media. */
+export interface OperatorProfilesInput {
+  operators: TeeOperator[]
+  media: UpstreamMediaImporter
+}
 
 /**
  * Loads upstream `programs.json` records into the CMS. The raw format is read by
@@ -16,6 +25,8 @@ export class ProgramsSeed {
   constructor(
     private readonly payload: Payload,
     private readonly records: TeeRecord[],
+    // Optional so a programs-only fixture can be seeded without operator profiles.
+    private readonly operatorProfiles?: OperatorProfilesInput,
   ) {}
 
   static fromFile(payload: Payload, path: string): ProgramsSeed {
@@ -34,6 +45,7 @@ export class ProgramsSeed {
     })
 
     const operatorIdByName = await new OperatorImporter(this.payload).import(programs)
+    await this.importOperatorProfiles()
     const mapper = new CanonicalToPayloadMapper(
       await PayloadMarkdownToRichText.create(this.payload.config),
       await PayloadProgramRelations.fromPayload(this.payload, operatorIdByName),
@@ -49,5 +61,19 @@ export class ProgramsSeed {
       process.stdout.write(`  ⚠ ${count.toString()} × ${warning}\n`)
     }
     return result
+  }
+
+  private async importOperatorProfiles(): Promise<void> {
+    if (!this.operatorProfiles) return
+    const { operators, media } = this.operatorProfiles
+
+    const groupIdByName = await new OperatorGroupImporter(this.payload, media).import(operators)
+    const profiles = await new OperatorProfileImporter(this.payload, media).import(operators, groupIdByName)
+    process.stdout.write(
+      `Operator groups ready: ${groupIdByName.size.toString()} groups, ${profiles.updated.toString()} operators updated.\n`,
+    )
+    for (const [warning, count] of profiles.warnings) {
+      process.stdout.write(`  ⚠ ${count.toString()} × ${warning}\n`)
+    }
   }
 }

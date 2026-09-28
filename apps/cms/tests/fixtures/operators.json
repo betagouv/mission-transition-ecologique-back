@@ -1,0 +1,10 @@
+[
+  { "operator": "Fixture CCI ou CMA", "filterCategories": ["CCI", "CMA"], "imagePath": "/images/logos/operateur/fixture-cci-ou-cma.webp", "color": "red" },
+  { "operator": "Fixture CCI Bretagne", "filterCategories": ["CCI"] },
+  { "operator": "Fixture Opco", "filterCategories": ["Fixture OPCO"], "imagePath": "/images/logos/operateur/fixture-absent.webp" },
+  { "operator": "Fixture sans groupe", "filterCategories": [] },
+  { "operator": "Fixture logo manuel", "filterCategories": [], "imagePath": "/images/logos/operateur/fixture-logo-manuel.webp" },
+  { "operator": "Fixture logo retiré", "filterCategories": [], "imagePath": "/images/logos/operateur/fixture-logo-retire.webp" },
+  { "operator": "Fixture logo 404", "filterCategories": [], "imagePath": "/images/logos/operateur/fixture-logo-404.webp" },
+  { "operator": "Fixture absent du CMS", "filterCategories": ["CCI"], "imagePath": "/images/logos/operateur/fixture-absent-du-cms.webp" }
+]

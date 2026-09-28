@@ -21,6 +21,8 @@ export default defineConfig({
       DATABASE_URI: TEST_DATABASE_URL,
       CANONICAL_DATABASE_URI: TEST_DATABASE_URL,
       PAYLOAD_SECRET: 'test-secret-for-vitest',
+      // Uploads made by the tests stay on local disk, never in a real bucket from `.env`.
+      S3_BUCKET: '',
     },
   },
 })

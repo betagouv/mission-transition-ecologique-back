@@ -1,6 +1,7 @@
 import type { Payload } from 'payload'
 import type { SourceProject } from './types'
 import type { ProjectMapper } from './ProjectMapper'
+import type { UpstreamMediaImporter } from '../media/UpstreamMediaImporter'
 import { ProgressBar } from '@/utils/ProgressBar'
 import { SeedErrorFormatter } from '../SeedErrorFormatter'
 
@@ -14,6 +15,7 @@ export class ProjectImporter {
   constructor(
     private readonly payload: Payload,
     private readonly mapper: ProjectMapper,
+    private readonly media?: UpstreamMediaImporter,
   ) {}
 
   async import(
@@ -31,7 +33,10 @@ export class ProjectImporter {
     // on Postgres (see `LinkedProjectsUpdater`).
     for (const project of projects) {
       try {
-        const data = this.mapper.map(project)
+        const imageId = project.image && this.media
+          ? await this.media.findOrCreate(project.image, project.title || project.slug, 'project-image')
+          : undefined
+        const data = this.mapper.map(project, imageId)
         if (!data) {
           process.stderr.write(`Required fields missing for project "${project.slug}" — skipping.\n`)
           errors++

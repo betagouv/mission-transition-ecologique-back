@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import type { MediaCategory } from '@/constants/mediaCategoryOptions'
 
 import { NAF_SECTIONS_OPTIONS } from '@/constants/nafSectionsOptions'
 import { THEMES_OPTIONS } from '@/constants/themesOptions'
@@ -47,11 +48,10 @@ export const Projects: CollectionConfig = {
     },
     {
       name: 'image',
-      type: 'text',
+      type: 'upload',
+      relationTo: 'media',
       label: 'Image',
-      admin: {
-        description: 'Relative path to image.',
-      },
+      filterOptions: { category: { equals: 'project-image' satisfies MediaCategory } },
     },
 
     // --- Content ---

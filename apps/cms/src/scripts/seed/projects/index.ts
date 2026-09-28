@@ -5,15 +5,18 @@ import type { SourceProject } from './types'
 import { ProjectMapper } from './ProjectMapper'
 import { ProjectImporter, type ImportResult } from './ProjectImporter'
 import { LinkedProjectsUpdater } from './LinkedProjectsUpdater'
+import type { UpstreamMediaImporter } from '../media/UpstreamMediaImporter'
 
 export class ProjectsSeed {
   constructor(
     private readonly payload: Payload,
     private readonly projects: SourceProject[],
+    // Without it (tests), project images are not imported.
+    private readonly media?: UpstreamMediaImporter,
   ) {}
 
-  static fromFile(payload: Payload, path: string): ProjectsSeed {
-    return new ProjectsSeed(payload, JSON.parse(readFileSync(path, 'utf-8')) as SourceProject[])
+  static fromFile(payload: Payload, path: string, media?: UpstreamMediaImporter): ProjectsSeed {
+    return new ProjectsSeed(payload, JSON.parse(readFileSync(path, 'utf-8')) as SourceProject[], media)
   }
 
   /** Pass 2 link failures count as errors: a partial seed must not go unnoticed. */
@@ -35,7 +38,7 @@ export class ProjectsSeed {
     const mapper = new ProjectMapper(editorConfig, programIdBySlug)
 
     process.stdout.write(`Pass 1: importing ${projects.length.toString()} projects...\n`)
-    const { result, jsonIdToPayloadId } = await new ProjectImporter(this.payload, mapper).import(projects)
+    const { result, jsonIdToPayloadId } = await new ProjectImporter(this.payload, mapper, this.media).import(projects)
     process.stdout.write(
       `Pass 1 complete — ${result.created.toString()} created, ${result.updated.toString()} updated, ${result.errors.toString()} errors.\n`,
     )
