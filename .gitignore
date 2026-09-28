@@ -71,6 +71,9 @@ libs/format-adapters/static/exports/grist*
 .env
 .env*.local
 
+# Local MCP servers config (may hold personal tokens)
+.mcp.json
+
 test-output
 
 # Local memory files
