@@ -3,7 +3,7 @@ import { Config } from '@/config/Config'
 import { DatabaseSchemaReset } from './DatabaseSchemaReset'
 
 // Scalingo `postdeploy` hook, shared by every app through the Procfile: a no-op
-// unless the deploy targets the app named by TEE_RESET_DATABASE_ON_DEPLOY.
+// unless TEE_RESET_DATABASE_ON_DEPLOY=1 is set on the app (preprod only).
 const settings = Config.deployDatabaseReset()
 process.stdout.write(`Postdeploy : ${settings.describe()}.\n`)
 if (!settings.isEnabled()) process.exit(0)
