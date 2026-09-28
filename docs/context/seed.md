@@ -2,7 +2,7 @@
 
 ## Objectif
 
-`pnpm seed` remplit PayloadCMS (via la **Local API**) avec les dispositifs et projets du dépôt GitHub amont `betagouv/mission-transition-ecologique` (`libs/data/static/programs.json`, `projects.json`), qui fait foi. Le store canonical est alimenté au passage par le hook `syncCanonicalOnPublish`.
+`pnpm seed` remplit PayloadCMS (via la **Local API**) avec les dispositifs, projets et opérateurs du dépôt GitHub amont `betagouv/mission-transition-ecologique` (`libs/data/static/programs.json`, `projects.json`, et `apps/nuxt/src/public/json/operator/operators.json` pour les groupes et logos d'opérateurs), qui fait foi. Les logos et images de projets sont téléchargés depuis le dossier public du front amont et importés dans `Media` (ADR 0013). Le store canonical est alimenté au passage par le hook `syncCanonicalOnPublish`.
 
 ---
 
@@ -15,7 +15,8 @@
    CANONICAL_DATABASE_URI=postgres://tee:tee@localhost:5432/tee
    PAYLOAD_SECRET=<une-chaine-secrete>
    ```
-3. Optionnel : `TEE_PROGRAMS_URL` / `TEE_PROJECTS_URL` pour lire une autre source que le dépôt amont.
+3. Optionnel : `TEE_PROGRAMS_URL` / `TEE_PROJECTS_URL` / `TEE_OPERATORS_URL` pour lire une autre source que le dépôt amont, `TEE_ASSETS_BASE_URL` pour télécharger les fichiers (logos, images) ailleurs que dans le dossier public du front amont. Une variable vide retombe sur la valeur par défaut.
+4. Optionnel : `S3_*` pour envoyer les médias dans le stockage objet (ADR 0012 §7) ; sans bucket, ils vont sur le disque local (`apps/cms/media/`). Piège : même avec un bucket, Payload vérifie les noms de fichiers contre ce dossier local, et des fichiers laissés par un seed ou des tests sur disque font importer les médias dans le bucket avec un suffixe `-N` (`biodiversite-des-cours-d-eau-1.webp`) : vider `apps/cms/media/` avant de seeder vers un bucket.
 
 ---
 
@@ -32,8 +33,10 @@ Le point d'entrée est `apps/cms/src/scripts/seed/run.ts`.
 
 ## Source des données
 
-- `UpstreamJsonSource.fromSettings(Config.upstreamFallback())` lit les fichiers sur GitHub (timeout 30 s).
+- `UpstreamJsonSource.fromSettings(Config.upstreamFallback())` lit les fichiers JSON sur GitHub (timeout 30 s) ; `operators.json` est validé par `teeOperatorSchema`.
+- `UpstreamAssetSource` télécharge les logos et images par leur chemin amont (`raw.githubusercontent.com/.../main/apps/nuxt/src/public` + chemin, timeout 30 s).
 - **Avec `TEE_UPSTREAM_LOCAL_FALLBACK=1`** dans le `.env` (usage local), une panne GitHub (réseau, timeout, 5xx) bascule sur la copie versionnée `libs/format-adapters/static/upstream/`, avec un avertissement. Un 404 ou un JSON invalide échoue toujours : c'est un vrai changement amont.
+- Les images **ne sont pas versionnées** dans `static/upstream/` : en repli, les groupes sont rattachés depuis la copie d'`operators.json`, les téléchargements échouent et sont signalés, le seed se termine.
 - **Sans la variable**, pas de repli : le seed échoue. Sur Scalingo, la variable est **refusée** (erreur explicite), même si elle est posée.
 - `docs/sources/` n'est plus lu par le code (archive de la reprise historique).
 
@@ -49,6 +52,18 @@ Le format brut de `programs.json` n'est interprété que par `TeeImporter` (`lib
 
 `OperatorImporter` déduplique les opérateurs cités (contact, autres, variantes), fait un **upsert par slug** et construit la table `nom → id`.
 
+Puis, depuis `operators.json` :
+
+1. `OperatorGroupImporter` fait un upsert par slug des groupes (`filterCategories`, 12 au 2026-09-28) et pose le logo par défaut de 5 groupes (`OperatorGroupLogoDefaults` : Agence de l'eau, CCI, CMA, ADEME, Bpifrance), **sauf si le groupe a déjà un logo** (posé dans l'admin).
+2. `OperatorProfileImporter` rapproche chaque opérateur amont d'un opérateur CMS par le slug de son nom :
+   - `groups` est **remplacé par la liste amont** (une modification manuelle est perdue) ;
+   - logo : un logo **uploadé à la main** (média sans `sourcePath`) n'est jamais écrasé ; un logo **importé** suit l'amont et est retiré si l'amont n'a plus d'`imagePath` ; un téléchargement en échec garde le logo actuel ;
+   - un opérateur amont inconnu du CMS est **signalé**, pas créé ; un opérateur du CMS absent d'`operators.json` n'est pas touché.
+
+### Médias importés
+
+`UpstreamMediaImporter` (`apps/cms/src/scripts/seed/media/`) transforme un chemin amont en id de média : il cherche un média par `sourcePath` et ne télécharge que s'il n'en trouve pas (texte alternatif `Logo de <nom>`, ou titre du projet). Il pose le type (`category`) : `operator-logo` pour les logos d'opérateurs et de groupes, `project-image` pour les images de projets ; un média retrouvé dont le type diffère est réaligné (compteur « recatégorisés »), ce qu'exigent les sélecteurs filtrés par type. `sourcePath` n'est écrit que par le seed (Local API, `overrideAccess`) : il est masqué dans l'admin et ignoré s'il arrive par l'API. Appels séquentiels. Un fichier introuvable (404), un refus HTTP ou un chemin invalide est signalé en fin de seed, jamais fatal : le document est gardé sans image.
+
 ### Étape 2 : dispositifs
 
 Pour chaque dispositif, `CanonicalToPayloadMapper` :
@@ -61,11 +76,11 @@ L'écriture est un **upsert par `slug`**, faite sous `SystemWorkflowContext` : l
 
 ### Étape 3 : projets
 
-`ProjectsSeed` importe `projects.json` (liaison vers les dispositifs par slug, puis projets liés en seconde passe).
+`ProjectsSeed` importe `projects.json` (liaison vers les dispositifs par slug, image importée en média via `UpstreamMediaImporter`, puis projets liés en seconde passe).
 
 ### Idempotence
 
-Ré-exécutable : une deuxième exécution met à jour au lieu de créer des doublons.
+Ré-exécutable : une deuxième exécution met à jour au lieu de créer des doublons. Les médias sont retrouvés par `sourcePath` : un second seed n'en crée aucun et n'écrit rien de nouveau dans le bucket (136 médias au 2026-09-28 : 45 logos d'opérateurs, 91 images de projets).
 
 ### Logs de sortie
 
@@ -73,10 +88,13 @@ Ré-exécutable : une deuxième exécution met à jour au lieu de créer des dou
 Source : https://raw.githubusercontent.com/.../programs.json + ...
 Found 276 programs in source.
 Found 76 unique operators. Upserting...
+Found 12 operator groups. Upserting...
+Operator groups ready: 12 groups, 67 operators updated.
 Operators ready. Importing 276 programs...
 Seed complete: 276 created, 0 updated, 0 errors.
   ⚠ 47 × restriction de catégorie légale (micro-entreprises) sans champ Payload
   ...
+Médias : 136 créés, 0 réutilisés (dont 0 recatégorisés), 0 en échec.
 ```
 
 ---
@@ -92,6 +110,7 @@ Seed complete: 276 created, 0 updated, 0 errors.
 | Territoires mêlant départements et régions (ex. « Landes, Nouvelle-Aquitaine, Occitanie ») | 12 | le formulaire n'a qu'un niveau de couverture : le niveau départemental est retenu, les régions restent dans le texte de retour (`geographicAreaFeedback`) |
 | Texte libre d'effectif sans bornes (ex. « Moins de 250 salariés ») | 9 | on suit les bornes structurées, que le site TEE utilise pour l'éligibilité |
 | `publicodes`, `illustration` | tous | exclus du modèle CMS (ADR 0001) |
+| `color` d'`operators.json` | tous | présentation propre au front amont |
 
 ---
 
@@ -103,6 +122,11 @@ pnpm test:unit    # CanonicalToPayloadMapper.spec.ts, sans base
 ```
 
 - `seed.int.spec.ts` : opérateurs, dispositifs, thèmes, Lexical, brouillon sur lien invalide, idempotence (fixture `apps/cms/tests/fixtures/programs.json`).
+- `operator-profiles.int.spec.ts` : groupes, opérateur multi-groupe, logos, logos de groupe et d'opérateur posés à la main conservés, avertissements, idempotence, règles d'écrasement au second import (logo remplacé, retiré, gardé sur 404) (fixtures `operators.json`, `pixel.webp`, `fetch` factice `FakeAssetFetch`).
+- `upstream-media.int.spec.ts` : création d'un média (type posé), réutilisation sans téléchargement, réalignement d'un type erroné, fichier manquant, chemin refusé.
+- `media-rules.int.spec.ts` : écriture des médias refusée à un créateur, `sourcePath` ignoré s'il est envoyé par l'API, sélecteurs de logo refusant une image de projet.
+- `OperatorLogoResolver.spec.ts` (unitaire) : logo propre, secours par groupe, aucun logo.
+- `vitest.config.mts` force `S3_BUCKET: ''` : les tests n'écrivent jamais dans un bucket réel.
 - `upstream-roundtrip.int.spec.ts` : les 276 dispositifs de la copie amont passent par le CMS puis `ProgramCanonicalMapper`, et chaque champ porté doit ressortir identique à ce qu'a produit `TeeImporter`.
 
 ---

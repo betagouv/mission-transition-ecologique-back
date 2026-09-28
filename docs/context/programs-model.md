@@ -1,7 +1,7 @@
-# Modèle des collections Programs, Operators et GeographicAreas
+# Modèle des collections Programs, Operators, OperatorGroups et GeographicAreas
 
 Spec consolidée pour l'implémentation dans PayloadCMS (post-refonte du formulaire).
-Voir aussi : `docs/adr/0001-programs-collection.md` (modèle initial), `docs/adr/0006-programs-form-refactor.md` (refonte 2026-04 — schéma actuel + collection `GeographicAreas`).
+Voir aussi : `docs/adr/0001-programs-collection.md` (modèle initial), `docs/adr/0006-programs-form-refactor.md` (refonte 2026-04 : schéma actuel + collection `GeographicAreas`), `docs/adr/0013-operator-groups-and-media.md` (groupes et logos des opérateurs).
 
 ---
 
@@ -17,6 +17,29 @@ admin.useAsTitle: 'name'
 | `name` | text | required, unique |
 | `slug` | text | unique, auto-généré depuis `name` |
 | `contactUrl` | text | optional |
+| `groups` | relationship → `operator-groups` | optional, hasMany (ordre amont) ; remplacé par la liste amont à chaque seed |
+| `logo` | upload → `media` | optional ; médias de type `operator-logo` seulement ; un upload manuel n'est jamais écrasé par le seed |
+
+Logo effectif (`OperatorLogoResolver`, `apps/cms/src/services/operators/`) : logo de l'opérateur, sinon celui du premier de ses groupes qui en a un, sinon aucun. Voir `docs/adr/0013-operator-groups-and-media.md`.
+
+---
+
+## Collection `OperatorGroups`
+
+```
+slug: 'operator-groups'
+admin.useAsTitle: 'name'
+admin.hidden: non admin
+écriture : super-admin
+```
+
+| Champ | Type Payload | Contraintes |
+|-------|-------------|-------------|
+| `name` | text | required, unique (valeur de `filterCategories` amont) |
+| `slug` | text | required, unique |
+| `logo` | upload → `media` | optional ; médias de type `operator-logo` seulement ; logo de secours des opérateurs du groupe |
+
+Seed : 12 groupes issus d'`operators.json` amont ; logo par défaut pour 5 d'entre eux (`OperatorGroupLogoDefaults`), jamais posé sur un groupe qui a déjà un logo.
 
 ---
 

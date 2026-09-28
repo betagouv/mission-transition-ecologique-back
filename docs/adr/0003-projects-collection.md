@@ -4,6 +4,8 @@
 **Statut :** Accepté
 **Décideurs :** PO, SM, Tech Lead
 
+> **Révision 2026-09-28 :** le §5 est remplacé par l'[ADR 0013](0013-operator-groups-and-media.md). `image` est désormais un champ `upload` vers la collection `Media` ; le seed télécharge l'image depuis le front amont et la retrouve par `Media.sourcePath` (pas de doublon au seed suivant). La migration `20260928_150255_operator_groups_and_media` supprime l'ancienne colonne texte, les chemins étant restaurés en médias par le seed.
+
 ---
 
 ## Contexte
@@ -68,6 +70,8 @@ Valeurs `themes` / `mainTheme` :
 ---
 
 ### 5. Image comme chemin relatif (pas Media)
+
+> ⚠️ Remplacé le 2026-09-28 par l'[ADR 0013](0013-operator-groups-and-media.md) : `image` est un upload vers `Media`.
 
 **Décision :** Le champ `image` est un champ `text` stockant un chemin relatif (ex : `/images/projet/plan-action-eco-energie.webp`), non une relation vers la collection `Media`.
 

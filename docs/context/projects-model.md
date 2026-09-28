@@ -1,7 +1,7 @@
 # Modèle de la collection Projects
 
 Spec consolidée pour l'implémentation dans PayloadCMS.
-Voir aussi : `docs/adr/0003-projects-collection.md`
+Voir aussi : `docs/adr/0003-projects-collection.md`, `docs/adr/0013-operator-groups-and-media.md` (image en média)
 
 ---
 
@@ -20,7 +20,7 @@ admin.useAsTitle: 'title'
 | `title` | text | required | `title` |
 | `nameTag` | text | required | `nameTag` |
 | `shortDescription` | textarea | required | `shortDescription` |
-| `image` | text | optional | `image` (chemin relatif) |
+| `image` | upload → `media` | optional | `image` (chemin amont, téléchargé et importé en média de type `project-image`, seul type accepté, ADR 0013) |
 
 ### Contenu
 
@@ -111,7 +111,7 @@ Valeurs `NAF_SECTIONS_OPTIONS` (21 sections) :
 | `title` | `title` | — |
 | `nameTag` | `nameTag` | — |
 | `shortDescription` | `shortDescription` | — |
-| `image` | `image` | — (chemin relatif) |
+| `image` | `image` | Chemin amont → id de média (`UpstreamMediaImporter.findOrCreate`, alt = titre du projet) |
 | `titleLongDescription` | `titleLongDescription` | — |
 | `longDescription` | `longDescription` | Markdown → Lexical richText |
 | `titleMoreDescription` | `titleMoreDescription` | — |
@@ -138,15 +138,15 @@ Valeurs `NAF_SECTIONS_OPTIONS` (21 sections) :
 ```
 apps/cms/src/scripts/seed/projects/
 ├── types.ts                  # Interface SourceProject
-├── ProjectMapper.ts          # JSON → Payload data (Passe 1)
-├── ProjectImporter.ts        # Upsert + retourne Map<jsonId, payloadId>
+├── ProjectMapper.ts          # JSON → Payload data (Passe 1), map(project, imageId)
+├── ProjectImporter.ts        # Résout l'image en média, upsert + retourne Map<jsonId, payloadId>
 ├── LinkedProjectsUpdater.ts  # Résolution self-ref (Passe 2)
 └── index.ts                  # ProjectsSeed (orchestre les 2 passes)
 ```
 
 ### Ordre d'exécution du seed global
 
-1. `ProgramsSeed` (seed Programs + Operators)
+1. `ProgramsSeed` (seed Operators, groupes et logos d'opérateurs, Programs)
 2. `ProjectsSeed`
-   - Passe 1 : import des projets (sans `linkedProjects`)
+   - Passe 1 : import des projets (sans `linkedProjects`), image importée via `UpstreamMediaImporter` (`apps/cms/src/scripts/seed/media/`)
    - Passe 2 : mise à jour `linkedProjects` via `LinkedProjectsUpdater`

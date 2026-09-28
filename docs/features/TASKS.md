@@ -7,4 +7,4 @@
 | 003 | Workflow des programmes — états étendus | done | feat/workflow | 2026-04-30 |
 | 004 | Migration PostgreSQL (persistance de production) | in progress (lots 1 à 3 faits) | feat/postgres-migration | 2026-09-22 |
 | 005 | Synchronisation quotidienne du CMS depuis l'amont | in progress (lots 1 à 3 faits) | feat/cms-upstream-sync | 2026-09-25 |
-| 006 | Groupes d'opérateurs, logos et images des projets | planned | feat/cms-upstream-sync | 2026-09-28 |
+| 006 | Groupes d'opérateurs, logos et images des projets | done | feat/operator-groups-and-logos | 2026-09-28 |

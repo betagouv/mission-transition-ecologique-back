@@ -99,6 +99,8 @@ Décision (2026-09-25) : **Scaleway Object Storage** (API S3, région `fr-par` p
 - **Sans bucket configuré, rien ne change** : Payload garde son stockage disque, ce qui convient au développement, à la CI et aux tests.
 - Les fichiers restent servis **par Payload** (contrôle d'accès natif conservé) : le bucket n'a pas besoin d'être public. Passer en accès direct (`disablePayloadAccessControl`) est possible plus tard si la bande passante le justifie.
 
+> **Révision 2026-09-28** ([ADR 0013](0013-operator-groups-and-media.md), feature 006) : le stockage objet est désormais **alimenté par le seed** (logos des opérateurs et des groupes, images des projets, téléchargés depuis le front amont et identifiés par `Media.sourcePath`). Les fichiers de `Media` sont **publics** : ACL `public-read` posée par objet à l'upload (bucket laissé privé, sans bucket policy) et `disablePayloadAccessControl: true`, l'URL pointant directement sur le bucket ; le point précédent (fichiers servis par Payload) ne vaut plus que comme repli. Le plugin `s3Storage` est **toujours enregistré** (`enabled: Boolean(objectStorage)`, `alwaysInsertFields: true`) : ses colonnes `media.prefix` et `media._objectkey` existent dans tous les environnements, et les migrations générées en local correspondent au schéma de préprod et de prod. Sans bucket, le plugin est désactivé et Payload garde son stockage disque, comme avant.
+
 ## Qui écrit dans le canonical de production (tranché le 2026-09-24)
 
 Deux chemins alimentent le store : le **hook `syncCanonicalOnPublish`** (publication dans le CMS) et le **pipeline quotidien** (alignement sur le `programs.json` amont : upserts + retrait des dispositifs disparus, sans jamais vider le store, lui-même issu d'une transformation de données Baserow).
