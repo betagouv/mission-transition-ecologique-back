@@ -19,12 +19,12 @@ const payload = await getPayload({ config })
 await new GeographicAreasSeed(payload).run()
 const programsResult = await new ProgramsSeed(payload, programs).run()
 const projectsResult = await new ProjectsSeed(payload, projects).run()
-// The user fixtures use the email as password: never seed them in production,
-// where the first super-admin is created by hand.
-if (Config.isProduction()) {
-  process.stdout.write('NODE_ENV=production : utilisateurs de dev non seedés.\n')
-} else {
+// The user fixtures use the email as password: in production they need the
+// explicit TEE_SEED_DEV_USERS opt-in (preprod, first prod deploy).
+if (Config.seedsDevUsers()) {
   await new UsersSeed(payload).run()
+} else {
+  process.stdout.write('NODE_ENV=production sans TEE_SEED_DEV_USERS : utilisateurs de dev non seedés.\n')
 }
 // A partial seed must fail the job (CI, deployment) rather than pass unnoticed.
 const errors = programsResult.errors + projectsResult.errors

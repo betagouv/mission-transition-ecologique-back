@@ -135,9 +135,11 @@ Sur Scalingo, le système de fichiers d'un conteneur est éphémère : les deux 
 Les étapes 17 à 21 se font d'abord sur la **préprod**, puis à l'identique sur la **prod** une fois la préprod validée.
 
 17. Provisionner l'addon PostgreSQL Scalingo. Aucune variable de base à définir : le DSN est injecté dans `SCALINGO_POSTGRESQL_URL` et l'app le lit en repli de `DATABASE_URI` / `CANONICAL_DATABASE_URI`.
-18. Vérifier que les dépendances nécessaires au seed (`tsx`, `nx`) sont disponibles dans le conteneur Scalingo (le buildpack Node peut élaguer les `devDependencies`) ; sinon prévoir un script de seed prod compilé ou déplacer les dépendances requises.
+18. **Fait (2026-09-28)** : `tsx` est une dépendance de prod, `nx` non. Scripts sans `nx` pour Scalingo : `pnpm seed:scalingo` (seed) et `pnpm scalingo:postdeploy` (étape `postdeploy` du `Procfile`).
 19. Déployer : au démarrage, `prodMigrations` crée le schéma Payload ; le store amorce `canonical`.
-20. `scalingo run` : seed des référentiels (sans utilisateurs de dev), puis création manuelle du premier super-admin.
+    - **Préprod** (mis en place le 2026-09-28, à valider au premier déploiement) : la base est réinitialisée et reseedée à chaque déploiement par le `postdeploy`, avec les utilisateurs de test. Variables à poser sur l'app de préprod : `TEE_RESET_DATABASE_ON_DEPLOY=<nom exact de l'app Scalingo>` et `TEE_SEED_DEV_USERS=1`. Vérifié en local dans les conditions de Scalingo (`NODE_ENV=production`, `APP`) sur une base jetable : flag visant une autre app → base conservée ; flag valide → suppression, 3 migrations, 276 dispositifs, 91 projets, 3 utilisateurs, 268 dispositifs dans le canonical, en 17 s ; second passage → base recréée à l'identique, modification intermédiaire effacée. Voir ADR 0012 §5.
+    - **Prod** : aucune de ces deux variables ; le `postdeploy` ne fait rien.
+20. Prod : `scalingo run --env TEE_SEED_DEV_USERS=1 pnpm seed:scalingo` pour le premier seed (référentiels + utilisateurs de test), puis changer le mot de passe des comptes de test ou les supprimer.
 21. Contrôles : connexion admin, édition et publication d'un dispositif, présence dans `/api/agir/…`, **redéploiement puis vérification que les données sont toujours là**.
 22. Nettoyage : ~~`git rm` des deux `.db`, `.gitignore`~~ **fait**, reste la relecture finale de `CLAUDE.md`, de l'ADR 0008 et des mémos après la bascule.
 
