@@ -63,8 +63,8 @@ const ALL_NAF_SECTIONS: readonly NafSection[] = NAF_SECTIONS_OPTIONS.map((option
  * enters the CMS, so the raw upstream format is parsed in one place only.
  * Names and codes are resolved to relation ids through `ProgramRelations`.
  *
- * A program is published only when its url and every step link are valid;
- * otherwise it stays `en-creation` so editors can spot and fix it.
+ * A program is published only when its url, contact page url and every step
+ * link are valid; otherwise it stays `en-creation` so editors can spot and fix it.
  */
 export class CanonicalToPayloadMapper {
   private readonly variants: CanonicalVariantToPayloadMapper
@@ -87,9 +87,11 @@ export class CanonicalToPayloadMapper {
 
     const url = input.url_source?.trim()
     const steps = this.mapSteps(input, warnings)
+    const contact = this.mapContact(input)
     const canPublish =
       Boolean(url) &&
       UrlValidator.isValid(url) &&
+      UrlValidator.isValid(contact.contactPageUrl) &&
       steps.every((step) => (step.links ?? []).every((link) => UrlValidator.isValid(link.url)))
 
     const data: PayloadProgramData = {
@@ -106,7 +108,7 @@ export class CanonicalToPayloadMapper {
       url: url ?? '',
       ...this.mapAmounts(input, aidType, warnings),
       steps,
-      ...this.mapContact(input),
+      ...contact,
       validityStart: input.date_ouverture,
       validityEnd: input.date_cloture,
       ...this.mapCompanySize(input.eligibilite),
@@ -178,7 +180,7 @@ export class CanonicalToPayloadMapper {
     return accepted.some((candidate) => candidate.toLowerCase() === normalized)
   }
 
-  private mapContact(input: CanonicalProgramInput): Partial<PayloadProgramData> {
+  private mapContact(input: CanonicalProgramInput): Pick<Partial<PayloadProgramData>, 'contactMethod' | 'contactEmail' | 'contactPageUrl'> {
     const contact = input.contact_question
     switch (contact?.type) {
       case 'email':

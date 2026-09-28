@@ -357,6 +357,7 @@ export const Programs: CollectionConfig = {
           name: 'contactPageUrl',
           type: 'text',
           label: 'URL',
+          validate: UrlValidator.validate,
           admin: {
             condition: (data) => data?.contactMethod === 'url',
             description: 'Exemple : https://...',

@@ -62,6 +62,11 @@ describe('CanonicalToPayloadMapper', () => {
     expect(map({ url_source: undefined }).data).toMatchObject({ workflowStatus: 'en-creation', _status: 'draft' })
   })
 
+  it('keeps a program with an unsafe contact page url in draft', () => {
+    const { data } = map({ contact_question: { type: 'url', valeur: 'javascript:alert(1)' } })
+    expect(data).toMatchObject({ contactMethod: 'url', workflowStatus: 'en-creation', _status: 'draft' })
+  })
+
   it('fails loudly on an unknown contact operator', () => {
     expect(() => map({ operateurs: { contact: { nom: 'Inconnu' } } })).toThrow('opérateur introuvable')
   })

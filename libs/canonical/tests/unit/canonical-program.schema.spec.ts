@@ -115,6 +115,35 @@ describe('canonicalProgramSchema', () => {
     })
   })
 
+  describe('urls a front can render safely', () => {
+    const withUrlSource = (url: string): Record<string, unknown> => ({ ...cloneMinimal(), url_source: url })
+
+    it.each([
+      'https://www.ademe.fr/aide',
+      'http://example.org',
+      'http://localhost:3000/page',
+      'mailto:contact@ademe.fr',
+    ])('accepts %s', (url) => {
+      expect(canonicalProgramSchema.safeParse(withUrlSource(url)).success).toBe(true)
+    })
+
+    it.each([
+      'javascript:alert(1)',
+      'data:text/html,<script>alert(1)</script>',
+      'ftp://files.example.org/doc.pdf',
+      'https://file:///Users/someone/Downloads/doc.pdf',
+      'not a url',
+    ])('rejects %s', (url) => {
+      expect(canonicalProgramSchema.safeParse(withUrlSource(url)).success).toBe(false)
+    })
+
+    it('rejects a javascript: contact url', () => {
+      const input = cloneMinimal()
+      input['contact_question'] = { type: 'url', valeur: 'javascript:alert(1)' }
+      expect(canonicalProgramSchema.safeParse(input).success).toBe(false)
+    })
+  })
+
   describe('branded primitives', () => {
     it('rejects an invalid SIREN', () => {
       const input = cloneMinimal()

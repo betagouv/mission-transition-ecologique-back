@@ -69,8 +69,31 @@ export const nafCodeSchema = z
   .brand<'NafCode'>()
 export type NafCode = z.infer<typeof nafCodeSchema>
 
-/** Absolute URL. */
-export const urlSchema = z.string().url()
+const URL_PROTOCOLS: readonly string[] = ['http:', 'https:', 'mailto:']
+
+/**
+ * Link a front can render safely: http(s) or mailto only (no `javascript:` or
+ * `data:`), and an http(s) host that is a real domain, so a `file:///` path
+ * pasted behind `https://` (hostname `file`) is rejected. Same rule as the
+ * CMS `UrlValidator`.
+ */
+function isSafeUrl(value: string): boolean {
+  let parsed: URL
+  try {
+    parsed = new URL(value)
+  } catch {
+    return false
+  }
+  if (!URL_PROTOCOLS.includes(parsed.protocol)) return false
+  if (parsed.protocol === 'mailto:') return true
+  return parsed.hostname === 'localhost' || parsed.hostname.includes('.')
+}
+
+/** Absolute http(s) or mailto URL (see `isSafeUrl`). */
+export const urlSchema = z
+  .string()
+  .url()
+  .refine(isSafeUrl, { message: 'URL invalide (http, https ou mailto vers un domaine attendu)' })
 
 /**
  * Numeric interval, bounds included (headcount). Bounds optional: `{ min: 3 }`
