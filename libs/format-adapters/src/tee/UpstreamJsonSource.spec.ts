@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import type { ExportLogger } from '../shared/ExportLogger'
 import { LocalJsonSnapshot } from './LocalJsonSnapshot'
 import { UpstreamFallbackSettings } from './UpstreamFallbackSettings'
+import type { UpstreamFile } from './UpstreamFile'
 import { UpstreamJsonSource } from './UpstreamJsonSource'
 
 const ok = (body: unknown) => Promise.resolve(new Response(JSON.stringify(body), { status: 200 }))
@@ -16,10 +17,10 @@ class RecordingLogger implements ExportLogger {
   }
 }
 
-function snapshotWith(files: Partial<Record<'programs' | 'projects' | 'redirects', unknown>>) {
+function snapshotWith(files: Partial<Record<UpstreamFile, unknown>>) {
   const snapshot = new LocalJsonSnapshot(mkdtempSync(join(tmpdir(), 'upstream-')))
   for (const [file, data] of Object.entries(files)) {
-    snapshot.write(file as 'programs' | 'projects' | 'redirects', data)
+    snapshot.write(file as UpstreamFile, data)
   }
   return snapshot
 }
@@ -104,6 +105,72 @@ describe('UpstreamJsonSource', () => {
         logger: new RecordingLogger(),
       })
       expect(await source.redirects()).toBeNull()
+    })
+  })
+
+  describe('opérateurs', () => {
+    const ademe = {
+      operator: 'ADEME',
+      filterCategories: ['ADEME'],
+      imagePath: '/images/logos/operateur/ademe.webp',
+      color: 'purple',
+    }
+    const answering = (status: number, body = ''): typeof fetch => () => Promise.resolve(new Response(body, { status }))
+
+    it("lit operators.json à son URL propre, hors du dossier des autres fichiers", async () => {
+      const requested: string[] = []
+      const source = new UpstreamJsonSource({
+        fetchImpl: (input) => {
+          requested.push(String(input))
+          return ok([ademe])
+        },
+      })
+
+      expect(await source.operators()).toEqual([ademe])
+      expect(requested).toEqual([
+        'https://raw.githubusercontent.com/betagouv/mission-transition-ecologique/main/apps/nuxt/src/public/json/operator/operators.json',
+      ])
+      expect(source.describe()).toContain('operators.json')
+    })
+
+    it('complète les groupes absents par une liste vide', async () => {
+      const source = new UpstreamJsonSource({ fetchImpl: () => ok([{ operator: 'CCI Bretagne' }]) })
+      expect(await source.operators()).toEqual([{ operator: 'CCI Bretagne', filterCategories: [] }])
+    })
+
+    it('refuse une forme invalide', async () => {
+      const source = new UpstreamJsonSource({ fetchImpl: () => ok([{ operator: '', filterCategories: 'OPCO' }]) })
+      await expect(source.operators()).rejects.toMatchObject({ name: 'ZodError' })
+    })
+
+    it('propage un 404', async () => {
+      const source = new UpstreamJsonSource({
+        fetchImpl: answering(404),
+        fallback: snapshotWith({ operators: [ademe] }),
+        logger: new RecordingLogger(),
+      })
+      await expect(source.operators()).rejects.toMatchObject({ name: 'UpstreamFetchError', status: 404 })
+    })
+
+    it('propage un JSON illisible', async () => {
+      const source = new UpstreamJsonSource({
+        fetchImpl: answering(200, '{tronqué'),
+        fallback: snapshotWith({ operators: [ademe] }),
+        logger: new RecordingLogger(),
+      })
+      await expect(source.operators()).rejects.toThrow(SyntaxError)
+    })
+
+    it('bascule sur la copie locale sur une erreur serveur, en la validant', async () => {
+      const logger = new RecordingLogger()
+      const source = new UpstreamJsonSource({
+        fetchImpl: answering(503),
+        fallback: snapshotWith({ operators: [ademe] }),
+        logger,
+      })
+
+      expect(await source.operators()).toEqual([ademe])
+      expect(logger.warnings[0]).toContain('operators.json')
     })
   })
 
