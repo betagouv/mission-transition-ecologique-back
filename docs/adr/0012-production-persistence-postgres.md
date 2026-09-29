@@ -120,7 +120,9 @@ Conséquences à connaître :
 - les logs partent dans les logs de l'application (`scalingo logs`), les tâches se listent avec `scalingo cron-tasks` ;
 - limites de la plateforme : 5 tâches par application, 10 minutes d'intervalle minimum, 12 heures d'exécution maximum, horaires en UTC, exécution non garantie (rares ratés) et décalage possible.
 
-Le pipeline lit désormais les deux fichiers amont **par HTTP** (`UpstreamJsonSource`, URLs surchargeables par `TEE_PROGRAMS_URL` / `TEE_REDIRECTS_URL`) au lieu de les écrire sur un disque éphémère, et **ne commite plus rien** : `daily_data.yml` est supprimé.
+Le pipeline lit désormais les fichiers amont **par HTTP** (`UpstreamJsonSource`, URLs surchargeables par `TEE_PROGRAMS_URL` / `TEE_REDIRECTS_URL`, et `TEE_PROJECTS_URL` pour les projets lus par le seed) au lieu de les écrire sur un disque éphémère, et **ne commite plus rien** : `daily_data.yml` est supprimé.
+
+Une copie versionnée des fichiers amont vit dans `libs/format-adapters/static/upstream/` (rafraîchie par `pnpm data:snapshot`). Elle ne sert que de repli en développement quand GitHub est en panne, sur demande explicite (`TEE_UPSTREAM_LOCAL_FALLBACK=1`, `UpstreamFallbackSettings`) : le repli est refusé avec une erreur sur Scalingo, et limité aux pannes (réseau, timeout, 5xx), jamais à un 404 ni à un JSON invalide.
 
 **Surveillance** : Scalingo ne notifie pas nativement l'échec d'une tâche planifiée. Le script sort en code non nul en cas d'erreur, ce qui rend l'échec visible dans les logs. Un canal d'alerte (email ou Slack) pourra être branché sur le port d'observabilité `CanonicalEventSink` (ADR 0008 §6) si le besoin se confirme.
 
