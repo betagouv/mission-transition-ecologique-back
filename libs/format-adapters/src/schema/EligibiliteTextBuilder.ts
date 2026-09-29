@@ -1,5 +1,5 @@
 import type { CanonicalProgramData } from '@tee-backoffice/canonical'
-import { RegionNameResolver } from '../shared/RegionNameResolver'
+import { TerritoryNameResolver } from '../shared/TerritoryNameResolver'
 import { SchemaVocabulary } from './SchemaVocabulary'
 
 type Eligibilite = CanonicalProgramData['eligibilite']
@@ -58,7 +58,7 @@ export class EligibiliteTextBuilder {
   private static regions(eligibilite: Eligibilite): string | undefined {
     const inclusions = eligibilite?.secteur_geographique?.structure?.inclusions ?? []
     if (inclusions.length === 0) return undefined
-    const names = RegionNameResolver.namesOf(inclusions)
+    const names = TerritoryNameResolver.namesOf(inclusions)
     return names.length === 0 ? undefined : names.join(', ')
   }
 }

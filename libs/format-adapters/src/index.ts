@@ -10,6 +10,8 @@ export * from './tee/LocalJsonSnapshot';
 export * from './tee/UpstreamFetchError';
 export * from './tee/UpstreamFallbackSettings';
 export * from './tee/UpstreamJsonSource';
+export * from './tee/UpstreamAmountLabels';
+export * from './shared/TerritoryNameResolver';
 export * from './shared/ExportLogger';
 export * from './shared/ConsoleExportLogger';
 export * from './shared/StatutMapper';

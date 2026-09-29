@@ -1,5 +1,3 @@
-import type { CogCode } from '@tee-backoffice/canonical'
-
 /**
  * Translates between the French territory names expected by
  * `eligibilityData.company.allowedRegion` (programs.json) and the pivot's
@@ -45,7 +43,7 @@ export class RegionNameResolver {
   )
 
   /** Territory names for the given COG codes (unsupported levels ignored). */
-  static namesOf(codes: readonly CogCode[]): string[] {
+  static namesOf(codes: readonly string[]): string[] {
     const names: string[] = []
     for (const code of codes) {
       const name = RegionNameResolver.CODE_TO_NAME[code]

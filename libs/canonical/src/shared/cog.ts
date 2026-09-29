@@ -54,5 +54,8 @@ export const COG_NIVEAUX = {
 /** COG level — key of `COG_NIVEAUX`. */
 export type CogNiveau = keyof typeof COG_NIVEAUX
 
+/** COG code of France as a whole: a program open to the whole national territory. */
+export const COG_FRANCE = 'PAYS-99100'
+
 /** Allowed prefixes, derived from the dictionary. */
 export const COG_PREFIXES = Object.keys(COG_NIVEAUX) as CogNiveau[]
