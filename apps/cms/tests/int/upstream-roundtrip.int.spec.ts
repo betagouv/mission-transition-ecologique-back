@@ -9,15 +9,14 @@ import { GeographicAreasSeed } from '@/scripts/seed/geographic-areas'
 import { ProgramsSeed } from '@/scripts/seed/programs'
 import { ProgramCanonicalMapper } from '@/services/canonical/ProgramCanonicalMapper'
 import { PayloadRichTextToMarkdown } from '@/services/canonical/rich-text/PayloadRichTextToMarkdown'
+import { GeographicAreaResolver } from '@/services/canonical/to-payload/GeographicAreaResolver'
 
-const NATIONAL = "France et territoires d'outre-mer"
 const ALL_NAF_SECTIONS = 21
 
 let payload: Payload
 let expected: CanonicalProgramInput[]
 let actual: Map<string, CanonicalProgramInput>
 
-const normalizeName = (name: string) => name.trim().toLowerCase().replace(/[\s-]+/g, ' ')
 // Compares the words only: Lexical re-spells some Markdown (hard breaks, a
 // multi-line blockquote gets a single `>` marker) without changing the content.
 const normalizeText = (text: string | undefined) => (text ?? '').replace(/[\\>\s]/g, '')
@@ -35,8 +34,8 @@ function project(input: CanonicalProgramInput | undefined) {
   const inclusions = e?.secteur_activite?.structure?.inclusions ?? []
   const territories = (e?.secteur_geographique?.texte ?? [])
     .flatMap((texte) => texte.split(','))
-    .map(normalizeName)
-    .filter((name) => name && name !== normalizeName(NATIONAL))
+    .map((name) => GeographicAreaResolver.normalizeName(name))
+    .filter((name) => name && name !== GeographicAreaResolver.normalizeName(GeographicAreaResolver.NATIONAL_SENTINEL))
   return {
     titre: trim(input?.titre),
     promesse: trim(input?.promesse),

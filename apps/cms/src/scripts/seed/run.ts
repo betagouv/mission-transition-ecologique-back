@@ -17,9 +17,11 @@ const source = UpstreamJsonSource.fromSettings(Config.upstreamFallback())
 const assets = new UpstreamAssetSource()
 process.stdout.write(`Source : ${source.describe()}\n`)
 process.stdout.write(`Fichiers : ${assets.describe()}\n`)
-const programs = await source.programs<TeeRecord[]>()
-const projects = await source.projects<SourceProject[]>()
-const operators = await source.operators()
+const [programs, projects, operators] = await Promise.all([
+  source.programs<TeeRecord[]>(),
+  source.projects<SourceProject[]>(),
+  source.operators(),
+])
 
 const payload = await getPayload({ config })
 const media = new UpstreamMediaImporter(payload, assets)

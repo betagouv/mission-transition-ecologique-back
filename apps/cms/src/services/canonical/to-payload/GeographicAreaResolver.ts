@@ -1,4 +1,5 @@
 import type { Payload } from 'payload'
+import type { GeographicArea } from '../../../../payload-types'
 
 export type GeographicCoverage = 'national' | 'regional' | 'departemental'
 
@@ -7,11 +8,6 @@ export interface ResolvedGeographic {
   geographicAreas?: number[]
   geographicAreaFeedback?: string
 }
-
-/**
- * Sentinel value used in the source data to mean "whole national territory".
- */
-const NATIONAL_SENTINEL = "France et territoires d'outre-mer"
 
 /**
  * Maps the free-text `secteur géographique` of the source programs onto the
@@ -27,6 +23,9 @@ const NATIONAL_SENTINEL = "France et territoires d'outre-mer"
  * so an admin can later create the missing zone.
  */
 export class GeographicAreaResolver {
+  /** Sentinel value used in the source data to mean "whole national territory". */
+  static readonly NATIONAL_SENTINEL = "France et territoires d'outre-mer"
+
   private constructor(
     private readonly regionIdByName: Map<string, number>,
     private readonly departementIdByName: Map<string, number>,
@@ -38,10 +37,13 @@ export class GeographicAreaResolver {
       limit: 0,
       depth: 0,
     })
+    return GeographicAreaResolver.fromAreas(result.docs)
+  }
 
+  static fromAreas(areas: Pick<GeographicArea, 'id' | 'name' | 'coverageType'>[]): GeographicAreaResolver {
     const regionIdByName = new Map<string, number>()
     const departementIdByName = new Map<string, number>()
-    for (const area of result.docs) {
+    for (const area of areas) {
       const key = GeographicAreaResolver.normalizeName(area.name)
       if (area.coverageType === 'region') regionIdByName.set(key, area.id)
       else if (area.coverageType === 'departement')
@@ -57,7 +59,7 @@ export class GeographicAreaResolver {
    * Example: "Saint-Pierre-Et-Miquelon" and "Wallis et Futuna" both match the
    * official labels "Saint-Pierre-et-Miquelon" and "Wallis-et-Futuna".
    */
-  private static normalizeName(name: string): string {
+  static normalizeName(name: string): string {
     return name
       .trim()
       .toLowerCase()
@@ -71,7 +73,7 @@ export class GeographicAreaResolver {
 
     if (names.length === 0) return {}
 
-    if (names.some((name) => name === NATIONAL_SENTINEL)) {
+    if (names.some((name) => name === GeographicAreaResolver.NATIONAL_SENTINEL)) {
       return { geographicCoverage: 'national', geographicAreas: [] }
     }
 
