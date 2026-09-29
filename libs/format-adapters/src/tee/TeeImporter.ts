@@ -1,5 +1,5 @@
 import type { CanonicalProgramInput } from '@tee-backoffice/canonical'
-import { RegionNameResolver } from '../shared/RegionNameResolver'
+import { TerritoryNameResolver } from '../shared/TerritoryNameResolver'
 import { ThemeMapper } from '../shared/ThemeMapper'
 import { TypeAideMapper } from '../shared/TypeAideMapper'
 
@@ -165,7 +165,7 @@ export class TeeImporter {
     if (min !== undefined || max !== undefined) {
       conditions.effectif = { ...(min !== undefined ? { min } : {}), ...(max !== undefined ? { max } : {}) }
     }
-    const regions = RegionNameResolver.codesOf(names)
+    const regions = TerritoryNameResolver.codesOf(names)
     if (regions.length > 0) conditions.regions = regions
     return conditions.effectif || conditions.regions ? conditions : undefined
   }
@@ -308,11 +308,11 @@ export class TeeImporter {
     }
 
     const secteurGeoTexte = this.strArray(conditions?.['secteur géographique'])
-    const regions = RegionNameResolver.codesOf(company.allowedRegion ?? [])
-    if (secteurGeoTexte.length > 0 || regions.length > 0) {
+    const inclusions = this.territoires(company.allowedRegion ?? [], secteurGeoTexte)
+    if (secteurGeoTexte.length > 0 || inclusions.length > 0) {
       eligibilite.secteur_geographique = {
         ...(secteurGeoTexte.length > 0 ? { texte: secteurGeoTexte } : {}),
-        ...(regions.length > 0 ? { structure: { inclusions: regions } } : {}),
+        ...(inclusions.length > 0 ? { structure: { inclusions } } : {}),
       }
     }
 
@@ -323,6 +323,18 @@ export class TeeImporter {
     if (autres.length > 0) eligibilite.autres_criteres = { texte: autres }
 
     return Object.keys(eligibilite).length > 0 ? eligibilite : undefined
+  }
+
+  /**
+   * `allowedRegion` (what the TEE front filters on, regions and departments
+   * mixed) as COG codes; without it, the national wording of the free text
+   * becomes `PAYS-99100`.
+   */
+  private territoires(allowedRegion: string[], texte: string[]): string[] {
+    const codes = TerritoryNameResolver.codesOf(allowedRegion)
+    if (codes.length > 0) return codes
+    const names = texte.flatMap((value) => value.split(','))
+    return names.some((name) => TerritoryNameResolver.isNational(name)) ? [TerritoryNameResolver.NATIONAL_CODE] : []
   }
 
   private effectifStructure(company: SourceCompany): { min?: number; max?: number } | undefined {

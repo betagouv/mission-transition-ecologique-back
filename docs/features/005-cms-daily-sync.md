@@ -76,7 +76,7 @@ Constats (vérifiés sur la base de dev le 2026-09-25) :
 | `libs/format-adapters/static/upstream/` | **Fait** : copies versionnées `programs.json` (276), `projects.json` (91), `redirects.json` au 2026-09-25 |
 | `libs/format-adapters/scripts/snapshot-upstream.ts` | **Fait** : rafraîchit les copies depuis GitHub, sans repli (`pnpm data:snapshot`, target `snapshot:upstream`) |
 | `libs/format-adapters/src/tee/TeeImporter.ts` (et `ThemeMapper`, `TypeAideMapper`, `RegionNameResolver`) | **Fait** : mentions « ONE-SHOT » retirées ; code permanent |
-| `apps/cms/src/services/canonical/to-payload/` | **Fait** : `CanonicalToPayloadMapper`, `CanonicalVariantToPayloadMapper`, port `ProgramRelations` + `PayloadProgramRelations`, `GeographicAreaResolver` (déplacé du seed) ; avertissements pour les données non portables |
+| `apps/cms/src/services/canonical/to-payload/` | **Fait** : `CanonicalToPayloadMapper`, `CanonicalVariantToPayloadMapper`, port `ProgramRelations` + `PayloadProgramRelations`, `GeographicAreaResolver` (déplacé du seed, supprimé depuis : le CMS ne lit plus que les codes COG, voir `TerritoryNameResolver`) ; avertissements pour les données non portables |
 | `apps/cms/src/services/canonical/rich-text/` | **Fait** : port `MarkdownToRichText` + `PayloadMarkdownToRichText` |
 | `apps/cms/src/scripts/sync/` | Créer : commande de sync CMS (upsert sur différence, archivage des disparus, projets), partagée par le seed et le daily |
 | `apps/cms/src/scripts/seed/programs/` | **Fait** : `TeeImporter` → `CanonicalToPayloadMapper` ; `ProgramMapper`, `VariantMapper`, `types.ts` supprimés. Reste lot 4 : passer par la commande de sync |

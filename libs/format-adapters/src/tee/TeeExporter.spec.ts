@@ -1,4 +1,4 @@
-import type { CanonicalProgramInput } from '@tee-backoffice/canonical'
+import { CanonicalProgramValidator, type CanonicalProgramInput } from '@tee-backoffice/canonical'
 import { TeeExporter } from './TeeExporter'
 import type { TeeRecordImporter } from './TeeExporter'
 import { TeeImporter } from './TeeImporter'
@@ -127,6 +127,38 @@ describe('TeeExporter', () => {
       new TeeExporter({ logger, importer }).export(minimalProgram)
       expect(logger.messages).toHaveLength(1)
       expect(logger.messages[0]).toContain('re-importable')
+    })
+  })
+
+  describe('territoires', () => {
+    const importer = new TeeImporter()
+    const validator = new CanonicalProgramValidator()
+    const roundTrip = (allowedRegion: string[] | undefined, texte: string[]) => {
+      const result = validator.validate(
+        importer.import({
+          id: 'aide-geo',
+          titre: 'Aide',
+          description: 'Description',
+          "nature de l'aide": 'financement',
+          'opérateur de contact': 'ADEME',
+          url: 'https://example.org',
+          "conditions d'éligibilité": { 'secteur géographique': texte },
+          ...(allowedRegion ? { eligibilityData: { company: { allowedRegion } } } : {}),
+        }),
+      )
+      if (!result.success) throw new Error('import invalide')
+      return exporter.export(result.program)
+    }
+
+    it('rend allowedRegion à l’identique, départements compris', () => {
+      const regions = ['Landes', 'Nouvelle-Aquitaine', 'Occitanie']
+      expect(roundTrip(regions, [regions.join(', ')]).eligibilityData?.company.allowedRegion).toEqual(regions)
+    })
+
+    it('ne produit pas de allowedRegion depuis le code national', () => {
+      const out = roundTrip(undefined, ["France et territoires d'outre-mer"])
+      expect(out.eligibilityData?.company.allowedRegion).toBeUndefined()
+      expect(out["conditions d'éligibilité"]?.['secteur géographique']).toEqual(["France et territoires d'outre-mer"])
     })
   })
 })

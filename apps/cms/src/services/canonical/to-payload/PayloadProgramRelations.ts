@@ -1,14 +1,12 @@
 import type { Payload } from 'payload'
 import { cogCodeOf } from '../canonicalMappings'
-import { GeographicAreaResolver, type ResolvedGeographic } from './GeographicAreaResolver'
-import type { ProgramRelations } from './ProgramRelations'
+import type { ProgramArea, ProgramRelations } from './ProgramRelations'
 
 /** `ProgramRelations` backed by the operators and geographic areas stored in Payload. */
 export class PayloadProgramRelations implements ProgramRelations {
   private constructor(
     private readonly operatorIdByName: Map<string, number>,
-    private readonly areaIdByCode: Map<string, number>,
-    private readonly geography: GeographicAreaResolver,
+    private readonly areaByCode: Map<string, ProgramArea>,
   ) {}
 
   /** `operatorIdByName` comes from `OperatorImporter`, which creates the missing operators first. */
@@ -17,23 +15,19 @@ export class PayloadProgramRelations implements ProgramRelations {
     operatorIdByName: Map<string, number>,
   ): Promise<PayloadProgramRelations> {
     const areas = await payload.find({ collection: 'geographic-areas', limit: 0, depth: 0 })
-    const areaIdByCode = new Map<string, number>()
+    const areaByCode = new Map<string, ProgramArea>()
     for (const area of areas.docs) {
       const code = cogCodeOf(area)
-      if (code) areaIdByCode.set(code, area.id)
+      if (code) areaByCode.set(code, { id: area.id, name: area.name })
     }
-    return new PayloadProgramRelations(operatorIdByName, areaIdByCode, GeographicAreaResolver.fromAreas(areas.docs))
+    return new PayloadProgramRelations(operatorIdByName, areaByCode)
   }
 
   operatorId(name: string): number | undefined {
     return this.operatorIdByName.get(name)
   }
 
-  areaIdByCogCode(code: string): number | undefined {
-    return this.areaIdByCode.get(code)
-  }
-
-  resolveGeography(names: string[]): ResolvedGeographic {
-    return this.geography.resolve(names)
+  areaByCogCode(code: string): ProgramArea | undefined {
+    return this.areaByCode.get(code)
   }
 }

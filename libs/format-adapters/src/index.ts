@@ -13,6 +13,8 @@ export * from './tee/UpstreamJsonSource';
 export * from './tee/tee-operator.schema';
 export * from './tee/UpstreamAsset';
 export * from './tee/UpstreamAssetSource';
+export * from './tee/UpstreamAmountLabels';
+export * from './shared/TerritoryNameResolver';
 export * from './shared/ExportLogger';
 export * from './shared/ConsoleExportLogger';
 export * from './shared/StatutMapper';

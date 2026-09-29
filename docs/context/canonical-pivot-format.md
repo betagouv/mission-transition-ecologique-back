@@ -87,6 +87,8 @@ Sémantique : exclusions prioritaires sur inclusions. Codes COG **préfixés par
 
 Catalogue complet des cas particuliers (Corse, DROM, COM, statuts particuliers, arrondissements, cantons…) : voir `docs/adr/0007b-COG_CONVENTION.md` (convention partagée). `ARR-` (arrondissement départemental) ≠ arrondissement municipal de Paris/Lyon/Marseille, qui sont des codes commune `COM-`.
 
+`secteur_geographique.structure.inclusions` = `['PAYS-99100']` (`COG_FRANCE`) : dispositif ouvert à tout le territoire national. À l'import amont (`TeeImporter`), `allowedRegion` donne les codes (régions, collectivités d'outre-mer et départements, que l'amont mélange) ; sans `allowedRegion`, la mention « France et territoires d'outre-mer » du texte donne `PAYS-99100`. Le texte reste le libellé affiché, les consommateurs (CMS, AGIR, Grist) ne lisent que les codes.
+
 ⚠️ Ne pas confondre `COM` (commune) et `OM` (outre-mer) — c'est le piège historique. La regex `cogCodeSchema` est une **garde de forme volontairement souple** (préfixe connu + corps alphanumérique) : elle accepte les cas irréguliers (`2A`, `69M`, SIREN…) et ne valide **pas** l'existence réelle. L'existence se vérifie contre le référentiel INSEE / `GeographicAreas`, keyé par `(niveau, code)` (hors paquet canonical).
 
 `categorie_legale.structure` porte deux listes optionnelles `autorise` / `interdit`. Chaque entrée est soit une valeur du vocabulaire fermé `CategorieLegale` (V0 : `micro_entrepreneur` — les autres valeurs seront ajoutées plus tard), soit un texte libre.

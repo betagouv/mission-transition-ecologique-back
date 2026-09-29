@@ -9,7 +9,7 @@ import { fileURLToPath } from 'url'
 import { GeographicAreasSeed } from '@/scripts/seed/geographic-areas'
 import { DEPARTEMENTS, REGIONS } from '@/scripts/seed/geographic-areas/fixtures'
 import { ProgramsSeed } from '@/scripts/seed/programs'
-import { GeographicAreaResolver } from '@/services/canonical/to-payload/GeographicAreaResolver'
+import { PayloadProgramRelations } from '@/services/canonical/to-payload/PayloadProgramRelations'
 
 const fixturesDir = fileURLToPath(new URL('../fixtures', import.meta.url))
 const programsFixture = resolve(fixturesDir, 'programs.json')
@@ -204,45 +204,32 @@ describe('GeographicAreasSeed', () => {
   }, 60_000)
 })
 
-describe('GeographicAreaResolver', () => {
-  let resolver: GeographicAreaResolver
+describe('PayloadProgramRelations', () => {
+  let relations: PayloadProgramRelations
 
   beforeAll(async () => {
     const payloadConfig = await config
     payload = await getPayload({ config: payloadConfig })
 
     await new GeographicAreasSeed(payload).run()
-    resolver = await GeographicAreaResolver.fromPayload(payload)
+    relations = await PayloadProgramRelations.fromPayload(payload, new Map())
   }, 60_000)
 
-  it('maps the national sentinel to national coverage with no zones', () => {
-    const result = resolver.resolve(["France et territoires d'outre-mer"])
-    expect(result.geographicCoverage).toBe('national')
-    expect(result.geographicAreas).toEqual([])
-    expect(result.geographicAreaFeedback).toBeUndefined()
+  it('resolves region, department and overseas collectivity codes to their area', () => {
+    expect(relations.areaByCogCode('REG-53')?.name).toBe('Bretagne')
+    expect(relations.areaByCogCode('DEP-40')?.name).toBe('Landes')
+    expect(relations.areaByCogCode('OM-988')?.name).toBe('Nouvelle-Calédonie')
   })
 
-  it('maps a region name to regional coverage with the matching area id', () => {
-    const result = resolver.resolve(['Bretagne'])
-    expect(result.geographicCoverage).toBe('regional')
-    expect(result.geographicAreas).toHaveLength(1)
-    expect(result.geographicAreaFeedback).toBeUndefined()
+  it('keeps an overseas department apart from its region of the same name', () => {
+    const region = relations.areaByCogCode('REG-01')
+    const departement = relations.areaByCogCode('DEP-971')
+    expect(region?.name).toBe('Guadeloupe')
+    expect(departement?.name).toBe('Guadeloupe')
+    expect(departement?.id).not.toBe(region?.id)
   })
 
-  it('maps a department-only name to departemental coverage with the matching area id', () => {
-    const result = resolver.resolve(['Ain'])
-    expect(result.geographicCoverage).toBe('departemental')
-    expect(result.geographicAreas).toHaveLength(1)
-    expect(result.geographicAreaFeedback).toBeUndefined()
-  })
-
-  it('reports unmatched names in the feedback field', () => {
-    const result = resolver.resolve(['Pays Imaginaire'])
-    expect(result.geographicAreaFeedback).toContain('Pays Imaginaire')
-    expect(result.geographicAreas).toEqual([])
-  })
-
-  it('returns an empty result for undefined input', () => {
-    expect(resolver.resolve(undefined)).toEqual({})
+  it('returns nothing for a code unknown to the CMS', () => {
+    expect(relations.areaByCogCode('REG-99')).toBeUndefined()
   })
 })

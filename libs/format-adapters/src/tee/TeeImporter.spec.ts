@@ -78,6 +78,30 @@ describe('TeeImporter', () => {
     expect(input.date_cloture).toBe('2026-12-31')
   })
 
+  describe('secteur géographique', () => {
+    const withGeo = (allowedRegion: string[] | undefined, texte: string[]) =>
+      importer.import({
+        ...base,
+        "conditions d'éligibilité": { 'secteur géographique': texte },
+        ...(allowedRegion ? { eligibilityData: { company: { allowedRegion } } } : {}),
+      }).eligibilite?.secteur_geographique
+
+    it('code les régions et les départements de allowedRegion, texte conservé', () => {
+      expect(withGeo(['Landes', 'Nouvelle-Aquitaine'], ['Landes, Nouvelle-Aquitaine'])).toEqual({
+        texte: ['Landes, Nouvelle-Aquitaine'],
+        structure: { inclusions: ['DEP-40', 'REG-75'] },
+      })
+    })
+
+    it('code la mention nationale en PAYS-99100 faute de allowedRegion', () => {
+      expect(withGeo(undefined, ["France et territoires d'outre-mer"])?.structure).toEqual({ inclusions: ['PAYS-99100'] })
+    })
+
+    it('suit allowedRegion quand le texte en diffère', () => {
+      expect(withGeo(['Bourgogne-Franche-Comté'], ['Jura'])?.structure).toEqual({ inclusions: ['REG-27'] })
+    })
+  })
+
   describe('variantes (champs conditionnels)', () => {
     it('reconstruit une condition OR de régions + modifications', () => {
       const input = importer.import({
@@ -105,6 +129,14 @@ describe('TeeImporter', () => {
         ],
       })
       expect(input.variantes?.[0].conditions.effectif).toEqual({ min: 0, max: 49 })
+    })
+
+    it('code un département cité dans une condition de région', () => {
+      const input = importer.import({
+        ...base,
+        'champs conditionnels': [{ 'une de ces conditions': ['région = Landes'], 'Montant du dispositif': '1 €' }],
+      })
+      expect(input.variantes?.[0].conditions.regions).toEqual(['DEP-40'])
     })
   })
 })
