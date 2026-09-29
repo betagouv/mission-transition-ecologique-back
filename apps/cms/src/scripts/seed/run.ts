@@ -12,8 +12,10 @@ import { Config } from '@/config/Config'
 // opt-in development fallback, refused on Scalingo.
 const source = UpstreamJsonSource.fromSettings(Config.upstreamFallback())
 process.stdout.write(`Source : ${source.describe()}\n`)
-const programs = await source.programs<TeeRecord[]>()
-const projects = await source.projects<SourceProject[]>()
+const [programs, projects] = await Promise.all([
+  source.programs<TeeRecord[]>(),
+  source.projects<SourceProject[]>(),
+])
 
 const payload = await getPayload({ config })
 await new GeographicAreasSeed(payload).run()

@@ -22,11 +22,7 @@ export class PayloadProgramRelations implements ProgramRelations {
       const code = cogCodeOf(area)
       if (code) areaIdByCode.set(code, area.id)
     }
-    return new PayloadProgramRelations(
-      operatorIdByName,
-      areaIdByCode,
-      await GeographicAreaResolver.fromPayload(payload),
-    )
+    return new PayloadProgramRelations(operatorIdByName, areaIdByCode, GeographicAreaResolver.fromAreas(areas.docs))
   }
 
   operatorId(name: string): number | undefined {
