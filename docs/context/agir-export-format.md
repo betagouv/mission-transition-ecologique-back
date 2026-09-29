@@ -158,7 +158,7 @@ Légende : ✅ exporté fidèlement · ⚠️ exporté mais dégradé/partiel ·
 | `eligibilite.categorie_legale` | ⚠️ texte seul | ✅ | exclusion micro-entrepreneur non structurée en P1 |
 | `secteur_activite.inclusions` | ✅ `listeSecteurActivite` | ✅ | codes NAF **bruts** (pas de libellés) |
 | `secteur_activite.exclusions` | ❌ | ✅ | perdues en P1 |
-| `secteur_geographique.inclusions` | ✅ `listeRegion` | ✅ | codes COG **bruts** (`RegionNameResolver` inutilisé) |
+| `secteur_geographique.inclusions` | ✅ `listeRegion` | ✅ | codes COG **bruts** : `PAYS-99100` pour un dispositif national, `REG-`/`OM-`/`DEP-` sinon (noms non utilisés) |
 | `secteur_geographique.exclusions` | ❌ | ✅ | perdues en P1 |
 | `themes` | ✅ `thematique` (FR) | ✅ (FR) | taxonomie non mappée vers une réf. AGIR/ADEME |
 | `variantes` | ❌ | ✅ | **lacune P1** |
@@ -198,8 +198,11 @@ Toutes les pertes notables sont en P1 (le pivot ne perd rien d'essentiel).
    tranché.
 6. **Format des codes** — `listeSecteurActivite` = codes NAF bruts (`C`,
    `33.20`) ; `listeRegion` = codes COG bruts (`REG-53`, `PAYS-99100`).
-   `RegionNameResolver` (codes → noms) existe dans `shared/` mais **n'est pas
-   utilisé**. → confirmer si AGIR attend des codes, des libellés, ou des objets
+   `TerritoryNameResolver` (codes → noms) existe dans `shared/` mais **n'est
+   pas utilisé**. Depuis le 29/09/2026, un dispositif national porte
+   `PAYS-99100` (`typeSecteur` = `National`) et les départements cités par
+   l'amont (`DEP-40`, `DEP-13`…) sont transmis ; un mélange de niveaux donne
+   `typeSecteur` = `Inconnu`. → confirmer si AGIR attend des codes, des libellés, ou des objets
    `{ code, label }`.
 7. **SIREN des opérateurs** — `operateurs.*.siren` perdus ; seuls les noms
    passent. Identification fiable de l'organisme dégradée.
