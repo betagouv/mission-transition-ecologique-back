@@ -30,6 +30,41 @@ Règles communes :
 - Le slug est encodé dans `urlDetail`/`urlPivot` (`encodeURIComponent`) : un tombstone `remplace` peut garder un ancien slug avec apostrophe ou majuscule. Payload décode le paramètre de route avant la recherche.
 - Pas de pagination au MVP (volume faible).
 
+## Environnements
+
+| Environnement | Base URL | Index AGIR |
+|---|---|---|
+| Local | `http://localhost:3000` | <http://localhost:3000/api/agir/programs> |
+| Préprod | `https://preprod.back.mission-transition-ecologique.incubateur.net` | <https://preprod.back.mission-transition-ecologique.incubateur.net/api/agir/programs> |
+| Review app (une par PR) | URL de la review app Scalingo (`tee-back-preprod-pr<n>`) | `{baseUrl}/api/agir/programs` |
+| Production | pas encore déployée | |
+
+Aucune authentification : un simple `GET` suffit.
+
+```sh
+BASE=https://preprod.back.mission-transition-ecologique.incubateur.net
+
+curl "$BASE/api/agir/programs"                                    # index
+curl "$BASE/api/agir/programs/accelerateur-decarbonation/detail"  # détail R2DA
+curl "$BASE/api/agir/programs/accelerateur-decarbonation/pivot"   # pivot ADEME
+```
+
+Les liens absolus `urlDetail`/`urlPivot` de l'index sont construits à partir
+de la base URL publique, résolue dans cet ordre (`resolveBaseUrl` dans
+`agirEndpoints.ts`) :
+
+1. la variable `PUBLIC_BASE_URL` (`Config.publicBaseUrl()`), à renseigner sur
+   chaque app Scalingo ; sur les review apps, `scalingo.json` la redéfinit avec
+   l'URL de la review app ;
+2. sinon les en-têtes `x-forwarded-host` / `x-forwarded-proto` posés par le
+   routeur ;
+3. sinon `req.origin`, qui derrière le routeur Scalingo vaut l'adresse interne
+   du conteneur (`localhost:36xxx`) : liens inutilisables.
+
+La préprod étant réinitialisée et reseedée à chaque déploiement (ADR 0012), son
+contenu reflète l'amont au moment du dernier déploiement, complété par le
+pipeline quotidien.
+
 ## Vocabulaire AGIR — ⚠️ choix à confirmer
 
 Centralisé dans `AgirVocabulary` (un seul fichier pour ajuster). Valeurs
