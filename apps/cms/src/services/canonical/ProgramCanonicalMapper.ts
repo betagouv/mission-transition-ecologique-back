@@ -6,6 +6,7 @@ import type {
   Lien,
   Montant,
 } from '@tee-backoffice/canonical'
+import { COG_FRANCE } from '@tee-backoffice/canonical'
 import type { GeographicArea, Program } from '../../../payload-types'
 import type { RichTextToMarkdown } from './rich-text/RichTextToMarkdown'
 import { COMPANY_SIZE_TO_INTERVAL } from '@/constants/variantOptions'
@@ -315,9 +316,10 @@ export class ProgramCanonicalMapper {
     const feedback = clean(program.geographicAreaFeedback)
     if (feedback) texte.push(feedback)
 
-    const inclusions = areas
-      .map((area) => cogCodeOf(area))
-      .filter((code): code is string => code !== undefined)
+    const inclusions =
+      program.geographicCoverage === 'national'
+        ? [COG_FRANCE]
+        : areas.map((area) => cogCodeOf(area)).filter((code): code is string => code !== undefined)
     const structure = inclusions.length > 0 ? { inclusions } : undefined
 
     if (texte.length === 0 && !structure) return undefined

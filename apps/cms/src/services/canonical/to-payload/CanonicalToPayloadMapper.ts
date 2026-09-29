@@ -1,5 +1,6 @@
 import type { RequiredDataFromCollectionSlug } from 'payload'
-import type { CanonicalProgramInput, Theme, TypeAide } from '@tee-backoffice/canonical'
+import { COG_FRANCE, type CanonicalProgramInput, type Theme, type TypeAide } from '@tee-backoffice/canonical'
+import { UpstreamAmountLabels } from '@tee-backoffice/format-adapters'
 import type { Program } from '../../../../payload-types'
 import type { NafSection } from '@/constants/nafSectionsOptions'
 import { NAF_SECTIONS_OPTIONS } from '@/constants/nafSectionsOptions'
@@ -15,7 +16,6 @@ import {
 } from '../canonicalMappings'
 import { CanonicalVariantToPayloadMapper } from './CanonicalVariantToPayloadMapper'
 import type { ProgramRelations } from './ProgramRelations'
-import type { ResolvedGeographic } from './GeographicAreaResolver'
 
 export type PayloadProgramData = RequiredDataFromCollectionSlug<'programs'>
 
@@ -27,6 +27,7 @@ export interface CanonicalToPayloadResult {
 
 type AidType = Program['aidType']
 type EligibiliteInput = NonNullable<CanonicalProgramInput['eligibilite']>
+type GeographyData = Pick<PayloadProgramData, 'geographicCoverage' | 'geographicAreas' | 'geographicAreaFeedback'>
 
 const CANONICAL_TO_AID_TYPE = Object.fromEntries(
   Object.entries(AID_TYPE_TO_CANONICAL).map(([aidType, typeAide]) => [typeAide, aidType]),
@@ -35,25 +36,6 @@ const CANONICAL_TO_AID_TYPE = Object.fromEntries(
 const CANONICAL_TO_THEME = Object.fromEntries(
   Object.entries(THEME_TO_CANONICAL).map(([theme, canonical]) => [canonical, theme]),
 ) as Record<Theme, NonNullable<Program['themes']>[number]>
-
-/**
- * programs.json amount / duration labels accepted for each aid type, next to the
- * labels `ProgramCanonicalMapper` emits. Payload has one amount (and at most one
- * duration) field per aid type: a label outside this list (e.g. a financing
- * amount on a study) has no field to land in and is reported.
- */
-const SOURCE_MONTANT_LABELS: Record<AidType, string[]> = {
-  financement: ['montant du financement'],
-  pret: ['montant du prêt'],
-  'avantage-fiscal': ["montant de l'avantage fiscal"],
-  formation: ["coût de l'accompagnement"],
-  'diagnostic-etude': ["coût de l'accompagnement"],
-}
-
-const SOURCE_DUREE_LABELS: Partial<Record<AidType, string[]>> = {
-  formation: ["durée de l'accompagnement"],
-  'diagnostic-etude': ["durée de l'accompagnement"],
-}
 
 const ALL_NAF_SECTIONS: readonly NafSection[] = NAF_SECTIONS_OPTIONS.map((option) => option.value)
 
@@ -79,8 +61,9 @@ export class CanonicalToPayloadMapper {
   map(input: CanonicalProgramInput): CanonicalToPayloadResult {
     const warnings: string[] = []
 
-    const aidType = input.types_aides[0] ? CANONICAL_TO_AID_TYPE[input.types_aides[0]] : undefined
-    if (!aidType) throw new Error(`type d'aide non géré : ${input.types_aides.join(', ') || 'aucun'}`)
+    const typeAide = input.types_aides[0]
+    const aidType = typeAide ? CANONICAL_TO_AID_TYPE[typeAide] : undefined
+    if (!typeAide || !aidType) throw new Error(`type d'aide non géré : ${input.types_aides.join(', ') || 'aucun'}`)
 
     const operator = this.relations.operatorId(input.operateurs.contact.nom)
     if (operator === undefined) throw new Error(`opérateur introuvable : ${input.operateurs.contact.nom}`)
@@ -106,7 +89,7 @@ export class CanonicalToPayloadMapper {
       otherOperators: this.operatorIds(input.operateurs.autres),
       // Required on publish only: a program without url is saved as a draft.
       url: url ?? '',
-      ...this.mapAmounts(input, aidType, warnings),
+      ...this.mapAmounts(input, aidType, typeAide, warnings),
       steps,
       ...contact,
       validityStart: input.date_ouverture,
@@ -148,16 +131,22 @@ export class CanonicalToPayloadMapper {
     })
   }
 
+  /**
+   * Payload has one amount (and at most one duration) field per aid type. It
+   * takes the label `ProgramCanonicalMapper` emits or an upstream one; any other
+   * label (e.g. a financing amount on a study) has no field and is reported.
+   */
   private mapAmounts(
     input: CanonicalProgramInput,
     aidType: AidType,
+    typeAide: TypeAide,
     warnings: string[],
   ): Partial<PayloadProgramData> {
     const amounts: Partial<PayloadProgramData> = {}
 
     const montant = MONTANT_BY_AID_TYPE[aidType]
     if (input.montant) {
-      if (this.labelMatches(input.montant.type, [...SOURCE_MONTANT_LABELS[aidType], montant.label])) {
+      if (this.labelMatches(input.montant.type, [...UpstreamAmountLabels.montantLabels(typeAide), montant.label])) {
         Object.assign(amounts, { [montant.field]: input.montant.valeur })
       } else {
         warnings.push(`montant « ${input.montant.type} » sans champ pour le type ${aidType}`)
@@ -166,7 +155,7 @@ export class CanonicalToPayloadMapper {
 
     const duree = DUREE_BY_AID_TYPE[aidType]
     if (input.duree) {
-      if (duree && this.labelMatches(input.duree.type, [...(SOURCE_DUREE_LABELS[aidType] ?? []), duree.label])) {
+      if (duree && this.labelMatches(input.duree.type, [...UpstreamAmountLabels.dureeLabels(typeAide), duree.label])) {
         Object.assign(amounts, { [duree.field]: input.duree.valeur })
       } else {
         warnings.push(`durée « ${input.duree.type} » sans champ pour le type ${aidType}`)
@@ -207,27 +196,38 @@ export class CanonicalToPayloadMapper {
     return { companySize: 'specific', companySizeMin: structure.min ?? null, companySizeMax: structure.max ?? null }
   }
 
-  private mapGeography(eligibilite: EligibiliteInput | undefined): Partial<PayloadProgramData> {
+  /** From the COG codes only: the free text is display wording, kept as feedback when nothing else is known. */
+  private mapGeography(eligibilite: EligibiliteInput | undefined): GeographyData {
     const secteur = eligibilite?.secteur_geographique
-    // Free text first: it also names departments, which the structure never carries.
-    const resolved = secteur?.texte?.length
-      ? this.relations.resolveGeography(secteur.texte)
-      : this.resolveGeographyCodes(secteur?.structure?.inclusions ?? [])
-    return {
-      geographicCoverage: resolved.geographicCoverage ?? null,
-      geographicAreas: resolved.geographicAreas ?? [],
-      // null rather than undefined so a stale feedback is cleared on update.
-      geographicAreaFeedback: resolved.geographicAreaFeedback ?? null,
-    }
+    const codes = secteur?.structure?.inclusions ?? []
+    if (codes.length > 0) return this.geographyFromCodes(codes)
+    const texte = (secteur?.texte ?? []).join(', ')
+    // null rather than undefined so a stale value is cleared on update.
+    return { geographicCoverage: null, geographicAreas: [], geographicAreaFeedback: texte || null }
   }
 
-  private resolveGeographyCodes(codes: string[]): ResolvedGeographic {
-    const ids = codes
-      .map((code) => this.relations.areaIdByCogCode(code))
-      .filter((id): id is number => id !== undefined)
-    if (ids.length === 0) return {}
-    const coverage = codes.every((code) => code.startsWith('DEP-')) ? 'departemental' : 'regional'
-    return { geographicCoverage: coverage, geographicAreas: ids }
+  /**
+   * `PAYS-99100` means national. Otherwise one department is enough for a
+   * departmental coverage: Payload holds a single level, so the codes of the
+   * other level (and those unknown to the CMS) go to the feedback, by name.
+   */
+  private geographyFromCodes(codes: string[]): GeographyData {
+    if (codes.includes(COG_FRANCE)) {
+      return { geographicCoverage: 'national', geographicAreas: [], geographicAreaFeedback: null }
+    }
+    const departemental = codes.some((code) => code.startsWith('DEP-'))
+    const geographicAreas: number[] = []
+    const feedback: string[] = []
+    for (const code of codes) {
+      const area = this.relations.areaByCogCode(code)
+      if (area && code.startsWith('DEP-') === departemental) geographicAreas.push(area.id)
+      else feedback.push(area?.name ?? code)
+    }
+    return {
+      geographicCoverage: departemental ? 'departemental' : 'regional',
+      geographicAreas,
+      geographicAreaFeedback: feedback.length > 0 ? feedback.join(', ') : null,
+    }
   }
 
   private mapActivitySector(eligibilite: EligibiliteInput | undefined): Partial<PayloadProgramData> {

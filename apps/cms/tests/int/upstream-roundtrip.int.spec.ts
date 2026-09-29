@@ -4,12 +4,18 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { describe, it, beforeAll, expect } from 'vitest'
 import type { CanonicalProgramInput } from '@tee-backoffice/canonical'
-import { LocalJsonSnapshot, SlugCanonicalId, TeeImporter, type TeeRecord } from '@tee-backoffice/format-adapters'
+import { COG_FRANCE } from '@tee-backoffice/canonical'
+import {
+  LocalJsonSnapshot,
+  SlugCanonicalId,
+  TeeImporter,
+  TerritoryNameResolver,
+  type TeeRecord,
+} from '@tee-backoffice/format-adapters'
 import { GeographicAreasSeed } from '@/scripts/seed/geographic-areas'
 import { ProgramsSeed } from '@/scripts/seed/programs'
 import { ProgramCanonicalMapper } from '@/services/canonical/ProgramCanonicalMapper'
 import { PayloadRichTextToMarkdown } from '@/services/canonical/rich-text/PayloadRichTextToMarkdown'
-import { GeographicAreaResolver } from '@/services/canonical/to-payload/GeographicAreaResolver'
 
 const ALL_NAF_SECTIONS = 21
 
@@ -19,6 +25,8 @@ let actual: Map<string, CanonicalProgramInput>
 
 // Compares the words only: Lexical re-spells some Markdown (hard breaks, a
 // multi-line blockquote gets a single `>` marker) without changing the content.
+// Upstream and the CMS spell a few territories differently (`Wallis et Futuna`).
+const normalizeName = (name: string) => name.trim().toLowerCase().replace(/[\s-]+/g, ' ')
 const normalizeText = (text: string | undefined) => (text ?? '').replace(/[\\>\s]/g, '')
 const trim = (text: string | undefined) => text?.trim()
 
@@ -27,15 +35,18 @@ const trim = (text: string | undefined) => text?.trim()
  * documented losses (see the seed warnings) are left out: headcount free text,
  * micro-entreprise restriction, advisor step links, amounts without a field.
  * Territories are compared by name: a program mixing departments and regions
- * keeps one coverage level in Payload, the other names going to the feedback text.
+ * keeps one coverage level in Payload, the other names going to the feedback
+ * text. Upstream names come from the codes, the CMS ones from its free text.
  */
-function project(input: CanonicalProgramInput | undefined) {
+function project(input: CanonicalProgramInput | undefined, side: 'upstream' | 'cms') {
   const e = input?.eligibilite
   const inclusions = e?.secteur_activite?.structure?.inclusions ?? []
-  const territories = (e?.secteur_geographique?.texte ?? [])
-    .flatMap((texte) => texte.split(','))
-    .map((name) => GeographicAreaResolver.normalizeName(name))
-    .filter((name) => name && name !== GeographicAreaResolver.normalizeName(GeographicAreaResolver.NATIONAL_SENTINEL))
+  const codes = e?.secteur_geographique?.structure?.inclusions ?? []
+  const names =
+    side === 'upstream'
+      ? TerritoryNameResolver.namesOf(codes)
+      : (e?.secteur_geographique?.texte ?? []).flatMap((texte) => texte.split(','))
+  const territories = names.map(normalizeName).filter(Boolean)
   return {
     titre: trim(input?.titre),
     promesse: trim(input?.promesse),
@@ -54,6 +65,7 @@ function project(input: CanonicalProgramInput | undefined) {
     contact_question: input?.contact_question,
     effectif: e?.effectif?.structure ?? null,
     secteur_activite: inclusions.length === ALL_NAF_SECTIONS ? [] : [...inclusions].sort(),
+    national: codes.includes(COG_FRANCE),
     territoires: territories.sort(),
     autres_criteres: [...(e?.anciennete?.texte ?? []), ...(e?.autres_criteres?.texte ?? [])],
     etapes: (input?.etapes_activation ?? []).map((etape) => ({
@@ -112,8 +124,8 @@ describe('upstream → CMS → canonical round-trip', () => {
   it('carries every mapped field unchanged', () => {
     const diffs: string[] = []
     for (const input of expected) {
-      const want = project(input)
-      const got = project(actual.get(input.slug))
+      const want = project(input, 'upstream')
+      const got = project(actual.get(input.slug), 'cms')
       for (const key of Object.keys(want) as (keyof typeof want)[]) {
         if (JSON.stringify(want[key]) !== JSON.stringify(got[key])) {
           diffs.push(`${input.slug}.${key}\n  attendu : ${JSON.stringify(want[key])}\n  obtenu  : ${JSON.stringify(got[key])}`)

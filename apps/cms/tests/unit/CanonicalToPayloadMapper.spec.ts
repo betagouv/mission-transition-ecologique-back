@@ -15,11 +15,13 @@ class StubRelations implements ProgramRelations {
   operatorId(name: string) {
     return ({ ADEME: 1, Bpifrance: 2 } as Record<string, number>)[name]
   }
-  areaIdByCogCode(code: string) {
-    return ({ 'REG-53': 10, 'DEP-40': 20 } as Record<string, number>)[code]
-  }
-  resolveGeography(names: string[]) {
-    return names.includes('Bretagne') ? { geographicCoverage: 'regional' as const, geographicAreas: [10] } : {}
+  areaByCogCode(code: string) {
+    const areas: Record<string, { id: number; name: string }> = {
+      'REG-53': { id: 10, name: 'Bretagne' },
+      'REG-75': { id: 11, name: 'Nouvelle-Aquitaine' },
+      'DEP-40': { id: 20, name: 'Landes' },
+    }
+    return areas[code]
   }
 }
 
@@ -117,9 +119,49 @@ describe('CanonicalToPayloadMapper', () => {
     })
   })
 
-  it('resolves territories from their names', () => {
-    const { data } = map({ eligibilite: { secteur_geographique: { texte: ['Bretagne'] } } })
-    expect(data).toMatchObject({ geographicCoverage: 'regional', geographicAreas: [10] })
+  describe('geography', () => {
+    const geography = (secteur: NonNullable<NonNullable<CanonicalProgramInput['eligibilite']>['secteur_geographique']>) =>
+      map({ eligibilite: { secteur_geographique: secteur } }).data
+
+    it('reads the national code as a national coverage', () => {
+      expect(geography({ texte: ["France et territoires d'outre-mer"], structure: { inclusions: ['PAYS-99100'] } })).toMatchObject({
+        geographicCoverage: 'national',
+        geographicAreas: [],
+        geographicAreaFeedback: null,
+      })
+    })
+
+    it('resolves region codes, whatever the free text says', () => {
+      expect(geography({ texte: ['Libellé libre'], structure: { inclusions: ['REG-53'] } })).toMatchObject({
+        geographicCoverage: 'regional',
+        geographicAreas: [10],
+        geographicAreaFeedback: null,
+      })
+    })
+
+    it('turns departmental on one department, the regions going to the feedback', () => {
+      expect(geography({ structure: { inclusions: ['DEP-40', 'REG-75'] } })).toMatchObject({
+        geographicCoverage: 'departemental',
+        geographicAreas: [20],
+        geographicAreaFeedback: 'Nouvelle-Aquitaine',
+      })
+    })
+
+    it('reports a code unknown to the CMS in the feedback', () => {
+      expect(geography({ structure: { inclusions: ['REG-53', 'REG-99'] } })).toMatchObject({
+        geographicCoverage: 'regional',
+        geographicAreas: [10],
+        geographicAreaFeedback: 'REG-99',
+      })
+    })
+
+    it('keeps free text without codes as feedback, with no coverage', () => {
+      expect(geography({ texte: ['Quelque part'] })).toMatchObject({
+        geographicCoverage: null,
+        geographicAreas: [],
+        geographicAreaFeedback: 'Quelque part',
+      })
+    })
   })
 
   it('joins seniority and other criteria', () => {
@@ -142,6 +184,19 @@ describe('CanonicalToPayloadMapper', () => {
       })
       expect(data.studyRemainingCost).toBeUndefined()
       expect(warnings).toEqual(['montant « montant du financement » sans champ pour le type diagnostic-etude'])
+    })
+
+    it('accepts the upstream and the CMS labels of a study, amount and duration', () => {
+      const upstream = map({
+        types_aides: ['etude'],
+        montant: { type: "coût de l'accompagnement", valeur: '1 000 €' },
+        duree: { type: "durée de l'accompagnement", valeur: '3 jours' },
+      })
+      expect(upstream.data).toMatchObject({ studyRemainingCost: '1 000 €', studyDuration: '3 jours' })
+      expect(upstream.warnings).toEqual([])
+
+      const cms = map({ types_aides: ['etude'], montant: { type: 'Coût restant à charge', valeur: '500 €' } })
+      expect(cms.data.studyRemainingCost).toBe('500 €')
     })
   })
 
