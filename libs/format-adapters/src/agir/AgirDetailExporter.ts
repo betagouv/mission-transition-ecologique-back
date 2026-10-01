@@ -90,7 +90,12 @@ export class AgirDetailExporter {
   /** `typeSecteur` deduced from the COG level prefix; placeholder if mixed/unknown. */
   private typeSecteur(codes: readonly string[]): string {
     const levels = new Set(codes.map((code) => code.split('-')[0]))
-    if (levels.size !== 1) return AgirVocabulary.TYPE_SECTEUR_INCONNU
+    if (levels.size !== 1) {
+      const regionalAndDepartmental = levels.has('DEP') && [...levels].every((level) => ['REG', 'OM', 'DEP'].includes(level))
+      return regionalAndDepartmental
+        ? AgirVocabulary.TYPE_SECTEUR_REGIONAL_DEPARTEMENTAL
+        : AgirVocabulary.TYPE_SECTEUR_INCONNU
+    }
     const [level] = [...levels]
     return AgirVocabulary.TYPE_SECTEUR[level] ?? AgirVocabulary.TYPE_SECTEUR_INCONNU
   }
