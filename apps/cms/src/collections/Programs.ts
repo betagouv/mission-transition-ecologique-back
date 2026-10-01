@@ -4,7 +4,10 @@ import { beforeChangeWorkflow } from '@/hooks/programs/beforeChangeWorkflow'
 import { assignCreatorOnCreate } from '@/hooks/programs/assignCreatorOnCreate'
 import { normalizeGeographicCoverage } from '@/hooks/programs/normalizeGeographicCoverage'
 import { trackLastModifiedBy } from '@/hooks/programs/trackLastModifiedBy'
-import { assignCanonicalId } from '@/hooks/programs/assignCanonicalId'
+import { assignCanonicalId } from '@/hooks/shared/assignCanonicalId'
+import { assignCopySlug } from '@/hooks/shared/assignCopySlug'
+import { assignCopyTitle } from '@/hooks/shared/assignCopyTitle'
+import { duplicateAsDraft } from '@/hooks/shared/duplicateAsDraft'
 import { syncCanonicalOnPublish } from '@/hooks/programs/syncCanonicalOnPublish'
 import { removeCanonicalOnDelete } from '@/hooks/programs/removeCanonicalOnDelete'
 import { THEMES_OPTIONS } from '@/constants/themesOptions'
@@ -21,6 +24,9 @@ import {
 import { UserRole, type UserRoleValue } from '@/utils/user/UserRole'
 import { UrlValidator } from '@/utils/UrlValidator'
 import { IntegerValidator } from '@/utils/IntegerValidator'
+import { SlugValidator } from '@/utils/SlugValidator'
+import { RequiredRichTextValidator } from '@/utils/RequiredRichTextValidator'
+import { RequiredTextValidator } from '@/utils/RequiredTextValidator'
 import { RelationshipValidator } from '@/utils/RelationshipValidator'
 import { GeographicAreasValidator } from '@/utils/GeographicAreasValidator'
 import { ProgramFieldAccessPolicy } from '@/services/access/ProgramFieldAccessPolicy'
@@ -77,6 +83,7 @@ export const Programs: CollectionConfig = {
     },
   },
   hooks: {
+    beforeOperation: [duplicateAsDraft],
     beforeValidate: [normalizeGeographicCoverage],
     beforeChange: [
       assignCanonicalId,
@@ -110,6 +117,8 @@ export const Programs: CollectionConfig = {
       type: 'text',
       label: 'Titre',
       required: true,
+      validate: RequiredTextValidator.text,
+      hooks: { beforeDuplicate: [assignCopyTitle] },
       admin: {
         description: 'Exemple : Visite Énergie (1 à 4 mots).',
       },
@@ -223,6 +232,7 @@ export const Programs: CollectionConfig = {
       type: 'text',
       label: 'Promesse',
       required: true,
+      validate: RequiredTextValidator.text,
       admin: {
         description:
           'Exemple : Réduisez et valorisez les déchets de votre entreprise (6 à 16 mots).',
@@ -233,6 +243,7 @@ export const Programs: CollectionConfig = {
       type: 'richText',
       label: 'Description',
       required: true,
+      validate: RequiredRichTextValidator.validate,
       admin: {
         description:
           "Exemple : Bénéficiez de l'accompagnement d'un expert CCI pour vous aider à évaluer la vulnérabilité climatique de votre entreprise (30 à 60 mots).",
@@ -292,6 +303,7 @@ export const Programs: CollectionConfig = {
               type: 'richText',
               label: "Description de l'étape",
               required: true,
+              validate: RequiredRichTextValidator.validate,
               admin: {
                 description:
                   "Une étape courte et actionnable, dans l'ordre chronologique. Ex. étape 1 : « Consultez le document pour vérifier l'éligibilité de votre projet », étape 2 : « Déposez votre demande de financement via le formulaire », étape 3 : « Recevez votre aide financière et réalisez vos travaux ».",
@@ -572,6 +584,7 @@ export const Programs: CollectionConfig = {
               type: 'text',
               label: "Critère d'éligibilité",
               required: true,
+              validate: RequiredTextValidator.text,
             },
           ],
         },
@@ -816,6 +829,8 @@ export const Programs: CollectionConfig = {
       type: 'text',
       unique: true,
       index: true,
+      // A copy gets its own id: Payload would otherwise duplicate it as "<id> - Copy".
+      disableDuplicate: true,
       admin: { hidden: true, readOnly: true },
       access: {
         create: () => false,
@@ -828,6 +843,8 @@ export const Programs: CollectionConfig = {
       label: 'Identifiant',
       required: true,
       unique: true,
+      validate: SlugValidator.validate,
+      hooks: { beforeDuplicate: [assignCopySlug] },
       admin: {
         description: 'Identifiant unique du dispositif.',
         position: 'sidebar',
@@ -839,6 +856,9 @@ export const Programs: CollectionConfig = {
       label: 'Statut de workflow',
       defaultValue: 'en-creation',
       required: true,
+      // A copy starts its own workflow: without this, Payload hands it the status
+      // of the original and the copy of a published program is published at once.
+      disableDuplicate: true,
       options: [
         { label: 'En création', value: 'en-creation' },
         { label: 'En relecture', value: 'en-relecture' },
@@ -869,6 +889,7 @@ export const Programs: CollectionConfig = {
       label: 'Remplacé par',
       relationTo: 'programs',
       hasMany: false,
+      disableDuplicate: true,
       admin: {
         position: 'sidebar',
         description:
@@ -897,6 +918,7 @@ export const Programs: CollectionConfig = {
       label: 'Dernière modification par',
       relationTo: 'users',
       hasMany: false,
+      disableDuplicate: true,
       admin: {
         // Captured into each version snapshot to feed the "Qui" column of the
         // custom versions view. Not shown in the form.
@@ -908,6 +930,7 @@ export const Programs: CollectionConfig = {
       name: 'workflowHistory',
       type: 'array',
       label: 'Historique des transitions',
+      disableDuplicate: true,
       admin: {
         // Removed from the sidebar (ticket #6, point 10). The data is still
         // written by `beforeChangeWorkflow` and stays available in the API and
@@ -957,6 +980,8 @@ export const Programs: CollectionConfig = {
       label: 'Contributeurs assignés',
       relationTo: 'users',
       hasMany: true,
+      // A copy belongs to whoever duplicates it (see assignCreatorOnCreate).
+      disableDuplicate: true,
       admin: {
         position: 'sidebar',
         description: 'Contributeurs autorisés à éditer ce dispositif.',

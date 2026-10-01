@@ -37,6 +37,8 @@ export const Media: CollectionConfig = {
       type: 'text',
       unique: true,
       index: true,
+      // A copy is a manual upload: Payload would otherwise mark it imported from "<path> - Copy".
+      disableDuplicate: true,
       admin: { hidden: true, readOnly: true },
       access: {
         create: () => false,

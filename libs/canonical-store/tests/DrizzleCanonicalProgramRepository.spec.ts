@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { eq } from 'drizzle-orm'
 import { CanonicalProgramValidator } from '@tee-backoffice/canonical'
-import type { CanonicalEvent, CanonicalEventSink } from '@tee-backoffice/canonical'
+import type { CanonicalEvent, CanonicalEventSink, CanonicalProgram } from '@tee-backoffice/canonical'
 import { DrizzleCanonicalProgramRepository } from '../src/DrizzleCanonicalProgramRepository'
 import { InMemoryCanonicalDb } from '../src/testing/InMemoryCanonicalDb'
 import { canonicalPrograms } from '../src/schema'
@@ -65,16 +65,64 @@ describe('DrizzleCanonicalProgramRepository', () => {
     await repo.save(program)
     await repo.save(other)
 
-    await repo.delete('a1b2c3d4e5f6g7h8i9j0klmn')
+    expect(await repo.delete('a1b2c3d4e5f6g7h8i9j0klmn')).toBe(true)
 
     expect((await repo.findAll()).map((p) => p.slug)).toEqual(['autre-dispositif'])
   })
 
-  it('delete is a no-op for an unknown canonical id', async () => {
+  it('delete is a no-op for an unknown canonical id, and says so', async () => {
     const { repo } = await newRepository()
     await repo.save(program)
-    await repo.delete('zzzzzzzzzzzzzzzzzzzzzzzz')
+    expect(await repo.delete('zzzzzzzzzzzzzzzzzzzzzzzz')).toBe(false)
     expect(await repo.findAll()).toHaveLength(1)
+  })
+
+  describe('slug held by another canonical id', () => {
+    const removedEvent = {
+      type: 'program_removed',
+      severity: 'info',
+      slug: 'diagnostic-energie-pme',
+      canonicalId: 'a1b2c3d4e5f6g7h8i9j0klmn',
+    }
+
+    async function newRecordingRepository() {
+      const events: CanonicalEvent[] = []
+      const { repo } = await newRepository({ emit: (event) => events.push(event) })
+      return { repo, events }
+    }
+
+    it('save replaces the row holding the slug and reports it as removed', async () => {
+      const { repo, events } = await newRecordingRepository()
+      await repo.save(program)
+
+      await repo.save(new CanonicalProgramValidator().parse({ ...validInput, id: 'b1b2c3d4e5f6g7h8i9j0klmn' }))
+
+      expect(await repo.listKeys()).toEqual([
+        { canonicalId: 'b1b2c3d4e5f6g7h8i9j0klmn', slug: 'diagnostic-energie-pme' },
+      ])
+      expect(events).toEqual([removedEvent])
+    })
+
+    it('save reports nothing when no other row holds the slug', async () => {
+      const { repo, events } = await newRecordingRepository()
+      await repo.save(program)
+      await repo.save(program)
+
+      expect(events).toEqual([])
+    })
+
+    it('applyChanges replaces a row holding the slug even when it is not listed for deletion', async () => {
+      const { repo, events } = await newRecordingRepository()
+      await repo.save(program)
+      const sameSlug = new CanonicalProgramValidator().parse({ ...validInput, id: 'b1b2c3d4e5f6g7h8i9j0klmn' })
+
+      await repo.applyChanges({ delete: [], save: [sameSlug] })
+
+      expect(await repo.listKeys()).toEqual([
+        { canonicalId: 'b1b2c3d4e5f6g7h8i9j0klmn', slug: 'diagnostic-energie-pme' },
+      ])
+      expect(events).toEqual([removedEvent])
+    })
   })
 
   it('listKeys lists every row, including one that no longer validates', async () => {
@@ -100,17 +148,24 @@ describe('DrizzleCanonicalProgramRepository', () => {
   it('applyChanges rolls everything back when one write fails', async () => {
     const { repo } = await newRepository()
     await repo.save(program)
-    const clash = new CanonicalProgramValidator().parse({ ...validInput, id: 'b1b2c3d4e5f6g7h8i9j0klmn' })
+    const takeover = new CanonicalProgramValidator().parse({ ...validInput, id: 'b1b2c3d4e5f6g7h8i9j0klmn' })
     const other = new CanonicalProgramValidator().parse({
       ...validInput,
       id: 'c1b2c3d4e5f6g7h8i9j0klmn',
       slug: 'autre-dispositif',
     })
+    const broken = {
+      toJSON: () => {
+        throw new Error('unserializable')
+      },
+    } as unknown as CanonicalProgram
 
-    // `clash` reuses the stored slug without deleting its row: unique violation.
-    await expect(repo.applyChanges({ delete: [], save: [other, clash] })).rejects.toThrow()
+    await expect(repo.applyChanges({ delete: [], save: [other, takeover, broken] })).rejects.toThrow('unserializable')
 
-    expect((await repo.findAll()).map((p) => p.slug)).toEqual(['diagnostic-energie-pme'])
+    // The eviction of the stored row is rolled back too.
+    expect(await repo.listKeys()).toEqual([
+      { canonicalId: 'a1b2c3d4e5f6g7h8i9j0klmn', slug: 'diagnostic-energie-pme' },
+    ])
   })
 
   describe('format drift on read', () => {

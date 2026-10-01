@@ -1,4 +1,4 @@
-import type { Source } from '@tee-backoffice/canonical'
+import type { Source, StatutProjet } from '@tee-backoffice/canonical'
 
 /**
  * Centralized AGIR vocabulary: the exact display strings the AGIR consumer
@@ -29,6 +29,16 @@ export class AgirVocabulary {
     remplace: 'remplace',
     archive: 'en_prod',
   } as const
+
+  /**
+   * AGIR lifecycle status of a project, shared by the index (`etatProjet`) and
+   * the pivot (`statut`). Every stored project is published, hence no
+   * unavailable state.
+   */
+  static readonly ETAT_PROJET = {
+    valide: 'en_prod',
+    remplace: 'remplace',
+  } as const satisfies Record<StatutProjet, string>
 
   /** Separator used to join several aid types into `typeDispositif`. */
   static readonly TYPE_DISPOSITIF_SEPARATOR = ' | '

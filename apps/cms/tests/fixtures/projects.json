@@ -1,0 +1,138 @@
+[
+  {
+    "id": 101,
+    "slug": "fixture-projet-plan-energie",
+    "title": "Plan d’action économies d’énergie",
+    "nameTag": "🎯 plan d’action énergie",
+    "shortDescription": "Il met en évidence vos postes d’énergie les plus consommateurs et les pistes de solutions.",
+    "image": "/images/projet/fixture-projet-plan-energie.webp",
+    "titleLongDescription": "🤝 Qu’est-ce qu'un plan d'action économies d'énergie ?",
+    "longDescription": "Établir un plan d’action constitue la première étape d’une stratégie énergétique.\n\nCelui-ci vous permettra :\n\n- D’identifier **les postes les plus énergivores**.\n- D’élaborer **un plan d’action** durable.",
+    "titleMoreDescription": "📚 Comment me documenter ?",
+    "moreDescription": "- [**Sobriété énergétique en entreprise**](https://www.cci.fr/crise-energetique), 20 conseils pour faire baisser votre facture.",
+    "themes": [
+      "energy",
+      "building"
+    ],
+    "mainTheme": "energy",
+    "programs": [
+      "baisse-les-watts",
+      "booster-eco-energie-tertiaire",
+      "fixture-broken-step-link",
+      "fixture-dispositif-absent"
+    ],
+    "titleLinkedProjects": "🔍 Les prérequis pour réussir un plan d'action",
+    "descriptionLinkedProjects": "Réalisez ce prérequis pour assurer la pertinence de votre plan d'action",
+    "linkedProjects": [
+      102
+    ],
+    "priority": {
+      "55": 2,
+      "default": 40,
+      "I": 2,
+      "C": 3,
+      "55.3": 1
+    },
+    "highlightPriority": "5",
+    "sectors": [
+      "C",
+      "G",
+      "I"
+    ],
+    "titleFaq": "Vos questions sur le plan d'action",
+    "faqs": [
+      {
+        "id": 1,
+        "question": "Combien coûte un plan d'action ?",
+        "answer": "Cela dépend de la **taille** de l'entreprise."
+      },
+      {
+        "id": 2,
+        "question": "Combien de temps faut-il ?",
+        "answer": "Comptez :\n\n- une journée de visite\n- deux semaines d'analyse"
+      }
+    ],
+    "metaTitle": "Plan d'action économies d'énergie",
+    "metaDescription": "Identifiez vos postes les plus consommateurs."
+  },
+  {
+    "id": 102,
+    "slug": "fixture-projet-audit-energetique",
+    "title": "Audit énergétique",
+    "nameTag": "🔎 audit énergétique",
+    "shortDescription": "Un état des lieux complet de vos consommations.",
+    "longDescription": "L'audit énergétique dresse **un bilan** de vos consommations et chiffre les gains possibles.",
+    "themes": [
+      "energy"
+    ],
+    "mainTheme": "energy",
+    "programs": [
+      "audit-energetique-en-industrie"
+    ],
+    "linkedProjects": [
+      101
+    ],
+    "priority": {
+      "default": 10
+    },
+    "highlightPriority": null,
+    "sectors": [
+      "C"
+    ]
+  },
+  {
+    "id": 103,
+    "slug": "fixture-projet-eco-conception",
+    "title": "Éco-concevoir un produit",
+    "nameTag": "♻️ éco-conception",
+    "shortDescription": "Réduire l'impact d'un produit dès sa conception.",
+    "titleLongDescription": "Qu'est-ce que l'éco-conception ?",
+    "longDescription": "L'éco-conception intègre l'environnement dès la conception d'un produit.\n\n## Les étapes\n\n1. Diagnostic\n2. Plan d'action",
+    "themes": [
+      "eco-design",
+      "waste"
+    ],
+    "mainTheme": "eco-design",
+    "programs": [
+      "diag-ecoconception"
+    ],
+    "priority": {
+      "default": 25,
+      "C": 1
+    },
+    "highlightPriority": "2",
+    "metaTitle": "Éco-concevoir un produit"
+  },
+  {
+    "id": 104,
+    "slug": "fixture-projet-gestion-dechets",
+    "title": "Mieux gérer ses déchets",
+    "nameTag": "🗑️ gestion des déchets",
+    "shortDescription": "Trier, réduire et valoriser les déchets de l'entreprise.",
+    "longDescription": "Une bonne gestion des déchets commence par **un diagnostic**.",
+    "themes": [
+      "waste"
+    ],
+    "mainTheme": "waste",
+    "programs": [
+      "diagnostic-dechets"
+    ],
+    "titleLinkedProjects": "Pour aller plus loin",
+    "linkedProjects": [
+      103,
+      999
+    ]
+  },
+  {
+    "id": 105,
+    "slug": "fixture-projet-mobilite",
+    "title": "Verdir sa flotte de véhicules",
+    "nameTag": "🚗 mobilité",
+    "shortDescription": "Passer à des véhicules moins émetteurs.",
+    "longDescription": "Remplacer progressivement les véhicules thermiques.",
+    "themes": [
+      "mobility"
+    ],
+    "mainTheme": "mobility"
+  }
+]

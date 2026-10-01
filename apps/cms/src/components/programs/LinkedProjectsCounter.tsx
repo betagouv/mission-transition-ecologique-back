@@ -18,6 +18,8 @@ export const LinkedProjectsCounter: React.FC = () => {
     const params = new URLSearchParams()
     params.set('limit', '0')
     params.set('depth', '0')
+    // Drafts are served neither by the pivot nor by AGIR.
+    params.set('where[_status][equals]', 'published')
     themes.forEach((theme, i) => {
       params.set(`where[themes][in][${i.toString()}]`, theme)
     })

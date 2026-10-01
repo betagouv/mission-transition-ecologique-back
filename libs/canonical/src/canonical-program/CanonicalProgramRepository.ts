@@ -1,16 +1,9 @@
 import type { CanonicalProgram } from './CanonicalProgram'
+import type { CanonicalChanges, CanonicalKey } from '../snapshot/CanonicalKey'
 
-/** Identity of a stored row, readable even when its content no longer validates. */
-export interface CanonicalProgramKey {
-  canonicalId: string
-  slug: string
-}
+export type CanonicalProgramKey = CanonicalKey
 
-/** A set of writes applied as one unit: deletions first, then upserts. */
-export interface CanonicalProgramChanges {
-  delete: string[]
-  save: CanonicalProgram[]
-}
+export type CanonicalProgramChanges = CanonicalChanges<CanonicalProgram>
 
 /**
  * Persistence port for canonical programs. Defined in the domain so it stays
@@ -19,7 +12,10 @@ export interface CanonicalProgramChanges {
  * nothing about the storage technology.
  */
 export interface CanonicalProgramRepository {
-  /** Inserts or replaces the program identified by its canonical id. */
+  /**
+   * Inserts or replaces the program identified by its canonical id. The slug is
+   * unique: a row holding it under another canonical id is replaced as well.
+   */
   save(program: CanonicalProgram): Promise<void>
   /** Returns the stored program for a slug, or null when absent. */
   findBySlug(slug: string): Promise<CanonicalProgram | null>
@@ -27,8 +23,8 @@ export interface CanonicalProgramRepository {
   findAll(): Promise<CanonicalProgram[]>
   /** Lists the identity of every stored row, including rows that no longer validate. */
   listKeys(): Promise<CanonicalProgramKey[]>
-  /** Removes the program identified by its canonical id; a no-op when absent. */
-  delete(canonicalId: string): Promise<void>
+  /** Removes the program identified by its canonical id. Resolves to whether a row was removed. */
+  delete(canonicalId: string): Promise<boolean>
   /** Applies deletions then upserts atomically: either all of them land, or none. */
   applyChanges(changes: CanonicalProgramChanges): Promise<void>
 }

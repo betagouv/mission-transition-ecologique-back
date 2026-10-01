@@ -10,6 +10,17 @@ import { UpstreamJsonSource } from './UpstreamJsonSource'
 const ok = (body: unknown) => Promise.resolve(new Response(JSON.stringify(body), { status: 200 }))
 const unreachable: typeof fetch = () => Promise.reject(new TypeError('fetch failed'))
 
+const project = {
+  id: 31,
+  slug: 'diag-360',
+  title: 'Diagnostic 360',
+  nameTag: 'diag 360',
+  shortDescription: 'Un état des lieux complet.',
+  longDescription: 'Le **diagnostic** couvre tous les enjeux.',
+  themes: ['environmental'],
+  mainTheme: 'environmental',
+}
+
 class RecordingLogger implements ExportLogger {
   readonly warnings: string[] = []
   warn(message: string): void {
@@ -30,7 +41,7 @@ describe('UpstreamJsonSource', () => {
     const requested: string[] = []
     const fetchImpl: typeof fetch = (input) => {
       requested.push(String(input))
-      return ok([{ id: 'a' }])
+      return String(input).endsWith('projects.json') ? ok([project]) : ok([{ id: 'a' }])
     }
     const source = new UpstreamJsonSource({
       urls: { programs: 'https://amont/programs.json', projects: 'https://amont/projects.json' },
@@ -38,7 +49,7 @@ describe('UpstreamJsonSource', () => {
     })
 
     expect(await source.programs()).toEqual([{ id: 'a' }])
-    expect(await source.projects()).toEqual([{ id: 'a' }])
+    expect(await source.projects()).toEqual([project])
     expect(requested).toEqual(['https://amont/programs.json', 'https://amont/projects.json'])
   })
 
@@ -53,14 +64,14 @@ describe('UpstreamJsonSource', () => {
   })
 
   it('bascule aussi sur une réponse HTTP en erreur', async () => {
-    const fallback = snapshotWith({ projects: [{ id: 'local' }] })
+    const fallback = snapshotWith({ projects: [project] })
     const source = new UpstreamJsonSource({
       fetchImpl: () => Promise.resolve(new Response('', { status: 503 })),
       fallback,
       logger: new RecordingLogger(),
     })
 
-    expect(await source.projects()).toEqual([{ id: 'local' }])
+    expect(await source.projects()).toEqual([project])
   })
 
   it('échoue sans copie locale configurée', async () => {
@@ -185,6 +196,77 @@ describe('UpstreamJsonSource', () => {
 
       expect(await source.operators()).toEqual([ademe])
       expect(logger.warnings[0]).toContain('operators.json')
+    })
+  })
+
+  describe('projets', () => {
+    it('garde les clés inconnues et un highlightPriority null', async () => {
+      const upstream = { ...project, highlightPriority: null, faqs: [{ id: 146, question: 'Q ?', answer: 'R.' }], futur: 1 }
+      const source = new UpstreamJsonSource({ fetchImpl: () => ok([upstream]) })
+      expect(await source.projects()).toEqual([upstream])
+    })
+
+    it('lit une cellule optionnelle vide ou null comme absente', async () => {
+      const upstream = { ...project, image: null, programs: null, titleFaq: '', priority: null }
+      const source = new UpstreamJsonSource({ fetchImpl: () => ok([upstream]) })
+
+      const [read] = await source.projects()
+
+      expect(read).toEqual(project)
+      expect(source.rejectedProjects).toEqual([])
+    })
+
+    it('écarte et signale le seul enregistrement hors forme, les autres sont renvoyés', async () => {
+      const logger = new RecordingLogger()
+      const broken = { ...project, id: 32, slug: 'bilan-carbone', title: null }
+      const source = new UpstreamJsonSource({ fetchImpl: () => ok([project, broken]), logger })
+
+      expect(await source.projects()).toEqual([project])
+      expect(source.rejectedProjects).toEqual([
+        { index: 1, slug: 'bilan-carbone', reason: expect.stringContaining('title : ') },
+      ])
+      expect(logger.warnings).toHaveLength(1)
+      expect(logger.warnings[0]).toContain('projects.json : enregistrement écarté (bilan-carbone : title : ')
+    })
+
+    it('ne garde que les enregistrements écartés de la dernière lecture', async () => {
+      const responses = [[{ ...project, themes: 'environmental' }], [project]]
+      const source = new UpstreamJsonSource({
+        fetchImpl: () => ok(responses.shift()),
+        logger: new RecordingLogger(),
+      })
+
+      expect(await source.projects()).toEqual([])
+      expect(source.rejectedProjects).toHaveLength(1)
+      expect(await source.projects()).toEqual([project])
+      expect(source.rejectedProjects).toEqual([])
+    })
+
+    it("échoue si le fichier n'est pas un tableau", async () => {
+      const source = new UpstreamJsonSource({ fetchImpl: () => ok({ projects: [project] }) })
+      await expect(source.projects()).rejects.toThrow('un tableau de projets est attendu')
+    })
+
+    it('valide aussi la copie locale utilisée en secours', async () => {
+      const logger = new RecordingLogger()
+      const source = new UpstreamJsonSource({
+        fetchImpl: unreachable,
+        fallback: snapshotWith({ projects: [{ id: 'local' }, project] }),
+        logger,
+      })
+
+      expect(await source.projects()).toEqual([project])
+      expect(source.rejectedProjects).toMatchObject([{ index: 0 }])
+      expect(source.rejectedProjects[0]).not.toHaveProperty('slug')
+    })
+  })
+
+  describe('lecture brute', () => {
+    it('renvoie le fichier tel que publié, sans validation ni réordonnancement des clés', async () => {
+      const upstream = [{ faqs: [{ id: 146, question: 'Q ?', answer: 'R.' }], title: null, slug: 'diag-360' }]
+      const source = new UpstreamJsonSource({ fetchImpl: () => ok(upstream) })
+
+      expect(JSON.stringify(await source.raw('projects'))).toBe(JSON.stringify(upstream))
     })
   })
 

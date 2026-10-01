@@ -41,19 +41,7 @@ export const typeAideSchema = z.enum([
 ])
 export type TypeAide = z.infer<typeof typeAideSchema>
 
-/** Thematic targeting — internal taxonomy (V0, French labels). */
-export const themeSchema = z.enum([
-  'batiment',
-  'mobilite',
-  'dechets',
-  'eau',
-  'energie',
-  'rh',
-  'environnemental',
-  'ecoconception',
-  'biodiversite',
-])
-export type Theme = z.infer<typeof themeSchema>
+export { themeSchema, type Theme } from '../shared/schema/theme'
 
 /** Contact channel for questions. */
 export const contactQuestionTypeSchema = z.enum(['conseiller_entreprise', 'email', 'url'])

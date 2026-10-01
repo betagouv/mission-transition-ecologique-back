@@ -25,10 +25,12 @@
     "migrate:status": "nx run @tee-backoffice/cms:migrate:status",
     "export:tee": "nx run @tee-backoffice/format-adapters:export:tee",
     "data:snapshot": "tsx libs/format-adapters/scripts/snapshot-upstream.ts",
-    "data:daily": "tsx libs/format-adapters/scripts/import-tee.ts --remote && tsx libs/format-adapters/scripts/grist-setup.ts && tsx libs/format-adapters/scripts/export-grist.ts --push",
-    "data:daily:dev": "nx run @tee-backoffice/format-adapters:import:tee --remote && nx run @tee-backoffice/format-adapters:setup:grist && nx run @tee-backoffice/format-adapters:export:grist --push",
+    "import:projects": "nx run @tee-backoffice/format-adapters:import:projects",
+    "data:daily": "tsx libs/format-adapters/scripts/import-tee.ts --remote && tsx libs/format-adapters/scripts/grist-setup.ts && tsx libs/format-adapters/scripts/export-grist.ts --push && tsx libs/format-adapters/scripts/import-projects.ts --remote",
+    "data:daily:dev": "nx run @tee-backoffice/format-adapters:import:tee --remote && nx run @tee-backoffice/format-adapters:setup:grist && nx run @tee-backoffice/format-adapters:export:grist --push && nx run @tee-backoffice/format-adapters:import:projects --remote",
     "test": "nx run @tee-backoffice/cms:test",
-    "test:unit": "nx run @tee-backoffice/cms:test:unit"
+    "test:unit": "nx run @tee-backoffice/cms:test:unit",
+    "test:libs": "nx run-many -t test -p @tee-backoffice/canonical @tee-backoffice/canonical-store @tee-backoffice/format-adapters"
   },
   "private": true,
   "dependencies": {

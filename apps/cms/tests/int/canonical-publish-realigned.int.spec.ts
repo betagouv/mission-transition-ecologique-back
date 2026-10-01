@@ -38,10 +38,9 @@ async function leaveInCreationWithRealignedDraft(program: Program): Promise<stri
     context: system(),
   })
 
-  // The daily import already stored the program under the realigned id.
-  const stored = await canonical.findBySlug(program.slug!)
-  if (stored) await canonical.delete(stored.id)
-  const source = stored ?? (await canonical.findAll())[0]!
+  // The daily import already stored the program under the realigned id: saving
+  // it evicts the row the former id held under the same slug.
+  const source = (await canonical.findBySlug(program.slug!)) ?? (await canonical.findAll())[0]!
   await canonical.save(new CanonicalProgramValidator().parse({ ...source.toJSON(), id: realigned, slug: program.slug }))
   return realigned
 }

@@ -44,8 +44,17 @@ export class PayloadLoggerEventSink implements CanonicalEventSink {
           event.errors.length > 0 ? `${event.errors.length.toString()} validation issue(s)` : 'unreadable stored data'
         return `canonical dropped on ${event.phase} for "${event.slug}": ${detail}`
       }
+      case 'project_saved':
+        return `canonical project saved "${event.slug}" (${event.canonicalId})`
+      case 'project_removed':
+        return `canonical project removed "${event.slug}" (${event.canonicalId})`
+      case 'project_dropped': {
+        const detail =
+          event.errors.length > 0 ? `${event.errors.length.toString()} validation issue(s)` : 'unreadable stored data'
+        return `canonical project dropped on ${event.phase} for "${event.slug}": ${detail}`
+      }
       case 'sync_failed':
-        return `canonical sync failed for "${event.slug}": ${event.error}`
+        return `canonical ${event.entity === 'project' ? 'project ' : ''}sync failed for "${event.slug}": ${event.error}`
     }
   }
 }

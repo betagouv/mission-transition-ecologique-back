@@ -3,6 +3,9 @@ import type { ExportLogger } from '../shared/ExportLogger'
 import { LocalJsonSnapshot } from './LocalJsonSnapshot'
 import { teeOperatorsSchema } from './tee-operator.schema'
 import type { TeeOperator } from './tee-operator.schema'
+import type { TeeProject } from './tee-project.schema'
+import { TeeProjectRecords } from './TeeProjectRecords'
+import type { RejectedTeeProject } from './TeeProjectRecords'
 import { UpstreamFetchError } from './UpstreamFetchError'
 import type { UpstreamFallbackSettings } from './UpstreamFallbackSettings'
 import type { UpstreamFile } from './UpstreamFile'
@@ -43,6 +46,7 @@ export class UpstreamJsonSource {
   private readonly logger: ExportLogger
   private readonly fetchImpl: typeof fetch
   private readonly timeoutMs: number
+  private rejected: RejectedTeeProject[] = []
 
   constructor(options: UpstreamJsonSourceOptions = {}) {
     this.urls = {
@@ -76,8 +80,27 @@ export class UpstreamJsonSource {
     return this.load<T>('programs')
   }
 
-  projects<T>(): Promise<T> {
-    return this.load<T>('projects')
+  /**
+   * Upstream projects whose shape is valid. A broken record is set aside, logged
+   * and listed in {@link rejectedProjects}; only a file that is not a list throws.
+   */
+  async projects(): Promise<TeeProject[]> {
+    const { projects, rejected } = TeeProjectRecords.parse(await this.load<unknown>('projects'))
+    this.rejected = rejected
+    for (const record of rejected) {
+      this.logger.warn(`projects.json : enregistrement écarté (${TeeProjectRecords.describe(record)})`)
+    }
+    return projects
+  }
+
+  /** Records set aside by the last {@link projects} read. */
+  get rejectedProjects(): readonly RejectedTeeProject[] {
+    return this.rejected
+  }
+
+  /** The file as upstream publishes it, unvalidated: for the versioned snapshot, never for an import. */
+  raw(file: UpstreamFile): Promise<unknown> {
+    return this.load<unknown>(file)
   }
 
   /** Validated upstream operators: a broken shape throws instead of feeding the import. */

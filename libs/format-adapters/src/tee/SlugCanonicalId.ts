@@ -15,4 +15,9 @@ export class SlugCanonicalId {
   static from(slug: string): string {
     return `c${createHash('sha256').update(slug).digest('hex').slice(0, 23)}`
   }
+
+  /** Namespaced, so a project never shares the id of a program with the same slug. */
+  static forProject(slug: string): string {
+    return SlugCanonicalId.from(`project:${slug}`)
+  }
 }

@@ -7,8 +7,8 @@ import {
   RemplaceParResolver,
 } from '@tee-backoffice/format-adapters'
 import type { Endpoint, PayloadRequest } from 'payload'
-import { Config } from '@/config/Config'
 import { getCanonicalProgramRepository } from '@/services/canonical/canonicalRepository'
+import { AgirBaseUrlResolver } from './AgirBaseUrlResolver'
 
 /**
  * Public, read-only AGIR endpoints. They only TRANSPORT: read the canonical
@@ -23,19 +23,6 @@ function notFound(): Response {
   return Response.json({ error: 'Dispositif introuvable' }, { status: 404 })
 }
 
-/**
- * Public base URL for the absolute AGIR links. Behind a reverse proxy (Scalingo
- * router) `req.origin` is the internal container address (localhost:36xxx), so:
- * explicit env override → forwarded headers set by the router → request origin.
- */
-function resolveBaseUrl(req: PayloadRequest): string {
-  const configured = Config.publicBaseUrl()
-  if (configured) return configured
-  const host = req.headers.get('x-forwarded-host')
-  if (host) return `${req.headers.get('x-forwarded-proto') ?? 'https'}://${host}`
-  return req.origin
-}
-
 /** Resolves an exportable program by slug, or null (unknown / non-exportable). */
 async function findExportable(req: PayloadRequest, slug: string): Promise<CanonicalProgram | null> {
   if (!slug) return null
@@ -47,8 +34,8 @@ async function findExportable(req: PayloadRequest, slug: string): Promise<Canoni
 const listeHandler = async (req: PayloadRequest): Promise<Response> => {
   const repository = await getCanonicalProgramRepository(req.payload.logger)
   const programs = await repository.findAll()
-  // Index links are absolute; see resolveBaseUrl for the reverse-proxy caveat.
-  return Response.json(new AgirListeExporter({ baseUrl: resolveBaseUrl(req) }).exportMany(programs))
+  // Index links are absolute; see AgirBaseUrlResolver for the reverse-proxy caveat.
+  return Response.json(new AgirListeExporter({ baseUrl: AgirBaseUrlResolver.resolve(req) }).exportMany(programs))
 }
 
 const detailHandler = async (req: PayloadRequest): Promise<Response> => {

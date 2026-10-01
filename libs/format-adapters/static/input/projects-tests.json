@@ -1,0 +1,363 @@
+[
+  {
+    "id": 31,
+    "slug": "diag-360",
+    "title": "Diagnostic à 360° sur la transition écologique",
+    "nameTag": "🔎️ diagnostic 360°",
+    "shortDescription": "Réaliser un diagnostic de votre entreprise au prisme de l’environnement.",
+    "image": "/images/projet/diag-360.webp",
+    "longDescription": "Un diagnostic à 360° est une étape clé pour initier la transition écologique de votre entreprise. Il offre un état des lieux complet, couvrant des domaines tels que :\n\n- les économies d’énergie,\n- l’isolation des locaux,\n- les consommations d’eau,\n- la gestion des déchets,\n- les matières premières,\n- les achats,\n- la mobilité, etc.\\\n  \\\n  Cette analyse permet d’**évaluer l’impact environnemental** de votre activité et d’**identifier les enjeux prioritaires** spécifiques à votre entreprise. À l'issue du diagnostic, vous bénéficiez de conseils et propositions d'actions concrètes pour amorcer le changement, ainsi qu'un **plan d’action à moyen et long terme** pour transformer durablement votre entreprise. Un expert peut également vous accompagner dans la **recherche de subventions** afin de concrétiser ce plan d'action.",
+    "moreDescription": "- [**Les témoignages d'accompagnement à la transition écologique et énergétique des entreprises**](https://www.entreprises.cci-paris-idf.fr/web/transition-ecologique/temoignages-clients), par la CCI\n- [**Les modèles d'affaires à l'aune de la sobriété,**](https://www.cci-paris-idf.fr/fr/prospective/sobriete-modeles-affaires) une étude de la CCI sur les implications de la sobriété sur le modèle d’affaires des entreprises.",
+    "themes": [
+      "environmental"
+    ],
+    "mainTheme": "environmental",
+    "programs": [
+      "diagnostic-changement-climatique",
+      "diagnostic-transition-ecologique",
+      "fonds-tourisme-durable",
+      "diag-eco-flux",
+      "formation-artisan-developpement-durable",
+      "performa-environnement",
+      "mission-strategie-environnement",
+      "programme-breizh-fab",
+      "tpe-gagnantes-sur-tous-les-couts",
+      "cedre-premier-pas",
+      "sud-pret-climat",
+      "cedre-ambition",
+      "pret-energie-aura",
+      "pass-transition-bzh",
+      "pret-ile-de-france",
+      "cap-transition-ecologique",
+      "prit-hdf",
+      "camping-independant-bfc",
+      "diagnostic-conso-elec",
+      "indicateur-climat",
+      "diag-performance",
+      "easy-diag",
+      "diagnostic-et-accompagnement-co2i",
+      "accompagnement-rh",
+      "concilier-enjeux-ecologiques-et-conditions-de-travail",
+      "autodiagnostic-rse",
+      "eval-360-pays-de-la-loire",
+      "accelerateur-transition-s"
+    ],
+    "linkedProjects": [],
+    "priority": {
+      "default": 10,
+      "C": 1,
+      "G": 1,
+      "F": 1,
+      "55.3": 3
+    },
+    "highlightPriority": null,
+    "sectors": [
+      "A",
+      "B",
+      "C",
+      "D",
+      "E",
+      "F",
+      "G",
+      "H",
+      "I",
+      "J",
+      "K",
+      "L",
+      "M",
+      "N",
+      "O",
+      "P",
+      "Q",
+      "R",
+      "S",
+      "T",
+      "U"
+    ],
+    "metaTitle": "Diagnostic à 360° - Transition écologique des entreprises",
+    "metaDescription": "Évaluez l’impact environnemental de votre activité avec le diag 360. Un état des lieux complet pour guider la transition écologique de votre entreprise.",
+    "faqs": []
+  },
+  {
+    "id": 4,
+    "slug": "plan-action-eco-energie",
+    "title": "Plan d’action économies d’énergie",
+    "nameTag": "🎯 plan d’action énergie",
+    "shortDescription": "Il met en évidence vos postes d’énergie les plus consommateurs et les pistes de solutions.",
+    "image": "/images/projet/plan-action-eco-energie.webp",
+    "titleLongDescription": "🤝 Qu’est-ce qu'un plan d'action économies d'énergie ?",
+    "longDescription": "Établir un plan d’action d’économies d’énergie constitue la première étape pour la mise en place d’une stratégie énergétique au sein de votre entreprise.\n\nCelui-ci vous permettra :\n\n- D’identifier **les postes les plus énergivores** (eau, électricité, gaz…).\n- D’identifier **une série de bonnes pratiques faciles** à mettre en œuvre.\n- D’élaborer **un plan d’action** pour **maîtriser durablement vos consommations énergétiques**.\n\nDans un deuxième temps vous pouvez mener des études plus poussées sur une thématique spécifique ou mettre en place des investissements pour améliorer la performance énergétique de vos bâtiments ou de votre système de production.\n\nAinsi, **vous pérennisez l’activité de votre entreprise** en anticipant l’augmentation des coûts énergétiques, **vous** **vous mettez en conformité avec la réglementation**, et **vous diminuez votre impact environnemental** tout en améliorant votre image de marque.",
+    "titleMoreDescription": "📚 Comment me documenter au mieux sur le plan d'action économies d'énergie ?",
+    "moreDescription": "- [**Sobriété énergétique en entreprise,**](https://www.cci.fr/crise-energetique/entreprises-20-conseils-pour-faire-baisser-votre-facture-denergie) 20 conseils pour faire baisser votre facture d’énergie.",
+    "themes": [
+      "energy"
+    ],
+    "mainTheme": "energy",
+    "programs": [
+      "baisse-les-watts",
+      "fonds-tourisme-durable",
+      "diag-eco-flux",
+      "mission-strategie-environnement",
+      "programme-breizh-fab",
+      "renovation-petit-tertiaire-prive",
+      "tpe-gagnantes-sur-tous-les-couts",
+      "visite-energie",
+      "cci-business-optimizer",
+      "fiscalite-energetique-occitanie",
+      "cedre-premier-pas",
+      "sud-pret-climat",
+      "cedre-ambition",
+      "perf-crise-energetique-aura",
+      "pret-energie-aura",
+      "pass-transition-bzh",
+      "pret-ile-de-france",
+      "cap-transition-ecologique",
+      "perf-crise-energetique-cvl",
+      "impulsion-environnement",
+      "soutien-hebergement-touristique",
+      "hotellerie-independante-bfc",
+      "camping-independant-bfc",
+      "certificats-economie-energie",
+      "aide-investissement-librairie",
+      "booster-transformation-rev-3",
+      "diagnostic-conso-elec",
+      "easy-diag",
+      "cap-decarbonation",
+      "cheque-transition-tissu-economique",
+      "diag-accompagnement-tee-rh",
+      "cec-impact",
+      "contrat-3s-occitanie",
+      "etude-energetique-batiment-tertiaire",
+      "aide-renovation-batiment-tertiaire",
+      "etude-faisabilite-multi-enr",
+      "aide-installation-chauffe-eau-solaire-collectif",
+      "aide-installation-chauderie-biomasse-collective",
+      "accelerateur-transition-s",
+      "competitivite-energetique-des-entreprises-na"
+    ],
+    "titleLinkedProjects": "🔍 Les prérequis pour réussir un plan d'action économies d'énergie",
+    "descriptionLinkedProjects": "Réalisez ce prérequis pour assurer la pertinence et l'efficacité de votre plan d'action économies d'énergie",
+    "linkedProjects": [
+      31
+    ],
+    "priority": {
+      "55": 2,
+      "56": 2,
+      "default": 40,
+      "I": 2,
+      "C": 2
+    },
+    "highlightPriority": "5",
+    "sectors": [
+      "A",
+      "B",
+      "C",
+      "D",
+      "E",
+      "F",
+      "G",
+      "H",
+      "I",
+      "J",
+      "K",
+      "L",
+      "M",
+      "N",
+      "O",
+      "P",
+      "Q",
+      "R",
+      "S",
+      "T",
+      "U"
+    ],
+    "titleFaq": "☝️ Questions fréquentes sur le plan d'action économies d'énergie",
+    "faqs": [
+      {
+        "id": 146,
+        "question": "Quelles entreprises sont obligées de réaliser un audit énergétique obligatoire ?",
+        "answer": "Seules les **grandes entreprises** **ont l’obligation de réaliser un audit énergétique** tous les quatre ans. Il s’agit des entreprises qui emploient plus de 250 salariés ou qui réalisent un chiffre d’affaires annuel supérieur à 50 millions d’euros et un total de bilan de plus de 43 millions d’euros. \\\nLe but de cet audit est de réaliser un **bilan complet** de la consommation énergétique de l’entreprise, et d’engager un **plan de sobriété**."
+      },
+      {
+        "id": 147,
+        "question": "Comment réduire la consommation d'énergie dans une entreprise ?",
+        "answer": "Afin de réduire efficacement la consommation énergétique, vous pouvez vous faire accompagner pour :\n\n- Dresser un **bilan complet de vos consommations**, et repérer les **postes les plus énergivores.**\n- Identifier les **économies d’énergie** que vous pouvez réaliser rapidement.\n- Mettre en place **un plan d’économie d’énergie** en agissant sur plusieurs leviers (changement de fournisseurs d’énergie, type de chauffage, isolation du bâtiment…)."
+      },
+      {
+        "id": 148,
+        "question": "Qu’est-ce qu’un certificat d’économies d’énergie (CEE) ?",
+        "answer": "Un certificat d'économie d'énergie (CEE) est une **aide financière** destinée aux entreprises qui réalisent des **travaux d’amélioration de la performance énergétique**.\n\nIl peut s’agir, par exemple, de travaux :\n\n- De changement de système de chauffage.\n- D’isolation thermique.\n- D’optimisation de procédés…\n\nCette aide est **octroyée par les fournisseurs d’énergie (électricité, gaz, fioul, carburant…) dans le cadre d’une obligation légale**. Elle peut être versée sous forme d’un remboursement après travaux, d’une prime, d’une réduction directe sur votre devis ou d’un remboursement après travaux, selon le fournisseur choisi."
+      },
+      {
+        "id": 149,
+        "question": "Quels travaux de rénovation énergétique permettent de faire des économies d’énergie en entreprise ?",
+        "answer": "Pour rendre votre entreprise sobre énergétiquement, il faut considérer en priorité :\n\n- **L’isolation du bâtiment**. Rénover zones qui engendrent le plus de déperdition énergétique : toiture, murs, vitrage…\n- **La ventilation**. Un système de ventilation VMC double flux vous permettra de réguler efficacement l’humidité intérieure.\n- **Le chauffage**. C’est la ligne la plus importante de votre facture énergétique. Un système de chauffage fonctionnant aux énergies renouvelables (pompe à chaleur, chaudière biomasse, réseau de chaleur…) vous fera réaliser d’importantes économies.\n- **L’éclairage.** L’installation de LED, d’une minuterie ou de détecteurs de mouvement fera baisser votre facture.\n- **L’optimisation des process.** L’automatisation des process ou le remplacement des machines par un équivalent performant."
+      },
+      {
+        "id": 150,
+        "question": "Comment financer des travaux d’économie d’énergie ?",
+        "answer": "De nombreuses aides financières, accompagnements, crédits d’impôt peuvent vous permettre de financer ces travaux. Elles sont parfois réservées à un secteur d’activité ou à une zone géographique. [Saisissez votre SIRET et laissez-vous guider](https://mission-transition-ecologique.beta.gouv.fr/projets-entreprise/plan-action-eco-energie/?profil-entreprise=oui)."
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "slug": "eclairage-led",
+    "title": "Eclairage LED",
+    "nameTag": "💡 LED",
+    "shortDescription": "Les ampoules LED sont extrêmement économes en énergie par rapport aux ampoules traditionnelles.",
+    "image": "/images/projet/eclairage-led.webp",
+    "longDescription": "Les ampoules LED (diode électroluminescente) consomment très peu d'énergie pour un excellent rendement lumineux, et ont une durée de vie supérieure aux ampoules classiques.\n\nAinsi, vous contribuez à réduire l'empreinte carbone de votre entreprise tout en réalisant des économies d'énergie.",
+    "moreDescription": "- [**Comment choisir ses ampoules ?** ](https://agirpourlatransition.ademe.fr/particuliers/maison/economies-denergie-deau/comment-choisir-ampoules)Des conseils pour choisir entre les différents types de LED proposés sur le marché.\n- [**Rénover l’éclairage des bâtiments tertiaires**](https://librairie.ademe.fr/ged/207/renover-eclairage-tertaire-011133.pdf), l'essentiel des informations techniques, réglementaires, ergonomiques, économiques, utiles pour programmer et réussir la rénovation de l'éclairage d'un bâtiment.",
+    "themes": [
+      "energy"
+    ],
+    "mainTheme": "energy",
+    "programs": [
+      "fonds-tourisme-durable",
+      "visite-energie",
+      "pret-economies-d-energie-pee",
+      "aide-financement-occitanie",
+      "cedre-investissement",
+      "sud-pret-climat",
+      "pret-energie-aura",
+      "pass-transition-bzh",
+      "pret-ile-de-france",
+      "cap-transition-ecologique",
+      "perf-crise-energetique-cvl",
+      "impulsion-environnement",
+      "hotellerie-independante-na",
+      "camping-independant-na",
+      "hotellerie-independante-bfc",
+      "aide-tourisme-guadeloupe",
+      "cheque-transition-tissu-economique",
+      "etude-faisabilite-renovation-eclairage-exterieur",
+      "aide-renovation-eclairage-exterieur"
+    ],
+    "linkedProjects": [
+      4
+    ],
+    "priority": {
+      "default": 220
+    },
+    "highlightPriority": "2",
+    "sectors": [
+      "A",
+      "B",
+      "C",
+      "D",
+      "E",
+      "F",
+      "G",
+      "H",
+      "I",
+      "J",
+      "K",
+      "L",
+      "M",
+      "N",
+      "O",
+      "P",
+      "Q",
+      "R",
+      "S",
+      "T",
+      "U"
+    ],
+    "metaTitle": "Eclairage LED pour entreprises - Subventions pour la rénovation énergétique",
+    "metaDescription": "Faites des économies d’énergie en remplaçant vos ampoules classiques par des ampoules LED. Découvrez les aides et subventions disponibles.",
+    "faqs": []
+  },
+  {
+    "id": 137,
+    "slug": "electromenager-basse-consommation",
+    "title": "Électroménager basse consommation",
+    "nameTag": "🌬 electromenager",
+    "shortDescription": "L'électroménager professionnel à haute efficacité énergétique vous permet de réduire votre consommation d'énergie.",
+    "image": "/images/projet/seche-linge.webp",
+    "longDescription": "Investir dans des équipements électroménagers professionnels à haute efficacité énergétique est une opportunité pour votre entreprise de réduire considérablement sa consommation d'énergie tout en optimisant ses performances. Qu’il s’agisse de réfrigérateurs, de lave-vaisselle ou de fours, ces équipements offrent des fonctionnalités avancées, comme la régulation intelligente de la température ou l’utilisation optimisée des ressources. Par exemple, un sèche-linge professionnel doté d’une pompe à chaleur peut réduire sa consommation énergétique jusqu’à 50 % par rapport à un modèle classique ! En intégrant ces solutions, vous pouvez réaliser des économies significatives sur vos factures énergétiques tout en augmentant la durabilité de vos équipements.",
+    "moreDescription": "- [**Les critères de sélection d'un sèche-linge pro**](https://www.guidetopten.fr/grand-public/selection-criteria/criteres-de-selection-seche-linge-professionnels), proposé par Guide Topten, un comparateur soutenu par l'ADEME.\n- [**Appareils de froid pour la restauration**](https://www.guidetopten.fr/pro/products/bus_refrigerators_stor), le Guide Topten.\n- [**L'étiquette énergie** : ](https://www.economie.gouv.fr/particuliers/etiquette-energie-electromenager)Bien choisir ses appareils électroménagers grâce à l'étiquette énergie.\n- [**Des gestes simples pour un four à sole plus économe**](https://unm.fr/wp-content/uploads/2026/01/Guide-pour-un-four-a-sole_sircom_2026.pdf), un guide d'optimisation des fours de boulangerie.",
+    "themes": [
+      "energy"
+    ],
+    "mainTheme": "energy",
+    "programs": [
+      "fonds-tourisme-durable",
+      "visite-energie",
+      "cedre-investissement",
+      "sud-pret-climat",
+      "pret-energie-aura",
+      "pret-ile-de-france",
+      "cap-transition-ecologique",
+      "perf-crise-energetique-cvl",
+      "soutien-hebergement-touristique",
+      "agir-pdl",
+      "hotellerie-independante-na",
+      "camping-independant-na",
+      "prit-hdf",
+      "aide-tourisme-guadeloupe",
+      "certificats-economie-energie",
+      "cheque-transition-tissu-economique"
+    ],
+    "linkedProjects": [
+      4
+    ],
+    "priority": {
+      "55": 5,
+      "default": 191,
+      "I": 8,
+      "Q": 5,
+      "T": 1
+    },
+    "highlightPriority": null,
+    "sectors": [
+      "I",
+      "Q",
+      "T"
+    ],
+    "faqs": []
+  },
+  {
+    "id": 372,
+    "slug": "maintenance-preventive",
+    "title": "Maintenance préventive",
+    "nameTag": "⚙️ maintenance",
+    "shortDescription": "La maintenance préventive de vos appareils permet d'économiser l'énergie et de prévenir les pannes.",
+    "image": "/images/projet/maintenance-preventive.webp",
+    "longDescription": "La **maintenance préventive** des équipements consommateurs d’énergie (eau, électricité, gaz) est une stratégie clé pour sécuriser la production et améliorer la performance énergétique de votre entreprise. Plutôt que d’attendre une panne coûteuse, vous agissez en amont pour maintenir vos installations en bon état et garantir leur rendement optimal.\n\nLes bénéfices concrets pour votre activité :\n\n- **anticiper les pannes** et éviter les arrêts de production,\n\n- **réduire les coûts** liés à la maintenance corrective et aux réparations d’urgence,\n\n- **optimiser les performances** de vos appareils pour fonctionner à plein rendement,\n\n- **diminuer votre consommation d’énergie** en limitant fuites et pertes invisibles.\n\nUn suivi régulier et planifié renforce la compétitivité de votre entreprise tout en contribuant à la transition énergétique.",
+    "moreDescription": "- [**Pourquoi l'entretien de nos appareils n'a rien d'anodin ?**](https://librairie.ademe.fr/consommer-autrement/5390-pourquoi-l-entretien-de-nos-appareils-n-a-rien-d-anodin-.html#product-presentation)**,** une infographie de l'ADEME.",
+    "themes": [
+      "energy",
+      "water"
+    ],
+    "mainTheme": "energy",
+    "programs": [
+      "bonus-reparation",
+      "sud-pret-climat",
+      "pret-energie-aura",
+      "pass-transition-bzh",
+      "pret-ile-de-france",
+      "perf-crise-energetique-cvl",
+      "cheque-transition-tissu-economique"
+    ],
+    "linkedProjects": [
+      4
+    ],
+    "priority": {
+      "default": 512
+    },
+    "highlightPriority": null,
+    "sectors": [
+      "A",
+      "B",
+      "C",
+      "D",
+      "E",
+      "F",
+      "G",
+      "H",
+      "Q"
+    ],
+    "faqs": []
+  }
+]

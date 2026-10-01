@@ -84,6 +84,10 @@ export const THEME_TO_CANONICAL: Record<PayloadTheme, Theme> = {
   biodiversite: 'biodiversite',
 }
 
+export const CANONICAL_TO_THEME = Object.fromEntries(
+  Object.entries(THEME_TO_CANONICAL).map(([theme, canonical]) => [canonical, theme]),
+) as Record<Theme, PayloadTheme>
+
 /**
  * Self-described amount per aid type: the label travels with the value into the
  * pivot, so no aid-type → label rebuild is needed downstream. `field` points at

@@ -23,6 +23,10 @@ export class AgirThemeMapper {
   }
 
   static toAgir(themes: readonly Theme[]): AgirTheme[] {
-    return [...new Set(themes.map((theme) => AgirThemeMapper.THEME[theme]))]
+    return [...new Set(themes.map((theme) => AgirThemeMapper.toAgirTheme(theme)))]
+  }
+
+  static toAgirTheme(theme: Theme): AgirTheme {
+    return AgirThemeMapper.THEME[theme]
   }
 }
