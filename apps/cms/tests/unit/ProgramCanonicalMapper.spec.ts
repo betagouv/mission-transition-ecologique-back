@@ -222,6 +222,19 @@ describe('ProgramCanonicalMapper', () => {
       expect(data.eligibilite?.secteur_geographique?.texte).toEqual(['Bretagne', 'Paris', 'Nouvelle-Calédonie'])
     })
 
+    it('exports a regional and departmental coverage as region and department codes', () => {
+      const data = mapAndValidate(
+        buildProgram({
+          geographicCoverage: 'regional-departemental',
+          geographicAreas: [
+            { id: 1, name: 'Bretagne', coverageType: 'region', inseeCode: '53', updatedAt: TIMESTAMP, createdAt: TIMESTAMP },
+            { id: 2, name: 'Landes', coverageType: 'departement', inseeCode: '40', updatedAt: TIMESTAMP, createdAt: TIMESTAMP },
+          ],
+        }),
+      )
+      expect(data.eligibilite?.secteur_geographique?.structure?.inclusions).toEqual(['REG-53', 'DEP-40'])
+    })
+
     it('maps other criteria to editorial texte', () => {
       const data = mapAndValidate(
         buildProgram({ otherCriteria: [{ value: 'À jour de ses cotisations' }] }),

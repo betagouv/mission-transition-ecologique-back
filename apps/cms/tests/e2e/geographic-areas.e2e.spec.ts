@@ -94,4 +94,25 @@ test.describe('Programs — bulk geographic area selection', () => {
       .click()
     await expect(areaChips(page)).toHaveCount(ALL_DEPARTEMENTS)
   })
+
+  test('regional and departmental coverage warns about a department of a selected region', async () => {
+    await selectOption(page, 'geographicCoverage', 'Régional et départemental')
+
+    await expect(page.getByRole('button', { name: 'Toutes les régions métropole' })).toHaveCount(0)
+
+    const areas = page.locator('.field--geographic-areas')
+    const pick = async (title: string): Promise<void> => {
+      await areas.locator('.rs__control').click()
+      await areas.locator('input').fill(title)
+      await page.locator('.rs__option', { hasText: title }).first().click()
+    }
+    const warning = page.locator('.tee-geographic-overlap-warning')
+
+    await pick('Nouvelle-Aquitaine (région)')
+    await pick('Bouches-du-Rhône (département)')
+    await expect(warning).toHaveCount(0)
+
+    await pick('Landes (département)')
+    await expect(warning).toContainText('Landes est déjà couvert par Nouvelle-Aquitaine')
+  })
 })

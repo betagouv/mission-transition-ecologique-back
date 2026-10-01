@@ -13,6 +13,7 @@ import { ACTIVITY_SECTOR_OPTIONS } from '@/constants/activitySectorOptions'
 import { NAF_SECTIONS_OPTIONS } from '@/constants/nafSectionsOptions'
 import { CONTACT_METHOD_OPTIONS } from '@/constants/contactMethodOptions'
 import { AID_TYPE_OPTIONS } from '@/constants/aidTypeOptions'
+import { GEOGRAPHIC_COVERAGE_OPTIONS, coverageAreaTypes } from '@/constants/geographicCoverageOptions'
 import {
   CONDITION_TYPE_OPTIONS,
   MODIFIABLE_FIELD_OPTIONS,
@@ -21,6 +22,7 @@ import { UserRole, type UserRoleValue } from '@/utils/user/UserRole'
 import { UrlValidator } from '@/utils/UrlValidator'
 import { IntegerValidator } from '@/utils/IntegerValidator'
 import { RelationshipValidator } from '@/utils/RelationshipValidator'
+import { GeographicAreasValidator } from '@/utils/GeographicAreasValidator'
 import { ProgramFieldAccessPolicy } from '@/services/access/ProgramFieldAccessPolicy'
 
 // Modifiable fields whose new value is plain text (the others, operators, use a
@@ -459,14 +461,10 @@ export const Programs: CollectionConfig = {
           name: 'geographicCoverage',
           type: 'select',
           label: 'Couverture géographique',
-          options: [
-            { label: 'National', value: 'national' },
-            { label: 'Régional', value: 'regional' },
-            { label: 'Départemental', value: 'departemental' },
-          ],
+          options: [...GEOGRAPHIC_COVERAGE_OPTIONS],
           admin: {
             description:
-              "National : l'aide couvre tout le territoire, aucune zone à préciser. Régional / Départemental : sélectionnez les zones concernées ci-dessous.",
+              "National : l'aide couvre tout le territoire, aucune zone à préciser. Régional / Départemental : sélectionnez les zones concernées ci-dessous. Régional et départemental : pour une aide ouverte à des régions entières et à des départements d'autres régions.",
           },
         },
         {
@@ -489,20 +487,25 @@ export const Programs: CollectionConfig = {
           label: "Zones géographiques couvertes par l'aide",
           relationTo: 'geographic-areas',
           hasMany: true,
+          validate: GeographicAreasValidator.validate,
           admin: {
             className: 'field--geographic-areas',
-            condition: (data) =>
-              data?.geographicCoverage === 'regional' ||
-              data?.geographicCoverage === 'departemental',
+            condition: (data) => coverageAreaTypes(data?.geographicCoverage).length > 0,
           },
           filterOptions: ({ data }) => {
-            const coverage = (data as { geographicCoverage?: string })
-              ?.geographicCoverage
-            if (coverage === 'regional')
-              return { coverageType: { equals: 'region' } }
-            if (coverage === 'departemental')
-              return { coverageType: { equals: 'departement' } }
-            return false
+            const types = coverageAreaTypes((data as { geographicCoverage?: string })?.geographicCoverage)
+            return types.length > 0 ? { coverageType: { in: [...types] } } : false
+          },
+        },
+        {
+          name: 'geographicAreaOverlapWarning',
+          type: 'ui',
+          label: '',
+          admin: {
+            condition: (data) => data?.geographicCoverage === 'regional-departemental',
+            components: {
+              Field: '@/components/programs/GeographicAreaOverlapWarning#GeographicAreaOverlapWarning',
+            },
           },
         },
         {
@@ -510,9 +513,7 @@ export const Programs: CollectionConfig = {
           type: 'text',
           label: 'Vous ne trouvez pas de zone géographique appropriée ?',
           admin: {
-            condition: (data) =>
-              data?.geographicCoverage === 'regional' ||
-              data?.geographicCoverage === 'departemental',
+            condition: (data) => coverageAreaTypes(data?.geographicCoverage).length > 0,
             description:
               'Décrivez librement la zone manquante, un administrateur pourra ensuite la créer.',
           },

@@ -148,11 +148,11 @@ describe('CanonicalToPayloadMapper', () => {
       })
     })
 
-    it('keeps a department outside the listed regions as feedback', () => {
-      expect(geography({ structure: { inclusions: ['REG-75', 'DEP-13'] } })).toMatchObject({
-        geographicCoverage: 'regional',
-        geographicAreas: [11],
-        geographicAreaFeedback: 'Bouches-du-Rhône',
+    it('covers both levels when a department lies outside the listed regions', () => {
+      expect(geography({ structure: { inclusions: ['REG-75', 'DEP-13', 'DEP-40'] } })).toMatchObject({
+        geographicCoverage: 'regional-departemental',
+        geographicAreas: [11, 21],
+        geographicAreaFeedback: null,
       })
     })
 

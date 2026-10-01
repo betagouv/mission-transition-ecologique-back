@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload';
 import { GeographicAreaAccessPolicy } from '@/services/access/GeographicAreaAccessPolicy';
 import { UserRole, type UserRoleValue } from '@/utils/user/UserRole';
+import { assignDisplayName } from '@/hooks/geographicAreas/assignDisplayName';
 
 export const GeographicAreas: CollectionConfig = {
   slug: 'geographic-areas',
@@ -15,10 +16,13 @@ export const GeographicAreas: CollectionConfig = {
     delete: GeographicAreaAccessPolicy.delete,
   },
   admin: {
-    useAsTitle: 'name',
+    useAsTitle: 'displayName',
     defaultColumns: ['name', 'coverageType', 'inseeCode', 'isOverseas', 'parentArea'],
     hidden: ({ user }) =>
       !UserRole.isAdmin(user as unknown as { role: UserRoleValue } | null),
+  },
+  hooks: {
+    beforeChange: [assignDisplayName],
   },
   fields: [
     {
@@ -26,6 +30,15 @@ export const GeographicAreas: CollectionConfig = {
       type: 'text',
       label: 'Nom',
       required: true,
+    },
+    {
+      name: 'displayName',
+      type: 'text',
+      label: 'Nom affiché',
+      admin: {
+        readOnly: true,
+        description: 'Calculé automatiquement : le nom suivi du niveau, par exemple « Guadeloupe (région) ».',
+      },
     },
     {
       name: 'coverageType',
