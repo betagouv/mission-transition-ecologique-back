@@ -16,10 +16,11 @@ class StubRelations implements ProgramRelations {
     return ({ ADEME: 1, Bpifrance: 2 } as Record<string, number>)[name]
   }
   areaByCogCode(code: string) {
-    const areas: Record<string, { id: number; name: string }> = {
+    const areas: Record<string, { id: number; name: string; parentId?: number }> = {
       'REG-53': { id: 10, name: 'Bretagne' },
       'REG-75': { id: 11, name: 'Nouvelle-Aquitaine' },
-      'DEP-40': { id: 20, name: 'Landes' },
+      'DEP-40': { id: 20, name: 'Landes', parentId: 11 },
+      'DEP-13': { id: 21, name: 'Bouches-du-Rhône', parentId: 12 },
     }
     return areas[code]
   }
@@ -139,11 +140,27 @@ describe('CanonicalToPayloadMapper', () => {
       })
     })
 
-    it('turns departmental on one department, the regions going to the feedback', () => {
-      expect(geography({ structure: { inclusions: ['DEP-40', 'REG-75'] } })).toMatchObject({
+    it('lets a region win over one of its own departments, dropped as already covered', () => {
+      expect(geography({ structure: { inclusions: ['DEP-40', 'REG-75', 'REG-53'] } })).toMatchObject({
+        geographicCoverage: 'regional',
+        geographicAreas: [11, 10],
+        geographicAreaFeedback: null,
+      })
+    })
+
+    it('keeps a department outside the listed regions as feedback', () => {
+      expect(geography({ structure: { inclusions: ['REG-75', 'DEP-13'] } })).toMatchObject({
+        geographicCoverage: 'regional',
+        geographicAreas: [11],
+        geographicAreaFeedback: 'Bouches-du-Rhône',
+      })
+    })
+
+    it('reads departments alone as a departmental coverage', () => {
+      expect(geography({ structure: { inclusions: ['DEP-40', 'DEP-13'] } })).toMatchObject({
         geographicCoverage: 'departemental',
-        geographicAreas: [20],
-        geographicAreaFeedback: 'Nouvelle-Aquitaine',
+        geographicAreas: [20, 21],
+        geographicAreaFeedback: null,
       })
     })
 

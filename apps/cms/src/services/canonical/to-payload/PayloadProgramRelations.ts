@@ -18,7 +18,10 @@ export class PayloadProgramRelations implements ProgramRelations {
     const areaByCode = new Map<string, ProgramArea>()
     for (const area of areas.docs) {
       const code = cogCodeOf(area)
-      if (code) areaByCode.set(code, { id: area.id, name: area.name })
+      if (!code) continue
+      const parent = area.parentArea
+      const parentId = typeof parent === 'object' ? parent?.id : parent
+      areaByCode.set(code, { id: area.id, name: area.name, ...(parentId != null ? { parentId } : {}) })
     }
     return new PayloadProgramRelations(operatorIdByName, areaByCode)
   }

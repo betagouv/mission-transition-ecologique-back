@@ -229,6 +229,11 @@ describe('PayloadProgramRelations', () => {
     expect(departement?.id).not.toBe(region?.id)
   })
 
+  it('knows the region of a department', () => {
+    expect(relations.areaByCogCode('DEP-40')?.parentId).toBe(relations.areaByCogCode('REG-75')?.id)
+    expect(relations.areaByCogCode('REG-75')?.parentId).toBeUndefined()
+  })
+
   it('returns nothing for a code unknown to the CMS', () => {
     expect(relations.areaByCogCode('REG-99')).toBeUndefined()
   })

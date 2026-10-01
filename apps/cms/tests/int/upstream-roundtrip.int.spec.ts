@@ -16,12 +16,14 @@ import { GeographicAreasSeed } from '@/scripts/seed/geographic-areas'
 import { ProgramsSeed } from '@/scripts/seed/programs'
 import { ProgramCanonicalMapper } from '@/services/canonical/ProgramCanonicalMapper'
 import { PayloadRichTextToMarkdown } from '@/services/canonical/rich-text/PayloadRichTextToMarkdown'
+import { PayloadProgramRelations } from '@/services/canonical/to-payload/PayloadProgramRelations'
 
 const ALL_NAF_SECTIONS = 21
 
 let payload: Payload
 let expected: CanonicalProgramInput[]
 let actual: Map<string, CanonicalProgramInput>
+let relations: PayloadProgramRelations
 
 // Compares the words only: Lexical re-spells some Markdown (hard breaks, a
 // multi-line blockquote gets a single `>` marker) without changing the content.
@@ -35,16 +37,27 @@ const trim = (text: string | undefined) => text?.trim()
  * documented losses (see the seed warnings) are left out: headcount free text,
  * micro-entreprise restriction, advisor step links, amounts without a field.
  * Territories are compared by name: a program mixing departments and regions
- * keeps one coverage level in Payload, the other names going to the feedback
- * text. Upstream names come from the codes, the CMS ones from its free text.
+ * keeps the regions in Payload, a department of a listed region being dropped
+ * (already covered) and the others going to the feedback text. Upstream names
+ * come from the codes, the CMS ones from its free text.
  */
+function withoutCoveredDepartments(codes: readonly string[]): string[] {
+  const regionIds = new Set(
+    codes.filter((code) => !code.startsWith('DEP-')).flatMap((code) => relations.areaByCogCode(code)?.id ?? []),
+  )
+  return codes.filter((code) => {
+    const parentId = code.startsWith('DEP-') ? relations.areaByCogCode(code)?.parentId : undefined
+    return parentId === undefined || !regionIds.has(parentId)
+  })
+}
+
 function project(input: CanonicalProgramInput | undefined, side: 'upstream' | 'cms') {
   const e = input?.eligibilite
   const inclusions = e?.secteur_activite?.structure?.inclusions ?? []
   const codes = e?.secteur_geographique?.structure?.inclusions ?? []
   const names =
     side === 'upstream'
-      ? TerritoryNameResolver.namesOf(codes)
+      ? TerritoryNameResolver.namesOf(withoutCoveredDepartments(codes))
       : (e?.secteur_geographique?.texte ?? []).flatMap((texte) => texte.split(','))
   const territories = names.map(normalizeName).filter(Boolean)
   return {
@@ -91,6 +104,7 @@ describe('upstream → CMS → canonical round-trip', () => {
 
     const result = await new ProgramsSeed(payload, records).run()
     expect(result.errors).toBe(0)
+    relations = await PayloadProgramRelations.fromPayload(payload, new Map())
 
     const markdown = await PayloadRichTextToMarkdown.create(payload.config)
     const mapper = new ProgramCanonicalMapper(markdown)
