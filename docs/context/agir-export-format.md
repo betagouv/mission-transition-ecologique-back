@@ -84,7 +84,9 @@ Centralisé dans `AgirVocabulary` (un seul fichier pour ajuster). Valeurs
 - `typeDispositif` (détail) : libellés d'affichage des `types_aides` joints par
   ` | ` (`AgirTypeDispositifMapper`). Format unique/liste/enum à confirmer.
 - `typeSecteur` (détail) : déduit du niveau COG (`PAYS → National`,
-  `REG → Régional`, `DEP → Départemental`…), `Inconnu` si mixte/inconnu.
+  `REG → Régional`, `DEP → Départemental`…), `Régional et départemental` pour
+  des régions (ou collectivités d'outre-mer) listées avec des départements,
+  `Inconnu` pour tout autre mélange.
 - Noms de clés `urlDetail` / `urlPivot` de l'index : à confirmer avec AGIR.
 
 ## 1. `ListeDispositif` (index)
@@ -236,8 +238,9 @@ Toutes les pertes notables sont en P1 (le pivot ne perd rien d'essentiel).
    `TerritoryNameResolver` (codes → noms) existe dans `shared/` mais **n'est
    pas utilisé**. Depuis le 29/09/2026, un dispositif national porte
    `PAYS-99100` (`typeSecteur` = `National`) et les départements cités par
-   l'amont (`DEP-40`, `DEP-13`…) sont transmis ; un mélange de niveaux donne
-   `typeSecteur` = `Inconnu`. → confirmer si AGIR attend des codes, des libellés, ou des objets
+   l'amont (`DEP-40`, `DEP-13`…) sont transmis ; des régions listées avec des
+   départements donnent `typeSecteur` = `Régional et départemental` (valeur à
+   confirmer avec AGIR, comme le reste du vocabulaire). → confirmer si AGIR attend des codes, des libellés, ou des objets
    `{ code, label }`.
 7. **SIREN des opérateurs** — `operateurs.*.siren` perdus ; seuls les noms
    passent. Identification fiable de l'organisme dégradée.

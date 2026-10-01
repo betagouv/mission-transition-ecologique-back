@@ -134,7 +134,8 @@ Default à la création : 3 étapes (les 2 premières contiennent un lien vide).
 |-------|------|-------|
 | `companySizes` | select hasMany | Enums : `0-9`, `10-19`, `20-49`, `50-249`, `250-499`, `500-4999`, `5000+`, `other`. Default = toutes sauf `other`. |
 | `companySizeOther` | text | conditionnel : si `companySizes` ⊃ `other` |
-| `geographicAreas` | relationship → geographic-areas[] | Sélection multiple |
+| `geographicCoverage` | select | `national` (aucune zone), `regional`, `departemental`, `regional-departemental` (régions entières et départements d'autres régions) |
+| `geographicAreas` | relationship → geographic-areas[] | Sélection multiple, filtrée sur les niveaux de la couverture. Un département et sa région ne peuvent pas être choisis ensemble : avertissement en direct, refus à l'enregistrement hors brouillon |
 | `geographicAreaFeedback` | text | Pour signaler une zone manquante |
 | `activitySectors` | select hasMany | Enums : `all`, `agriculture`, `industrie`, `tertiaire`, `commerce`, `artisanat`, `tourisme`, `other`. Default = `[all]`. |
 | `activitySectorOther` | text | conditionnel : si `activitySectors` ⊃ `other` |
