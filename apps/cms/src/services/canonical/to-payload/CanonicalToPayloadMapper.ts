@@ -207,21 +207,27 @@ export class CanonicalToPayloadMapper {
   }
 
   /**
-   * `PAYS-99100` means national. Otherwise one department is enough for a
-   * departmental coverage: Payload holds a single level, so the codes of the
-   * other level (and those unknown to the CMS) go to the feedback, by name.
+   * `PAYS-99100` means national. Payload holds a single level and regions win:
+   * with a region listed, the coverage is regional, a department of a listed
+   * region is dropped (already covered) and the others go to the feedback, by
+   * name, as do the codes unknown to the CMS. Departments alone are departmental.
    */
   private geographyFromCodes(codes: string[]): GeographyData {
     if (codes.includes(COG_FRANCE)) {
       return { geographicCoverage: 'national', geographicAreas: [], geographicAreaFeedback: null }
     }
-    const departemental = codes.some((code) => code.startsWith('DEP-'))
+    const isDepartment = (code: string) => code.startsWith('DEP-')
+    const departemental = codes.every(isDepartment)
+    const regionIds = new Set(
+      codes.filter((code) => !isDepartment(code)).flatMap((code) => this.relations.areaByCogCode(code)?.id ?? []),
+    )
     const geographicAreas: number[] = []
     const feedback: string[] = []
     for (const code of codes) {
       const area = this.relations.areaByCogCode(code)
-      if (area && code.startsWith('DEP-') === departemental) geographicAreas.push(area.id)
-      else feedback.push(area?.name ?? code)
+      if (!area) feedback.push(code)
+      else if (isDepartment(code) === departemental) geographicAreas.push(area.id)
+      else if (area.parentId === undefined || !regionIds.has(area.parentId)) feedback.push(area.name)
     }
     return {
       geographicCoverage: departemental ? 'departemental' : 'regional',

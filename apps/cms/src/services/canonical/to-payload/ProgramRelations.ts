@@ -2,6 +2,8 @@
 export interface ProgramArea {
   id: number
   name: string
+  /** Enclosing area (the region of a department), when the CMS knows it. */
+  parentId?: number
 }
 
 /** Resolves canonical names and codes to the Payload relation ids a program points at. */
