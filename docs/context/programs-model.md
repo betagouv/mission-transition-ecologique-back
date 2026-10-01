@@ -152,6 +152,30 @@ Default à la création : 3 étapes (les 2 premières contiennent un lien vide).
 
 `slug`, `workflowStatus`, `workflowHistory`, `_status`, `assignedContributors`, `metaTitle`, `metaDescription`.
 
+### Textes requis
+
+Un champ requis rempli seulement d'espaces est refusé hors brouillon avec « Ce champ est requis. », comme un champ vide : `title`, `promise` et `otherCriteria[].value` (`RequiredTextValidator`), `description` et `steps[].description` (`RequiredRichTextValidator`, qui refuse aussi un rich text fait de paragraphes vides). `url` et `slug` avaient déjà leur validateur (`UrlValidator`, `SlugValidator`). Les champs affichés sous condition (`aidType`, `contactMethod`...) ne sont pas requis et gardent leur comportement.
+
+### Duplication
+
+L'action « Dupliquer » (admin, `POST /api/programs/:id/duplicate`, `payload.duplicate`) crée une copie qui **repart en `en-creation`**, donc en brouillon, quel que soit l'état de l'original (publié, archivé, remplacé, en relecture...) :
+
+| Champ | Dans la copie |
+|---|---|
+| `workflowStatus`, `_status` | `en-creation`, `draft` |
+| `workflowHistory` | vide, comme à une création |
+| `replacedBy` | vide |
+| `canonicalId` | cuid2 neuf |
+| `slug` | `<slug>-copy`, puis `<slug>-copy-2`, `<slug>-copy-3`... (kebab-case, publiable tel quel) |
+| `assignedContributors` | le créateur qui duplique (`assignCreatorOnCreate`), vide pour un admin |
+| `operator` | celui de l'original, ou celui du créateur qui duplique |
+| `lastModifiedBy` | l'utilisateur qui duplique |
+| `title` | celui de l'original suffixé de « (copie) » (`assignCopyTitle`) |
+| `metaTitle`, `metaDescription` | repris pour un admin, vides pour un créateur (champs réservés aux admins) |
+| autres champs | repris de l'original |
+
+Les commentaires de relecture ne suivent pas la copie (collection `review-comments`). La copie n'entre dans le pivot qu'une fois publiée par le workflow, sous son propre identifiant ; la ligne pivot de l'original n'est pas touchée. Un créateur ne peut dupliquer qu'un dispositif qu'il peut lire. Mécanique : `disableDuplicate: true` sur les champs de workflow, hook `duplicateAsDraft` (force le brouillon, donc aucune validation à la copie), hook `assignCopySlug`.
+
 `temporarilyUnavailable` (case à cocher, sidebar, feature 005) : aide publiée mais signalée comme indisponible ; exportée en `statut_dispositif: 'temporairement_indisponible'` tant que le dispositif est publié. Alimentée par `aide temporairement indisponible: "oui"` de l'amont.
 
 ---

@@ -9,3 +9,4 @@
 | 005 | Synchronisation quotidienne du CMS depuis l'amont | in progress (lots 1 à 3 faits) | feat/cms-upstream-sync | 2026-09-25 |
 | 006 | Groupes d'opérateurs, logos et images des projets | done | feat/operator-groups-and-logos | 2026-09-28 |
 | 007 | Couverture géographique « Régional et départemental » | done | feat/mixed-geographic-coverage | 2026-10-01 |
+| 008 | Format pivot et API des projets | done | feat/canonical-projects | 2026-10-01 |

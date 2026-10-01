@@ -2,7 +2,7 @@
 
 ## Objectif
 
-`pnpm seed` remplit PayloadCMS (via la **Local API**) avec les dispositifs, projets et opérateurs du dépôt GitHub amont `betagouv/mission-transition-ecologique` (`libs/data/static/programs.json`, `projects.json`, et `apps/nuxt/src/public/json/operator/operators.json` pour les groupes et logos d'opérateurs), qui fait foi. Les logos et images de projets sont téléchargés depuis le dossier public du front amont et importés dans `Media` (ADR 0013). Le store canonical est alimenté au passage par le hook `syncCanonicalOnPublish`.
+`pnpm seed` remplit PayloadCMS (via la **Local API**) avec les dispositifs, projets et opérateurs du dépôt GitHub amont `betagouv/mission-transition-ecologique` (`libs/data/static/programs.json`, `projects.json`, et `apps/nuxt/src/public/json/operator/operators.json` pour les groupes et logos d'opérateurs), qui fait foi. Les logos et images de projets sont téléchargés depuis le dossier public du front amont et importés dans `Media` (ADR 0013). Le store canonical est alimenté au passage par les hooks `syncCanonicalOnPublish` (dispositifs) et `syncProjectCanonicalOnChange` (projets, ADR 0014).
 
 ---
 
@@ -33,7 +33,7 @@ Le point d'entrée est `apps/cms/src/scripts/seed/run.ts`.
 
 ## Source des données
 
-- `UpstreamJsonSource.fromSettings(Config.upstreamFallback())` lit les fichiers JSON sur GitHub (timeout 30 s) ; `operators.json` est validé par `teeOperatorSchema`.
+- `UpstreamJsonSource.fromSettings(Config.upstreamFallback())` lit les fichiers JSON sur GitHub (timeout 30 s) ; `operators.json` est validé par `teeOperatorSchema`, `projects.json` par `teeProjectsSchema` (garde de forme : un fichier à la forme cassée fait échouer le seed au lieu de l'alimenter).
 - `UpstreamAssetSource` télécharge les logos et images par leur chemin amont (`raw.githubusercontent.com/.../main/apps/nuxt/src/public` + chemin, timeout 30 s).
 - **Avec `TEE_UPSTREAM_LOCAL_FALLBACK=1`** dans le `.env` (usage local), une panne GitHub (réseau, timeout, 5xx) bascule sur la copie versionnée `libs/format-adapters/static/upstream/`, avec un avertissement. Un 404 ou un JSON invalide échoue toujours : c'est un vrai changement amont.
 - Les images **ne sont pas versionnées** dans `static/upstream/` : en repli, les groupes sont rattachés depuis la copie d'`operators.json`, les téléchargements échouent et sont signalés, le seed se termine.
@@ -47,6 +47,10 @@ Le point d'entrée est `apps/cms/src/scripts/seed/run.ts`.
 ### Un seul lecteur du format amont
 
 Le format brut de `programs.json` n'est interprété que par `TeeImporter` (`libs/format-adapters`), le même lecteur que l'import canonical. Chaque dispositif devient un `CanonicalProgramInput` (identifiant `SlugCanonicalId` dérivé du slug), puis `CanonicalToPayloadMapper` le transforme en données Payload.
+
+Même règle pour `projects.json` depuis le 2026-10-01 (ADR 0014 §8) : il n'est interprété que par `TeeProjectImporter`, le lecteur de l'import direct `import:projects`. Chaque projet devient un `CanonicalProjectInput` (identifiant `SlugCanonicalId.forProject(slug)`, dérivé de `project:<slug>`), puis `CanonicalProjectToPayloadMapper` le transforme en données Payload. L'ancien lecteur du seed (`ProjectMapper`, `types.ts`) est supprimé.
+
+`UpstreamJsonSource.projects()` contrôle la forme de `projects.json` **enregistrement par enregistrement** (`TeeProjectRecords`) : un projet incomplet (titre `null`, champ obligatoire manquant) est écarté seul, les autres sont seedés. Une cellule facultative vide ou `null`, telle que Baserow l'exporte, est lue comme absente. Les enregistrements écartés sont exposés par `source.rejectedProjects` ; `run.ts` les liste en fin de seed et les **compte dans les erreurs** (code de sortie 1). Seul un fichier qui n'est pas une liste fait échouer le seed en bloc.
 
 ### Étape 1 : opérateurs
 
@@ -76,11 +80,21 @@ L'écriture est un **upsert par `slug`**, faite sous `SystemWorkflowContext` : l
 
 ### Étape 3 : projets
 
-`ProjectsSeed` importe `projects.json` (liaison vers les dispositifs par slug, image importée en média via `UpstreamMediaImporter`, selon la même règle que les logos d'opérateurs : image posée à la main conservée, image importée remplacée ou retirée selon l'amont, téléchargement en échec sans effet ; puis projets liés en seconde passe).
+`ProjectsSeed` (`apps/cms/src/scripts/seed/projects/`) :
+
+1. **Lecture** : `TeeProjectImporter.importMany(projects, now)` produit les projets pivot. Les `linkedProjects` amont (des `id` numériques propres au fichier) sont traduits en slugs, puis en identifiants pivot ; `priority` devient `priorite` (`default` → `defaut`, autres clés → `par_secteur`), `highlightPriority` → `mise_en_avant` ; `faqs` et `titleFaq` → `faq`.
+2. **Passe 1** (`ProjectImporter`) : pour chaque projet, `CanonicalProjectToPayloadMapper.map` donne les données Payload (thèmes, sections NAF, FAQ et descriptions converties en Lexical, priorités, dispositifs résolus par identifiant pivot via `PayloadProjectRelations`). L'image est calculée à part, à partir de `image.chemin_source`, par `UpstreamMediaImporter` et `ImportedMediaPolicy` : même règle que les logos d'opérateurs (image posée à la main conservée, image importée remplacée ou retirée selon l'amont, téléchargement en échec sans effet). Un chemin d'image amont inexploitable (non enraciné, contenant `..`) ne donne pas d'image dans le pivot, mais il est quand même transmis à `UpstreamMediaImporter` (`TeeProjectImporter.unusableImagePaths`) : il compte comme un téléchargement en échec et l'image en place est conservée, au lieu d'être retirée comme si l'amont n'en avait plus. **Upsert par slug**, sous `SystemWorkflowContext` pour que `assignCanonicalId` prenne l'identifiant dérivé du slug, avec `_status: 'published'`. Un projet qui n'a plus de projet lié en amont voit ses `linkedProjects` vidés ; les autres gardent leur valeur publiée jusqu'à la passe 2. Les dispositifs sont retrouvés par leur `canonicalId` ou par l'identifiant dérivé de leur slug : un dispositif que le seed n'a pu réécrire qu'en brouillon (ligne principale à l'ancien identifiant) reste lié.
+3. **Passe 2** (`LinkedProjectsUpdater`) : une fois tous les projets créés, `mapLinkedProjects` résout les projets liés et chaque projet concerné est republié. Écritures séquentielles (en parallèle, Postgres détecte des deadlocks sur `projects_rels`).
+
+Chaque champ Payload est écrit à chaque seed, un champ absent en amont étant remis à `null` ou `[]` : un `update` Payload part de la dernière version, brouillon en attente compris, et un champ laissé de côté publierait la valeur du brouillon. La règle vaut aussi pour les deux champs que `ProjectImporter` calcule lui-même : `image` reçoit la valeur de la ligne principale quand la politique média répond « inchangé » (image posée à la main, téléchargement en échec, seed sans import de médias), et `linkedProjects` est écrit dès la passe 1.
+
+**Pivot** : les projets étant écrits publiés, le hook `syncProjectCanonicalOnChange` remplit `canonical.canonical_projects` pendant le seed, sans étape dédiée. La passe 1 écrit la ligne d'un projet avec ses projets liés déjà publiés (aucun au premier seed), la passe 2 la réécrit avec ceux de l'amont. Le seed ne crée pas les tombstones de redirection (`project_redirects`) : ils viennent du pipeline quotidien (`import:projects --remote`).
+
+**Avertissements** affichés en fin de seed (préfixés par le slug du projet), sans code de sortie non nul : thème secondaire inconnu, priorité de mise en avant non numérique, question de FAQ sans texte ou sans réponse, chemin d'image invalide, projet lié inconnu en amont ou introuvable dans le CMS, dispositif introuvable dans le CMS, secteur hors sections NAF. **Erreurs** (code de sortie 1) : enregistrement amont écarté pour sa forme, projet refusé par Payload, thème principal inconnu, échec d'une mise à jour de la passe 2.
 
 ### Idempotence
 
-Ré-exécutable : une deuxième exécution met à jour au lieu de créer des doublons. Les médias sont retrouvés par `sourcePath` : un second seed n'en crée aucun et n'écrit rien de nouveau dans le bucket (136 médias au 2026-09-28 : 45 logos d'opérateurs, 91 images de projets).
+Ré-exécutable : une deuxième exécution met à jour au lieu de créer des doublons. Les projets sont rapprochés par slug (résultat du 2026-10-01 sur une base jetable : 91 créés au premier seed, 0 créé et 91 mis à jour au second). Les médias sont retrouvés par `sourcePath` : un second seed n'en crée aucun et n'écrit rien de nouveau dans le bucket (136 médias au 2026-09-28 : 45 logos d'opérateurs, 91 images de projets).
 
 ### Logs de sortie
 
@@ -94,6 +108,11 @@ Operators ready. Importing 276 programs...
 Seed complete: 276 created, 0 updated, 0 errors.
   ⚠ 47 × restriction de catégorie légale (micro-entreprises) sans champ Payload
   ...
+Found 91 projects in source.
+Pass 1: importing 91 projects...
+Pass 1 complete: 91 created, 0 updated, 0 errors.
+Pass 2: updating linked projects...
+Pass 2 complete: 74 updated, 0 errors.
 Médias : 136 créés, 0 réutilisés (dont 0 recatégorisés), 0 en échec.
 ```
 
@@ -111,6 +130,8 @@ Médias : 136 créés, 0 réutilisés (dont 0 recatégorisés), 0 en échec.
 | Texte libre d'effectif sans bornes (ex. « Moins de 250 salariés ») | 9 | on suit les bornes structurées, que le site TEE utilise pour l'éligibilité |
 | `publicodes`, `illustration` | tous | exclus du modèle CMS (ADR 0001) |
 | `color` d'`operators.json` | tous | présentation propre au front amont |
+| Secteur d'un projet hors sections NAF (code `55`, `55.3`) | 0 | `Projects.sectors` n'accepte que les 21 sections ; le code est écarté et signalé (les priorités par secteur, elles, acceptent tout code NAF) |
+| `id` numérique d'un projet et d'une question de FAQ | tous | propres au fichier amont, remplacés par le slug et l'identifiant pivot |
 
 ---
 
@@ -121,7 +142,10 @@ pnpm test         # intégration, base tee_test
 pnpm test:unit    # CanonicalToPayloadMapper.spec.ts, sans base
 ```
 
-- `seed.int.spec.ts` : opérateurs, dispositifs, thèmes, Lexical, brouillon sur lien invalide, idempotence (fixture `apps/cms/tests/fixtures/programs.json`).
+- `seed.int.spec.ts` : opérateurs, dispositifs, thèmes, Lexical, brouillon sur lien invalide, idempotence (fixture `apps/cms/tests/fixtures/programs.json`) ; projets (fixture `apps/cms/tests/fixtures/projects.json`, 5 projets) : publiés, `canonicalId` dérivé du slug, FAQ, priorités, projets liés présents dans le pivot en fin de seed, champs d'un brouillon en attente jamais publiés (image et projets liés compris, y compris après la seule passe 1). La suite supprime d'abord les projets de la fixture : elle ne dépend pas de l'ordre des fichiers de test.
+- `project-images.int.spec.ts` : image d'un projet remplacée, retirée, gardée sur échec de téléchargement ou sur chemin amont inexploitable (compté en échec), jamais écrasée si posée à la main ; second seed sans nouveau projet ni média.
+- `CanonicalProjectToPayloadMapper.spec.ts` (unitaire) : pivot projet → données Payload.
+- `PayloadProjectRelations.spec.ts` (unitaire) : résolution par `canonicalId` stocké et par identifiant dérivé du slug.
 - `operator-profiles.int.spec.ts` : groupes, opérateur multi-groupe, logos, logos de groupe et d'opérateur posés à la main conservés, avertissements, idempotence, règles d'écrasement au second import (logo remplacé, retiré, gardé sur 404) (fixtures `operators.json`, `pixel.webp`, `fetch` factice `FakeAssetFetch`).
 - `upstream-media.int.spec.ts` : création d'un média (type posé), réutilisation sans téléchargement, réalignement d'un type erroné, fichier manquant, chemin refusé.
 - `media-rules.int.spec.ts` : écriture des médias refusée à un créateur, `sourcePath` ignoré s'il est envoyé par l'API, sélecteurs de logo refusant une image de projet.
@@ -135,3 +159,4 @@ pnpm test:unit    # CanonicalToPayloadMapper.spec.ts, sans base
 
 - Les erreurs par dispositif sont loggées individuellement et ne bloquent pas les suivants (`X created, Y updated, Z errors`).
 - Causes fréquentes : opérateur de contact absent, type d'aide inconnu.
+- Projets : même principe (`Error importing project "<slug>"`), et `pnpm seed` sort en code 1 si une erreur est remontée par les dispositifs ou les projets, ou si l'amont porte des projets écartés (`Projets amont écartés (n) :`, un par ligne, nommé par son slug ou sa position).

@@ -68,7 +68,7 @@ Options écartées :
   - un logo **importé** (média avec `sourcePath`) suit l'amont : remplacé si l'amont change de chemin, **retiré** si l'amont n'a plus d'`imagePath` ;
   - un **téléchargement en échec garde le logo actuel** au lieu de le vider.
 - **Opérateur amont absent du CMS** : signalé, pas créé. Le CMS ne crée que les opérateurs cités par au moins un dispositif (`OperatorImporter`).
-- **Image d'un projet** : `ProjectImporter` calcule l'image (`ImportedMediaPolicy`, projet existant lu en `depth: 1`) avant d'appeler `ProjectMapper.map(project)`, qui reste synchrone.
+- **Image d'un projet** : `ProjectImporter` calcule l'image (`ImportedMediaPolicy`, projet existant lu en `depth: 1`) à côté des données du mapper, qui reste synchrone et ne connaît pas l'image. Ce mapper était `ProjectMapper.map(project)` à la date de cet ADR ; il est remplacé par `CanonicalProjectToPayloadMapper.map` depuis l'ADR 0014 (`ProjectMapper` supprimé), et `ProjectImporter` écrit toujours le champ `image`, avec la valeur publiée quand la politique répond « inchangé ».
 - **Cellules vides de Baserow** : un `imagePath` ou des `filterCategories` vides (`''`) ou `null` dans `operators.json` valent « absent » (`teeOperatorSchema`), au lieu de faire échouer la validation et tout le seed.
 
 ### 5. Stockage objet : plugin toujours enregistré, fichiers publics
