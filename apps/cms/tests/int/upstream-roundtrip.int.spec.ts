@@ -17,6 +17,7 @@ import { ProgramsSync } from '@/scripts/sync/programs/ProgramsSync'
 import { ProgramCanonicalMapper } from '@/services/canonical/ProgramCanonicalMapper'
 import { PayloadRichTextToMarkdown } from '@/services/canonical/rich-text/PayloadRichTextToMarkdown'
 import { PayloadProgramRelations } from '@/services/canonical/to-payload/PayloadProgramRelations'
+import { SystemWorkflowContext } from '@/services/workflow/SystemWorkflowContext'
 
 const ALL_NAF_SECTIONS = 21
 
@@ -101,6 +102,17 @@ describe('upstream → CMS → canonical round-trip', () => {
       const input = importer.import(record)
       input.id = SlugCanonicalId.from(input.slug)
       return input
+    })
+
+    // Another test file may have left one of these programs changed as the system (archived,
+    // say), fingerprint untouched: the sync would leave it as it is. Without a fingerprint, it
+    // rewrites every program.
+    await payload.update({
+      collection: 'programs',
+      where: { slug: { in: expected.map((input) => input.slug) } },
+      data: { upstreamFingerprint: null },
+      draft: true,
+      context: SystemWorkflowContext.create(),
     })
 
     const result = await new ProgramsSync(payload, records).run()
