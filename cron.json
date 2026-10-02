@@ -1,0 +1,8 @@
+{
+  "jobs": [
+    {
+      "command": "17 3 * * * pnpm data:daily",
+      "size": "M"
+    }
+  ]
+}

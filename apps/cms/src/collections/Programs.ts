@@ -929,10 +929,9 @@ export const Programs: CollectionConfig = {
       name: '_status',
       type: 'select',
       label: 'Statut',
-      options: [
-        { label: 'Brouillon', value: 'draft' },
-        { label: 'Publié', value: 'published' },
-      ],
+      // Payload merges this field with its own drafts `_status` and concatenates
+      // options: redeclaring draft/published duplicates the Postgres enum values.
+      options: [],
       admin: { position: 'sidebar' },
       access: {
         update: ProgramFieldAccessPolicy.adminOnly,

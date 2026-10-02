@@ -16,6 +16,27 @@
         "cwd": "{projectRoot}"
       }
     },
+    "migrate": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "payload migrate",
+        "cwd": "{projectRoot}"
+      }
+    },
+    "migrate:create": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "payload migrate:create",
+        "cwd": "{projectRoot}"
+      }
+    },
+    "migrate:status": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "payload migrate:status",
+        "cwd": "{projectRoot}"
+      }
+    },
     "typecheck": {
       "executor": "nx:run-commands",
       "options": {

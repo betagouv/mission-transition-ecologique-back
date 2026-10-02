@@ -17,6 +17,9 @@ class InMemoryRepository implements CanonicalProgramRepository {
   async findAll(): Promise<CanonicalProgram[]> {
     return [...this.saved.values()]
   }
+  async deleteAll(): Promise<void> {
+    this.saved.clear()
+  }
 }
 
 class RecordingSink implements CanonicalEventSink {

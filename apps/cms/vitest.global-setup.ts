@@ -1,17 +1,18 @@
-import { rmSync } from 'fs'
-import { resolve } from 'path'
-import { fileURLToPath } from 'url'
+import { Pool } from 'pg'
+import { TEST_DATABASE_URL } from './tests/support/testDatabaseUrl'
 
-// Start every test run from a clean slate: remove the test databases declared
-// in vitest.config.mts (DATABASE_URI / CANONICAL_DATABASE_URI) so a stale
-// schema never triggers Payload's interactive "push schema?" prompt. libSQL
-// keeps -wal/-shm sidecar files alongside the .db, so drop those too.
-export function setup() {
-  const dir = fileURLToPath(new URL('.', import.meta.url))
-  const dbFiles = ['tee-pco-test.db', 'canonical-test.db']
-  for (const db of dbFiles) {
-    for (const suffix of ['', '-wal', '-shm']) {
-      rmSync(resolve(dir, `${db}${suffix}`), { force: true })
-    }
+// Start every test run from a clean slate: drop both schemas of the test
+// database (Payload's `public`, the canonical store's `canonical`) so a stale
+// schema never triggers Payload's interactive "push schema?" prompt. The URL
+// comes from the shared constant, never from DATABASE_URI, which points at the
+// development database in a normal shell.
+export async function setup() {
+  const pool = new Pool({ connectionString: TEST_DATABASE_URL, max: 1 })
+  try {
+    await pool.query('DROP SCHEMA IF EXISTS public CASCADE')
+    await pool.query('DROP SCHEMA IF EXISTS canonical CASCADE')
+    await pool.query('CREATE SCHEMA public')
+  } finally {
+    await pool.end()
   }
 }

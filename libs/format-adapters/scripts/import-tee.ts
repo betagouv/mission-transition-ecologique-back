@@ -5,11 +5,13 @@
 // Invalid records are skipped and reported (never persisted silently).
 //
 // Run from the repo root: `nx run @tee-backoffice/format-adapters:import:tee`.
+// With `--remote` (the daily refresh on Scalingo), the two JSON files are read
+// straight from the upstream repository instead of `static/input/`.
 //
-// For a CLEAN rebuild that reflects upstream deletions, delete the store first
-// (the daily workflow does `rm -f libs/canonical-store/canonical.db` before this
-// step). Re-importing onto a non-empty store would upsert the current records
-// but leave previously-removed dispositifs behind — the script warns if so.
+// The import is a FULL REBUILD: the store is emptied before the upsert, so
+// dispositifs removed upstream disappear here too. Emptying happens only once
+// every record has been mapped and validated, to avoid wiping a good store on a
+// broken input.
 import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { CanonicalProgramService, type CanonicalProgramInput } from '@tee-backoffice/canonical'
@@ -19,6 +21,9 @@ import { RedirectTombstoneBuilder } from '../src/tee/RedirectTombstoneBuilder'
 import { SlugCanonicalId } from '../src/tee/SlugCanonicalId'
 import { TeeImporter } from '../src/tee/TeeImporter'
 import type { TeeRecord } from '../src/tee/TeeImporter'
+import { UpstreamJsonSource } from '../src/tee/UpstreamJsonSource'
+
+const REMOTE = process.argv.includes('--remote')
 
 // Live upstream input (the daily workflow overwrites it). Falls back to the
 // frozen round-trip fixture so a local run works without fetching first.
@@ -30,7 +35,27 @@ const FIXTURE_PATH = resolve(process.cwd(), 'static/input/programs-tests.json')
 const LIVE_REDIRECTS_PATH = resolve(process.cwd(), 'static/input/redirects.json')
 const FIXTURE_REDIRECTS_PATH = resolve(process.cwd(), 'static/input/redirects-tests.json')
 
-function loadRedirects(): ProgramRedirects {
+type RedirectsFile = ConstructorParameters<typeof ProgramRedirects>[0]
+
+/** Reads both inputs: from the upstream repository, or from `static/input/`. */
+async function loadInputs(): Promise<{ records: TeeRecord[]; redirects: ProgramRedirects }> {
+  if (!REMOTE) return { records: loadLocalRecords(), redirects: loadLocalRedirects() }
+
+  const source = new UpstreamJsonSource()
+  process.stdout.write(`Source distante : ${source.describe()}\n`)
+  const records = await source.programs<TeeRecord[]>()
+  const redirects = await source.redirects<RedirectsFile>()
+  if (!redirects) process.stdout.write('Redirections : fichier amont absent, étape ignorée.\n')
+  return { records, redirects: new ProgramRedirects(redirects ?? undefined) }
+}
+
+function loadLocalRecords(): TeeRecord[] {
+  const inputPath = existsSync(LIVE_PATH) ? LIVE_PATH : FIXTURE_PATH
+  process.stdout.write(`Source : ${inputPath}\n`)
+  return JSON.parse(readFileSync(inputPath, 'utf8')) as TeeRecord[]
+}
+
+function loadLocalRedirects(): ProgramRedirects {
   const path = existsSync(LIVE_REDIRECTS_PATH)
     ? LIVE_REDIRECTS_PATH
     : existsSync(FIXTURE_REDIRECTS_PATH)
@@ -45,18 +70,9 @@ function loadRedirects(): ProgramRedirects {
 }
 
 async function main(): Promise<void> {
-  const inputPath = existsSync(LIVE_PATH) ? LIVE_PATH : FIXTURE_PATH
-  process.stdout.write(`Source : ${inputPath}\n`)
-  const records = JSON.parse(readFileSync(inputPath, 'utf8')) as TeeRecord[]
+  const { records, redirects } = await loadInputs()
   const repository = await createCanonicalProgramRepository()
   const service = new CanonicalProgramService(repository)
-
-  const existing = await service.getAll()
-  if (existing.length > 0) {
-    process.stdout.write(
-      `⚠ ${existing.length.toString()} dispositifs déjà présents — pour une régénération propre (suppressions reflétées), supprimer canonical.db avant l'import.\n`,
-    )
-  }
 
   const importer = new TeeImporter()
   const now = new Date().toISOString()
@@ -74,11 +90,14 @@ async function main(): Promise<void> {
   // Phase 2 — apply redirects: mark surviving former slugs `remplace` in place,
   // and synthesize `remplace` tombstones (cloning the replacement's content) for
   // former slugs no longer present, so a consumer holding them can follow on.
-  const redirects = loadRedirects()
   const { tombstones, markedInPlace, skipped } = new RedirectTombstoneBuilder().build(redirects, inputsBySlug)
   inputs.push(...tombstones)
 
-  // Phase 3 — validate + upsert everything (real programs + tombstones).
+  // Phase 3 — replace the store content: empty it, then validate + upsert
+  // everything (real programs + tombstones).
+  const replaced = (await service.getAll()).length
+  await repository.deleteAll()
+
   let saved = 0
   const invalid: string[] = []
   for (const input of inputs) {
@@ -87,7 +106,9 @@ async function main(): Promise<void> {
     else invalid.push(result.slug || '(slug manquant)')
   }
 
-  process.stdout.write(`\n✓ ${saved.toString()}/${inputs.length.toString()} dispositifs importés dans le store canonical\n`)
+  process.stdout.write(
+    `\n✓ ${saved.toString()}/${inputs.length.toString()} dispositifs importés dans le store canonical (${replaced.toString()} remplacé(s))\n`,
+  )
   if (redirects.size > 0) {
     process.stdout.write(
       `Redirections : ${markedInPlace.length.toString()} marquée(s) en place, ${tombstones.length.toString()} tombstone(s) créé(s)${

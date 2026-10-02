@@ -16,12 +16,14 @@ export const syncCanonicalOnPublish: CollectionAfterChangeHook<Program> = async 
 
   try {
     // Re-fetch with relations populated so the mapper can resolve operators,
-    // geographic areas and the replacing program.
+    // geographic areas and the replacing program. `req` keeps the read inside the
+    // write transaction: without it, Postgres cannot see the uncommitted doc.
     const full = await req.payload.findByID({
       collection: 'programs',
       id: doc.id,
       depth: 1,
       overrideAccess: true,
+      req,
     })
 
     const markdown = await getRichTextToMarkdown(req.payload.config)

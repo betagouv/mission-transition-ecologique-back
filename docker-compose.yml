@@ -1,0 +1,23 @@
+# Local PostgreSQL for development and integration tests (see ADR 0012).
+# Keep the major version aligned with the Scalingo PostgreSQL addon.
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: tee
+      POSTGRES_PASSWORD: tee
+      POSTGRES_DB: tee
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      # Runs once, on the first start of an empty volume.
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U tee -d tee']
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+volumes:
+  postgres-data:

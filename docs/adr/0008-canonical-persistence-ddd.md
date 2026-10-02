@@ -36,6 +36,8 @@ libs/canonical-store (infra libSQL/Drizzle)  ──▶ libs/canonical (domaine)
 
 ### 3. Store libSQL/Drizzle indépendant de Payload (`libs/canonical-store`)
 
+> ⚠️ **Caduc depuis l'ADR 0012** : le store tourne désormais sur **PostgreSQL**, dans un schéma dédié `canonical` de la base de Payload. Le principe (adaptateur d'un port, indépendant du CMS) reste valable ; libSQL, le fichier `canonical.db` et sa résolution par défaut ne le sont plus.
+
 - `DrizzleCanonicalProgramRepository` implémente le port (libSQL + Drizzle).
 - Base **dédiée** `canonical.db` (variable `CANONICAL_DATABASE_URI`, défaut `file:./canonical.db`), **distincte** de la base Payload : la donnée canonique survit à un changement de CMS.
 - La **localisation de la DB est portée par le store** : la factory `createCanonicalProgramRepository()` résout elle-même `CANONICAL_DATABASE_URI` et retourne un repository prêt à l'emploi. Le CMS demande un repository configuré sans connaître l'emplacement ni le driver.
@@ -77,7 +79,7 @@ Le **routage** est déclaratif : `RoutingCanonicalEventSink` dispatche chaque é
 
 **Positif**
 - Changer de CMS = réécrire l'adaptateur (mapper) et éventuellement le composition root. Domaine, port, service et store restent inchangés ; le canonical persisté survit.
-- Testabilité : domaine testé avec un fake repository (framework-free) ; infra testée en libSQL `:memory:` ; injection mockable.
+- Testabilité : domaine testé avec un fake repository (framework-free) ; infra testée en base en mémoire (libSQL à l'époque, PGlite depuis l'ADR 0012) ; injection mockable.
 
 **Coûts / limites**
 - Une base et une couche d'accès supplémentaires, indépendantes de Payload.
@@ -87,7 +89,7 @@ Le **routage** est déclaratif : `RoutingCanonicalEventSink` dispatche chaque é
 - Pas de suppression du canonical sur unpublish / archive (l'entrée reste).
 - Gate de validation **bloquante** au publish pas encore en place : aujourd'hui le hook émet un événement et n'écrit pas l'invalide (les drops écriture/lecture sont désormais observables, cf. §6).
 - Fiabilisation du **mapping durée** dans le seed (`ProgramMapper`) : certains dispositifs `etude` / `formation` n'ont pas de `duree` en source et sont donc rejetés par la règle `refineDuree` (volontairement conservée). Fix prévu dans une autre PR.
-- Migration **Postgres** (Payload + store) à venir.
+- Migration **Postgres** (Payload + store) : réalisée, voir ADR 0012. La base « dédiée » y devient un **schéma dédié** (`canonical`) dans la base de Payload : compromis assumé, réversible par simple configuration, documenté dans l'ADR 0012 §2. Le store vit désormais dans le schéma `canonical` d'une base PostgreSQL ; les mentions de libSQL et du défaut `canonical.db` ci-dessus sont caduques.
 
 **Contrainte technique**
 - Les libs `canonical` et `canonical-store` portent un `package.json` minimal avec `"type": "module"` : sans lui, node / `tsx` (le seed) traite leurs `.ts` comme du CommonJS et le linking des exports nommés ESM casse.

@@ -9,7 +9,7 @@ Proof of concept du backend de **Transition Écologique des Entreprises (TEE)**,
 | [NX 22](https://nx.dev) | Monorepo — orchestration des tâches et des dépendances |
 | [PayloadCMS 3](https://payloadcms.com) | CMS headless TypeScript-first, API REST + admin UI |
 | [Next.js 15](https://nextjs.org) | Framework applicatif (requis par PayloadCMS v3) |
-| [SQLite](https://www.sqlite.org) | Base de données (fichier local, pas de serveur) |
+| [PostgreSQL 17](https://www.postgresql.org) | Base de données (conteneur Docker en local, addon Scalingo en prod) |
 | [pnpm 10](https://pnpm.io) | Gestionnaire de paquets |
 | Node.js v24 | Runtime |
 
@@ -30,7 +30,7 @@ memory/         # Mémoire persistante Claude Code
 
 - Node.js v24 (via `nvm use`)
 - pnpm (`npm install -g pnpm`)
-- SQLite (fichier local généré automatiquement)
+- Docker (PostgreSQL local, `pnpm db:up`)
 
 ## Installation
 
@@ -49,8 +49,15 @@ cp .env.example apps/cms/.env
 
 | Variable | Description |
 |---|---|
-| `DATABASE_URI` | Chemin SQLite (défaut : `file:./tee-poc.db`) |
+| `DATABASE_URI` | URL PostgreSQL (local : `postgres://tee:tee@localhost:5432/tee`) |
+| `CANONICAL_DATABASE_URI` | URL du store canonical (schéma `canonical` de la même base) |
 | `PAYLOAD_SECRET` | Clé secrète de chiffrement Payload |
+
+Voir `apps/cms/.env.example` pour la liste complète (uploads Scaleway, export Grist, pipeline quotidien).
+
+La base tourne dans un conteneur Docker : `pnpm db:up` avant tout `pnpm dev`, `pnpm seed` ou `pnpm test`.
+
+Chaque worktree a sa propre base `tee_<branche>`. Pour les lister ou les nettoyer : `make wt-db-list`, `make wt-db-drop BRANCH=<branche>`, `make wt-db-prune` (supprime celles dont le worktree a disparu).
 
 ## Fixtures (seed)
 

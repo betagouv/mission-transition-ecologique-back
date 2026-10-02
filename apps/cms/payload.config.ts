@@ -1,5 +1,6 @@
 import { buildConfig } from 'payload'
-import { sqliteAdapter } from '@payloadcms/db-sqlite'
+import { postgresAdapter } from '@payloadcms/db-postgres'
+import { s3Storage } from '@payloadcms/storage-s3'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -12,9 +13,33 @@ import { Projects } from '@/collections/Projects'
 import { GeographicAreas } from '@/collections/GeographicAreas'
 import { ReviewComments } from '@/collections/ReviewComments'
 import { agirEndpoints } from '@/endpoints/agir/agirEndpoints'
+import { migrations } from '@/migrations'
+import { Config } from '@/config/Config'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
+
+// Scalingo's filesystem is throwaway, so Media uploads go to object storage
+// (Scaleway, S3 API). Without a configured bucket (development), Payload keeps
+// its local disk storage. Registered as a plugin: this Payload version has no
+// top-level `storage` key yet.
+const objectStorage = Config.objectStorage()
+const storagePlugins = objectStorage
+  ? [
+      s3Storage({
+        collections: { media: true },
+        bucket: objectStorage.bucket,
+        config: {
+          endpoint: objectStorage.endpoint,
+          region: objectStorage.region,
+          credentials: {
+            accessKeyId: objectStorage.accessKeyId,
+            secretAccessKey: objectStorage.secretAccessKey,
+          },
+        },
+      }),
+    ]
+  : []
 
 export default buildConfig({
   admin: {
@@ -48,14 +73,21 @@ export default buildConfig({
   ],
   endpoints: agirEndpoints,
   editor: lexicalEditor(),
-  secret: process.env.PAYLOAD_SECRET || '',
+  secret: Config.payloadSecret(),
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),
   },
-  db: sqliteAdapter({
-    client: {
-      url: process.env.DATABASE_URI || 'file:./tee-poc.db',
+  // Payload owns the `public` schema; the canonical store lives in its own
+  // `canonical` schema of the same database (ADR 0012). Schema changes are
+  // pushed automatically in dev only; elsewhere they ship as migrations.
+  db: postgresAdapter({
+    pool: {
+      connectionString: Config.databaseUrl(),
+      max: Config.databasePoolMax(),
     },
+    migrationDir: path.resolve(dirname, 'src/migrations'),
+    // Applied on server start when NODE_ENV=production (no postdeploy step).
+    prodMigrations: migrations,
   }),
   i18n: {
     fallbackLanguage: 'en',
@@ -70,5 +102,5 @@ export default buildConfig({
       },
     },
   },
-  plugins: [],
+  plugins: storagePlugins,
 })

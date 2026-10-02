@@ -1,0 +1,8 @@
+{
+  "env": {
+    "PUBLIC_BASE_URL": {
+      "description": "Base publique des liens absolus AGIR : l'URL de la review app, et non celle de l'app parente",
+      "generator": "url"
+    }
+  }
+}

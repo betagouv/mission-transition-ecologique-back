@@ -3,7 +3,7 @@ import type { CanonicalProgram } from './CanonicalProgram'
 /**
  * Persistence port for canonical programs. Defined in the domain so it stays
  * CMS-neutral: the canonical is the durable source of truth, and any store
- * (libSQL today, Postgres tomorrow) implements this contract. The domain knows
+ * (Postgres today, another store tomorrow) implements this contract. The domain knows
  * nothing about the storage technology.
  */
 export interface CanonicalProgramRepository {
@@ -13,4 +13,6 @@ export interface CanonicalProgramRepository {
   findBySlug(slug: string): Promise<CanonicalProgram | null>
   /** Returns every stored program. */
   findAll(): Promise<CanonicalProgram[]>
+  /** Empties the store, for a full rebuild from an upstream source. */
+  deleteAll(): Promise<void>
 }

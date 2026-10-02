@@ -53,14 +53,9 @@ apps/cms/src/app/(payload)/admin/importMap.js
 apps/cms/payload-types.ts
 apps/cms/media/
 
-# SQLite
-*.db-shm
-*.db-wal
-test.db
-# test/dev databases (integration + e2e)
-tee-*.db
-canonical-test.db
-# Note: libs/canonical-store/canonical.db is committed (serves review/prod, like tee-poc.db)
+# Local SQLite leftovers from before the Postgres migration (ADR 0012): no
+# database file is committed any more.
+*.db
 
 # Playwright
 apps/cms/playwright-report/
@@ -75,6 +70,9 @@ libs/format-adapters/static/exports/grist*
 # Env
 .env
 .env*.local
+
+# Local MCP servers config (may hold personal tokens)
+.mcp.json
 
 test-output
 

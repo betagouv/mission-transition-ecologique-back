@@ -1,44 +1,33 @@
-import { existsSync } from 'node:fs'
-import { dirname, join } from 'node:path'
 import type { CanonicalProgramRepository, CanonicalEventSink } from '@tee-backoffice/canonical'
 import { DrizzleCanonicalProgramRepository } from './DrizzleCanonicalProgramRepository'
 
-// The store owns its own database location, so consumers (the CMS) never need to
-// know where or how the canonical is persisted. A dedicated libSQL database,
-// independent of the CMS, lets the canonical data survive a CMS change.
+// The store owns its own database location, so consumers (the CMS) never need
+// to know where or how the canonical is persisted. It lives in the `canonical`
+// schema, next to Payload's `public` one: sharing the instance keeps the
+// hosting simple, while a CMS change can drop `public` and keep the canonical.
 //
-// The default is the canonical.db committed next to this package. It is anchored
-// to the workspace (not the CWD) by walking up from the CWD to the pnpm
-// workspace marker, so every entry point reads the same file whatever directory
-// launches it. This avoids `import.meta.url`, which test/bundler transforms do
-// not reliably expose as a `file:` URL. CANONICAL_DATABASE_URI overrides it.
-const WORKSPACE_MARKER = 'pnpm-workspace.yaml'
-const STORE_DATABASE_PATH = 'libs/canonical-store/canonical.db'
+// CANONICAL_DATABASE_URI is the local/CI setting; on Scalingo the platform
+// injects SCALINGO_POSTGRESQL_URL, so prod and preprod need no variable at all.
+const DATABASE_VARIABLES = ['CANONICAL_DATABASE_URI', 'SCALINGO_POSTGRESQL_URL'] as const
 
-function findWorkspaceRoot(): string {
-  let dir = process.cwd()
-  while (!existsSync(join(dir, WORKSPACE_MARKER))) {
-    const parent = dirname(dir)
-    if (parent === dir) return process.cwd()
-    dir = parent
+function databaseUrl(): string {
+  for (const name of DATABASE_VARIABLES) {
+    const value = process.env[name]?.trim()
+    if (value) return value
   }
-  return dir
-}
-
-function defaultDatabaseUrl(): string {
-  return `file:${join(findWorkspaceRoot(), STORE_DATABASE_PATH)}`
+  throw new Error(
+    `Missing environment variable: set ${DATABASE_VARIABLES[0]} (locally) or ${DATABASE_VARIABLES[1]} (Scalingo).`,
+  )
 }
 
 /**
- * Builds a ready-to-use canonical repository, resolving its database location
- * from `CANONICAL_DATABASE_URI` (default: the committed store database). This is
- * the entry point for application wiring; tests open an explicit `:memory:`
- * store via `DrizzleCanonicalProgramRepository.create`. The optional event sink
- * (injected by the composition root) surfaces rows dropped on read.
+ * Builds a ready-to-use canonical repository against the resolved database.
+ * This is the entry point for application wiring; tests open an in-memory
+ * PGlite store instead. The optional event sink (injected by the composition
+ * root) surfaces rows dropped on read.
  */
 export function createCanonicalProgramRepository(
   events?: CanonicalEventSink,
 ): Promise<CanonicalProgramRepository> {
-  const url = process.env['CANONICAL_DATABASE_URI'] || defaultDatabaseUrl()
-  return DrizzleCanonicalProgramRepository.create(url, events)
+  return DrizzleCanonicalProgramRepository.create(databaseUrl(), events)
 }

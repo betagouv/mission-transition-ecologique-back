@@ -23,7 +23,7 @@ Contenu :
 ### Règle de dépendance (hexagonal)
 ```
 apps/cms (adaptateur CMS + composition root) ──▶ libs/canonical (domaine)
-libs/canonical-store (infra libSQL/Drizzle)  ──▶ libs/canonical (domaine)
+libs/canonical-store (infra PostgreSQL/Drizzle) ──▶ libs/canonical (domaine)
 ```
 `libs/canonical` ne dépend de **rien** d'autre.
 
@@ -31,7 +31,7 @@ libs/canonical-store (infra libSQL/Drizzle)  ──▶ libs/canonical (domaine)
 Les **ports** vivent dans le domaine ; les **implémentations concrètes** sont injectées depuis `apps/cms` (ex. `getCanonicalProgramService()` = `new CanonicalProgramService(repository)`, pattern `new Service(new Repo())`). Le mapping CMS-spécifique (Payload `Program` → `CanonicalProgramInput`, via `ProgramCanonicalMapper` + adaptateur markdown) vit dans `apps/cms`, **jamais ici**.
 
 ### Interdits dans ce package
-- Aucune référence à Payload (`payload`, `payload-types`) ni à un driver DB (`drizzle`, `@libsql/client`).
+- Aucune référence à Payload (`payload`, `payload-types`) ni à un driver DB (`drizzle`, `pg`).
 - Les adaptateurs (mapper CMS, repository Drizzle, converters rich text) vivent **hors** du domaine.
 
 > Note : ce package a un `package.json` minimal avec `"type": "module"`, nécessaire pour que node/`tsx` (le seed) traite ses `.ts` comme de l'ESM. Ne pas le retirer.

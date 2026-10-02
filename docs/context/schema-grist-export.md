@@ -144,7 +144,7 @@ La table Grist porte les colonnes du schéma **entreprise** (l'`id` Etalab sous
 `pnpm nx run @tee-backoffice/format-adapters:import:tee` reconstruit le store
 canonical **directement depuis `static/input/programs.json`**, sans Payload :
 `TeeImporter` mappe chaque dispositif, `SlugCanonicalId` lui donne un id stable
-dérivé du slug (cuid2 déterministe — diff `canonical.db` minimal d'un jour à
+dérivé du slug (cuid2 déterministe : diff minimal d'un jour à
 l'autre), `date_mise_a_jour` = heure du run, puis `CanonicalProgramService.save`
 valide + upsert. Les invalides sont ignorés et listés.
 
@@ -166,26 +166,33 @@ workflow) et retombe sur `static/input/programs-tests.json` (copie **figée**,
 fixture du round-trip) si la première est absente — un run local fonctionne donc
 sans `fetch` préalable.
 
-⚠️ Pour une régénération **propre** (suppressions amont reflétées), supprimer
-`libs/canonical-store/canonical.db` avant l'import (le workflow le fait). Comme
-`TeeImporter` marque tout en `pret_prod`/`valide`, ce store contient **tout**
-l'amont (~234), plus large que le store alimenté par le CMS (~180, filtré par le
-workflow éditorial Payload). C'est voulu : ce chemin traite l'amont
-`programs.json` comme source de vérité du flux open data.
+L'import est une **régénération complète** : le store est vidé puis réécrit,
+donc les suppressions amont sont reflétées. Le vidage n'intervient qu'une fois
+les entrées mappées et validées, pour ne jamais écraser un bon store sur une
+source cassée. Comme `TeeImporter` marque tout en `pret_prod`/`valide`, ce store
+contient **tout** l'amont (~280), plus large que le store alimenté par le CMS
+(filtré par le workflow éditorial Payload). C'est voulu : ce chemin traite
+l'amont `programs.json` comme source de vérité du flux open data.
 
-## Pipeline quotidien (GitHub Action)
+## Pipeline quotidien (tâche planifiée Scalingo)
 
-`.github/workflows/daily_data.yml` (`schedule` quotidien + `workflow_dispatch`) :
+`cron.json` à la racine lance `pnpm data:daily` chaque nuit (03h17 UTC) dans un
+conteneur one-off de l'application :
 
-1. récupère `programs.json` **et** `redirects.json` amont
-   (betagouv/mission-transition-ecologique) → `static/input/` ;
-2. `rm` le store puis `import:tee` (régénération fraîche + tombstones de
-   redirection) ;
-3. `setup:grist` (idempotent) puis `export:grist` avec `GRIST_PUSH=1` ;
-4. commit de `programs.json` + `redirects.json` + `canonical.db` rafraîchis.
+1. `import:tee --remote` : lecture HTTP de `programs.json` **et** `redirects.json`
+   amont (`UpstreamJsonSource`, betagouv/mission-transition-ecologique), puis
+   régénération complète du store canonical (+ tombstones de redirection) ;
+2. `grist-setup` (idempotent) puis `export:grist --push`.
 
-**Secrets GitHub requis** (Settings → Secrets and variables → Actions) :
-`GRIST_BASE_URL` (⚠️ obligatoire ici — l'instance n'est pas celle par défaut),
-`GRIST_DOC_ID`, `GRIST_TABLE_ID`, `GRIST_API_KEY`. Le job a `permissions:
-contents: write` pour committer ; si `main` est protégée contre les pushes
-directs, passer le commit en pull request ou autoriser le bot.
+Aucun commit de données : le store vit dans PostgreSQL (schéma `canonical`), plus
+dans un fichier du dépôt. L'ancien `.github/workflows/daily_data.yml` a été
+supprimé (ADR 0012).
+
+**Variables requises sur l'app Scalingo** : `GRIST_BASE_URL` (⚠️ obligatoire ici,
+l'instance n'est pas celle par défaut), `GRIST_DOC_ID`, `GRIST_TABLE_ID`,
+`GRIST_API_KEY`, éventuellement `TEE_PROGRAMS_URL` / `TEE_REDIRECTS_URL`.
+
+**Surveillance** : les logs partent dans ceux de l'application (`scalingo logs`),
+les tâches se listent avec `scalingo cron-tasks`. Scalingo ne notifie pas l'échec
+d'une tâche : un canal d'alerte peut être branché sur le port `CanonicalEventSink`
+(ADR 0008) si le besoin se confirme.
