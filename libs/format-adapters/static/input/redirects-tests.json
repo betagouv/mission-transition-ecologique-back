@@ -11,5 +11,9 @@
     "ormat-2024": "fonds-economie-circulaire-ormat",
     "ormat": "fonds-economie-circulaire-ormat",
     "contrat-3S-occitanie": "contrat-3s-occitanie"
+  },
+  "project_redirects": {
+    "seche-linge": "electromenager-basse-consommation",
+    "maintenance-préventive": "maintenance-preventive"
   }
 }

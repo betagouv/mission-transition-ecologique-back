@@ -1,6 +1,8 @@
 // Refreshes the versioned copy of the upstream files (`static/upstream/`), the
 // development fallback used when GitHub is unreachable. Reads GitHub strictly (no
-// fallback): a failed download must not overwrite the copy with itself.
+// fallback): a failed download must not overwrite the copy with itself. Projects
+// are written as upstream publishes them, unvalidated: a validated copy would
+// reorder the keys, and the import validates what it reads anyway.
 //
 // Run from the repo root: `pnpm data:snapshot`, then commit the diff.
 import { LocalJsonSnapshot } from '../src/tee/LocalJsonSnapshot'
@@ -14,7 +16,7 @@ async function main(): Promise<void> {
 
   const loaders = {
     programs: () => source.programs<unknown[]>(),
-    projects: () => source.projects<unknown[]>(),
+    projects: () => source.raw('projects'),
     redirects: () => source.redirects<unknown>(),
     operators: () => source.operators(),
   }

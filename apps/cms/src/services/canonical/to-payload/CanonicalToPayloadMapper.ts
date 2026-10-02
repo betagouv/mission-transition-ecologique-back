@@ -1,5 +1,5 @@
 import type { RequiredDataFromCollectionSlug } from 'payload'
-import { COG_FRANCE, type CanonicalProgramInput, type Theme, type TypeAide } from '@tee-backoffice/canonical'
+import { COG_FRANCE, type CanonicalProgramInput, type TypeAide } from '@tee-backoffice/canonical'
 import { UpstreamAmountLabels } from '@tee-backoffice/format-adapters'
 import type { Program } from '../../../../payload-types'
 import type { NafSection } from '@/constants/nafSectionsOptions'
@@ -9,10 +9,10 @@ import { UrlValidator } from '@/utils/UrlValidator'
 import type { MarkdownToRichText } from '../rich-text/MarkdownToRichText'
 import {
   AID_TYPE_TO_CANONICAL,
+  CANONICAL_TO_THEME,
   COMPANY_SIZE_BOUNDS,
   DUREE_BY_AID_TYPE,
   MONTANT_BY_AID_TYPE,
-  THEME_TO_CANONICAL,
 } from '../canonicalMappings'
 import { CanonicalVariantToPayloadMapper } from './CanonicalVariantToPayloadMapper'
 import type { ProgramRelations } from './ProgramRelations'
@@ -32,10 +32,6 @@ type GeographyData = Pick<PayloadProgramData, 'geographicCoverage' | 'geographic
 const CANONICAL_TO_AID_TYPE = Object.fromEntries(
   Object.entries(AID_TYPE_TO_CANONICAL).map(([aidType, typeAide]) => [typeAide, aidType]),
 ) as Partial<Record<TypeAide, AidType>>
-
-const CANONICAL_TO_THEME = Object.fromEntries(
-  Object.entries(THEME_TO_CANONICAL).map(([theme, canonical]) => [canonical, theme]),
-) as Record<Theme, NonNullable<Program['themes']>[number]>
 
 const ALL_NAF_SECTIONS: readonly NafSection[] = NAF_SECTIONS_OPTIONS.map((option) => option.value)
 

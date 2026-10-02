@@ -1,7 +1,5 @@
 import { z } from 'zod'
-
-// Baserow exports an empty cell as '' or null: both mean "absent", not a broken file.
-const emptyAsAbsent = (value: unknown) => (value === '' || value === null ? undefined : value)
+import { emptyAsAbsent } from './emptyAsAbsent'
 
 /**
  * One entry of upstream `operators.json`, generated from the Baserow operators

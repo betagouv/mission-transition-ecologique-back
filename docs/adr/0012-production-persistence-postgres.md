@@ -118,6 +118,8 @@ Conséquences à connaître :
 
 **Tâche planifiée Scalingo** (`cron.json` à la racine, script `pnpm data:daily`), et non plus GitHub Actions :
 
+> **Révision 2026-10-01** ([ADR 0014](0014-canonical-projects.md), feature 008) : le pipeline importe aussi les **projets**. `pnpm data:daily` enchaîne `import:tee --remote`, puis Grist (`grist-setup`, `export:grist --push`), puis `import:projects --remote` (alignement de `canonical.canonical_projects` sur `projects.json` et les `project_redirects` amont, même garde-fou `CanonicalSnapshotGuard`). L'import des projets est en fin de chaîne depuis la revue de code du même jour : son échec ne bloque pas l'open data Grist. La règle « l'amont est maître » vaut aussi pour les projets : l'import écrase ce que le hook `syncProjectCanonicalOnChange` a écrit. Le hook `assignCanonicalId`, désormais partagé par `Programs` et `Projects`, vit dans `apps/cms/src/hooks/shared/`.
+
 - elle s'exécute dans un conteneur one-off de l'app, avec ses variables d'environnement, donc avec l'accès à la base ; l'addon n'a pas besoin d'être exposé sur Internet ;
 - les logs partent dans les logs de l'application (`scalingo logs`), les tâches se listent avec `scalingo cron-tasks` ;
 - limites de la plateforme : 5 tâches par application, 10 minutes d'intervalle minimum, 12 heures d'exécution maximum, horaires en UTC, exécution non garantie (rares ratés) et décalage possible.

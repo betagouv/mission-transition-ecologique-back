@@ -52,6 +52,8 @@ Les **ports** vivent dans le domaine, les **implémentations concrètes** sont i
 - Le **mapping Payload → canonical** (`ProgramCanonicalMapper`) et l'**adaptateur markdown** (`PayloadRichTextToMarkdown`, derrière le port `RichTextToMarkdown`) restent côté `apps/cms` : c'est le couplage CMS, assumé et remplaçable.
 - Nommage **par entité** (`canonicalProgramService.ts` / `getCanonicalProgramService`) pour préparer un futur `CanonicalProjectService`.
 
+> **Révision 2026-10-01** ([ADR 0014](0014-canonical-projects.md), feature 008) : `CanonicalProjectService` existe. Les projets ont leur modèle (`libs/canonical/src/canonical-project/`), leur port `CanonicalProjectRepository`, leur table `canonical.canonical_projects` et leur composition root (`canonicalProjectRepository.ts`, `canonicalProjectService.ts`), sur le même schéma que les dispositifs. Le diff et le garde-fou de snapshot sont partagés par les deux entités (`libs/canonical/src/snapshot/`), et les événements d'observabilité (§6) gagnent `project_saved`, `project_removed`, `project_dropped` ainsi qu'un champ `entity` sur `sync_failed`. Après revue de code, le même jour : les singletons du CMS oublient une promesse rejetée (`RetryableMemo`, l'appel suivant réessaie) ; `delete` des deux ports renvoie un booléen et l'événement de retrait n'est émis que si une ligne a été retirée ; à l'écriture, les repositories évincent la ligne de même slug stockée sous un autre identifiant, ce qui supprime les `sync_failed` sur l'unicité du slug.
+
 ### 5. Synchronisation au publish (chemin unique)
 
 - Hook `syncCanonicalOnPublish` (afterChange sur `Programs`) : l'action dépend du `workflowStatus`, décidée par `CanonicalSyncPolicy` (révisé le 2026-09-25, feature 005) :

@@ -2,7 +2,9 @@
 // Payload: each record is mapped by `TeeImporter`, gets a deterministic id
 // derived from its slug (`SlugCanonicalId`) and the run timestamp as
 // `date_mise_a_jour`, then is validated + upserted via `CanonicalProgramService`.
-// Invalid records are skipped and reported (never persisted silently).
+// Invalid records are skipped and reported (never persisted silently). A program
+// whose slug is already stored keeps its stored id (e.g. the one the CMS wrote):
+// the derived id only names a program the store does not know yet.
 //
 // Run from the repo root: `nx run @tee-backoffice/format-adapters:import:tee`.
 // With `--remote` (the daily refresh on Scalingo), the two JSON files are read
@@ -104,8 +106,8 @@ async function main(): Promise<void> {
   const { tombstones, markedInPlace, skipped } = new RedirectTombstoneBuilder().build(redirects, inputsBySlug)
   inputs.push(...tombstones)
 
-  // Phase 3 — align the store on the snapshot: validated first, guarded, then
-  // deletions + upserts in one transaction.
+  // Phase 3: align the store on the snapshot, stored ids kept for known slugs,
+  // validated, guarded, then deletions + upserts in one transaction.
   const guard = new CanonicalSnapshotGuard(ALLOW_MASS_REMOVAL ? { maxRemovalRatio: 1 } : {})
   const report = await service.applySnapshot(inputs, guard)
 
@@ -113,7 +115,8 @@ async function main(): Promise<void> {
     `\n✓ ${report.saved.toString()}/${inputs.length.toString()} dispositifs écrits dans le store canonical\n`,
   )
   writeKeys('Retirés (absents de l\'amont)', report.removed)
-  writeKeys('Réidentifiés (même slug, nouvel identifiant)', report.superseded)
+  writeKeys('Conservés sous leur identifiant stocké (slug déjà connu)', report.adopted)
+  writeKeys('Réidentifiés (identifiant stocké non conservable)', report.superseded)
   writeKeys('Conservés tels quels (entrée amont invalide)', report.kept)
   if (redirects.size > 0) {
     process.stdout.write(

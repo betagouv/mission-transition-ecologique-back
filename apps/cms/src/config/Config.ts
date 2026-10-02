@@ -37,8 +37,9 @@ export class Config {
   }
 
   /**
-   * Public base URL for the absolute AGIR links, when the forwarded headers of
-   * the reverse proxy are not enough. Undefined falls back to the request.
+   * Public base URL for the absolute links served by the API. Required in
+   * production (see PublicBaseUrlResolver); elsewhere, undefined falls back to
+   * the request.
    */
   static publicBaseUrl(): string | undefined {
     return Config.string('PUBLIC_BASE_URL')

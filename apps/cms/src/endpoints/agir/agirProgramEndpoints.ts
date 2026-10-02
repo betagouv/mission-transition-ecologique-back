@@ -4,16 +4,18 @@ import {
   AgirDetailExporter,
   AgirExportPolicy,
   AgirListeExporter,
+  AgirRoutes,
   RemplaceParResolver,
 } from '@tee-backoffice/format-adapters'
 import type { Endpoint, PayloadRequest } from 'payload'
-import { Config } from '@/config/Config'
 import { getCanonicalProgramRepository } from '@/services/canonical/canonicalRepository'
+import { PublicBaseUrlResolver } from '@/utils/PublicBaseUrlResolver'
 
 /**
- * Public, read-only AGIR endpoints. They only TRANSPORT: read the canonical
- * store, filter exportable programs, hand off to the format-adapters exporters,
- * and serialize. All projection logic (and its tests) live in the library.
+ * Public, read-only AGIR endpoints for programs. They only TRANSPORT: read the
+ * canonical store, filter exportable programs, hand off to the format-adapters
+ * exporters, and serialize. All projection logic (and its tests) live in the
+ * library.
  *
  * Mounted under `/api` by Payload: `/api/agir/programs`,
  * `/api/agir/programs/:slug/detail`, `/api/agir/programs/:slug/pivot`.
@@ -21,19 +23,6 @@ import { getCanonicalProgramRepository } from '@/services/canonical/canonicalRep
 
 function notFound(): Response {
   return Response.json({ error: 'Dispositif introuvable' }, { status: 404 })
-}
-
-/**
- * Public base URL for the absolute AGIR links. Behind a reverse proxy (Scalingo
- * router) `req.origin` is the internal container address (localhost:36xxx), so:
- * explicit env override → forwarded headers set by the router → request origin.
- */
-function resolveBaseUrl(req: PayloadRequest): string {
-  const configured = Config.publicBaseUrl()
-  if (configured) return configured
-  const host = req.headers.get('x-forwarded-host')
-  if (host) return `${req.headers.get('x-forwarded-proto') ?? 'https'}://${host}`
-  return req.origin
 }
 
 /** Resolves an exportable program by slug, or null (unknown / non-exportable). */
@@ -47,8 +36,8 @@ async function findExportable(req: PayloadRequest, slug: string): Promise<Canoni
 const listeHandler = async (req: PayloadRequest): Promise<Response> => {
   const repository = await getCanonicalProgramRepository(req.payload.logger)
   const programs = await repository.findAll()
-  // Index links are absolute; see resolveBaseUrl for the reverse-proxy caveat.
-  return Response.json(new AgirListeExporter({ baseUrl: resolveBaseUrl(req) }).exportMany(programs))
+  // Index links are absolute; see PublicBaseUrlResolver for the reverse-proxy caveat.
+  return Response.json(new AgirListeExporter({ baseUrl: PublicBaseUrlResolver.resolve(req) }).exportMany(programs))
 }
 
 const detailHandler = async (req: PayloadRequest): Promise<Response> => {
@@ -66,8 +55,8 @@ const pivotHandler = async (req: PayloadRequest): Promise<Response> => {
   return Response.json(new AdemePivotExporter(resolver).export(program))
 }
 
-export const agirEndpoints: Endpoint[] = [
-  { path: '/agir/programs', method: 'get', handler: listeHandler },
-  { path: '/agir/programs/:slug/detail', method: 'get', handler: detailHandler },
-  { path: '/agir/programs/:slug/pivot', method: 'get', handler: pivotHandler },
+export const agirProgramEndpoints: Endpoint[] = [
+  { path: AgirRoutes.PROGRAMS, method: 'get', handler: listeHandler },
+  { path: AgirRoutes.PROGRAM_DETAIL, method: 'get', handler: detailHandler },
+  { path: AgirRoutes.PROGRAM_PIVOT, method: 'get', handler: pivotHandler },
 ]

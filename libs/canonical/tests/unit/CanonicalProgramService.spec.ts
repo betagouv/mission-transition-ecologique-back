@@ -7,8 +7,8 @@ import type {
   CanonicalProgramKey,
   CanonicalProgramRepository,
 } from '../../src/canonical-program/CanonicalProgramRepository'
-import { CanonicalSnapshotGuard } from '../../src/canonical-program/snapshot/CanonicalSnapshotGuard'
-import { CanonicalSnapshotRejectedError } from '../../src/canonical-program/snapshot/CanonicalSnapshotRejectedError'
+import { CanonicalSnapshotGuard } from '../../src/snapshot/CanonicalSnapshotGuard'
+import { CanonicalSnapshotRejectedError } from '../../src/snapshot/CanonicalSnapshotRejectedError'
 import type { CanonicalEvent } from '../../src/observability/CanonicalEvent'
 import type { CanonicalEventSink } from '../../src/observability/CanonicalEventSink'
 
@@ -23,10 +23,12 @@ class InMemoryRepository implements CanonicalProgramRepository {
   async findAll(): Promise<CanonicalProgram[]> {
     return [...this.saved.values()]
   }
-  async delete(canonicalId: string): Promise<void> {
+  async delete(canonicalId: string): Promise<boolean> {
+    let removed = false
     for (const [slug, program] of this.saved) {
-      if (program.id === canonicalId) this.saved.delete(slug)
+      if (program.id === canonicalId) removed = this.saved.delete(slug)
     }
+    return removed
   }
   async listKeys(): Promise<CanonicalProgramKey[]> {
     return [...this.saved.values()].map((program) => ({ canonicalId: program.id, slug: program.slug }))
@@ -119,6 +121,15 @@ describe('CanonicalProgramService', () => {
     })
   })
 
+  it('emits nothing when the program to remove was never stored', async () => {
+    const events = new RecordingSink()
+    const service = new CanonicalProgramService(new InMemoryRepository(), events)
+
+    await service.remove('a1b2c3d4e5f6g7h8i9j0klmn', 'diagnostic-energie-pme')
+
+    expect(events.events).toEqual([])
+  })
+
   describe('applySnapshot', () => {
     const ids = ['c1b2c3d4e5f6g7h8i9j0klmn', 'd1b2c3d4e5f6g7h8i9j0klmn', 'e1b2c3d4e5f6g7h8i9j0klmn']
     const inputFor = (index: number): CanonicalProgramInput => ({ ...validInput, id: ids[index], slug: `dispositif-${index.toString()}` })
@@ -151,16 +162,125 @@ describe('CanonicalProgramService', () => {
       expect(repository.saved.has('dispositif-1')).toBe(true)
     })
 
-    it('replaces a row stored under another id for the same slug', async () => {
-      const repository = new InMemoryRepository()
-      const service = new CanonicalProgramService(repository)
-      await service.save({ ...inputFor(0), id: ids[2] })
+    describe('identity of a slug already stored', () => {
+      const cmsId = 'x1b2c3d4e5f6g7h8i9j0klmn'
 
-      const report = await service.applySnapshot([inputFor(0)])
+      it('creates a program unknown to the store under the id it comes with', async () => {
+        const { repository, service } = await storeWith(1)
 
-      expect(report.superseded).toEqual([{ canonicalId: ids[2], slug: 'dispositif-0' }])
-      expect(report.removed).toEqual([])
-      expect(repository.saved.get('dispositif-0')?.id).toBe(ids[0])
+        const report = await service.applySnapshot([inputFor(0), inputFor(1)])
+
+        expect(report.adopted).toEqual([])
+        expect(repository.saved.get('dispositif-1')?.id).toBe(ids[1])
+      })
+
+      it('changes nothing for a program stored under the id it comes with', async () => {
+        const { repository, service } = await storeWith(2)
+
+        const report = await service.applySnapshot([inputFor(0), inputFor(1)])
+
+        expect(report).toMatchObject({ saved: 2, adopted: [], superseded: [], removed: [], kept: [] })
+        expect(await repository.listKeys()).toEqual([
+          { canonicalId: ids[0], slug: 'dispositif-0' },
+          { canonicalId: ids[1], slug: 'dispositif-1' },
+        ])
+      })
+
+      it('updates the row stored under another id instead of replacing it', async () => {
+        const repository = new InMemoryRepository()
+        const events = new RecordingSink()
+        const service = new CanonicalProgramService(repository, events)
+        await service.save({ ...inputFor(0), id: cmsId, titre: 'Titre du CMS' })
+        events.events.length = 0
+
+        const report = await service.applySnapshot([{ ...inputFor(0), titre: 'Titre amont' }])
+
+        expect(report).toMatchObject({ saved: 1, superseded: [], removed: [] })
+        expect(report.adopted).toEqual([{ canonicalId: cmsId, slug: 'dispositif-0' }])
+        expect(await repository.listKeys()).toEqual([{ canonicalId: cmsId, slug: 'dispositif-0' }])
+        expect(repository.saved.get('dispositif-0')?.data.titre).toBe('Titre amont')
+        expect(events.events).toEqual([
+          { type: 'program_saved', severity: 'info', slug: 'dispositif-0', canonicalId: cmsId },
+        ])
+      })
+
+      it('does not count a row kept under its stored id as a removal', async () => {
+        const repository = new InMemoryRepository()
+        const service = new CanonicalProgramService(repository)
+        await service.save({ ...inputFor(0), id: cmsId })
+        const guard = new CanonicalSnapshotGuard({ maxRemovalRatio: 0, removalAllowance: 0 })
+
+        await expect(service.applySnapshot([inputFor(0)], guard)).resolves.toMatchObject({ saved: 1 })
+      })
+
+      it('points a tombstone at the stored id of its replacement', async () => {
+        const repository = new InMemoryRepository()
+        const service = new CanonicalProgramService(repository)
+        await service.save({ ...inputFor(0), id: cmsId })
+        const tombstone: CanonicalProgramInput = {
+          ...inputFor(1),
+          slug: 'Ancien-slug',
+          statut_dispositif: 'remplace',
+          remplace_par: ids[0],
+        }
+
+        await service.applySnapshot([inputFor(0), tombstone])
+
+        expect(repository.saved.get('Ancien-slug')?.data.remplace_par).toBe(cmsId)
+      })
+
+      it('keeps the stored id of a tombstone whose own slug is already stored', async () => {
+        const repository = new InMemoryRepository()
+        const service = new CanonicalProgramService(repository)
+        await service.save(inputFor(0))
+        await service.save({ ...inputFor(1), id: cmsId, statut_dispositif: 'remplace', remplace_par: ids[0] })
+
+        const report = await service.applySnapshot([
+          inputFor(0),
+          { ...inputFor(1), statut_dispositif: 'remplace', remplace_par: ids[0] },
+        ])
+
+        expect(report.adopted).toEqual([{ canonicalId: cmsId, slug: 'dispositif-1' }])
+        expect(repository.saved.get('dispositif-1')?.data).toMatchObject({ id: cmsId, remplace_par: ids[0] })
+      })
+
+      it('keeps the stored row of an invalid entry and still points the others at it', async () => {
+        const repository = new InMemoryRepository()
+        const service = new CanonicalProgramService(repository)
+        await service.save({ ...inputFor(0), id: cmsId, titre: 'Titre du CMS' })
+
+        const report = await service.applySnapshot([
+          { ...inputFor(0), titre: '' },
+          { ...inputFor(1), statut_dispositif: 'remplace', remplace_par: ids[0] },
+        ])
+
+        expect(report.kept).toEqual([{ canonicalId: cmsId, slug: 'dispositif-0' }])
+        expect(report.adopted).toEqual([])
+        expect(repository.saved.get('dispositif-0')?.data).toMatchObject({ id: cmsId, titre: 'Titre du CMS' })
+        expect(repository.saved.get('dispositif-1')?.data.remplace_par).toBe(cmsId)
+      })
+
+      it('gives the same store whatever the order of the CMS writes and the snapshots', async () => {
+        const repository = new InMemoryRepository()
+        const service = new CanonicalProgramService(repository)
+        const snapshot = [inputFor(0), inputFor(1)]
+
+        await service.applySnapshot(snapshot)
+        const first = await repository.listKeys()
+        await service.applySnapshot(snapshot)
+        expect(await repository.listKeys()).toEqual(first)
+
+        await service.save({ ...inputFor(0), id: cmsId })
+        await service.applySnapshot(snapshot)
+        const afterCmsWrite = await repository.listKeys()
+        await service.applySnapshot(snapshot)
+
+        expect(afterCmsWrite.sort((a, b) => a.slug.localeCompare(b.slug))).toEqual([
+          { canonicalId: cmsId, slug: 'dispositif-0' },
+          { canonicalId: ids[1], slug: 'dispositif-1' },
+        ])
+        expect((await repository.listKeys()).sort((a, b) => a.slug.localeCompare(b.slug))).toEqual(afterCmsWrite)
+      })
     })
 
     it('rejects a snapshot without any valid program and leaves the store untouched', async () => {

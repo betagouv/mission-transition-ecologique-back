@@ -175,12 +175,14 @@ sans `fetch` préalable.
 L'import **aligne** le store sur l'amont sans jamais le vider
 (`CanonicalProgramService.applySnapshot`) :
 
-1. toutes les entrées (dispositifs + tombstones) sont validées avant toute écriture ;
+1. une entrée dont le slug est déjà stocké sous un autre id (id aléatoire écrit
+   par le CMS) reprend **l'id stocké**, et les références amont vers l'id dérivé
+   sont réécrites (`CanonicalIdentityMap`) ; puis toutes les entrées (dispositifs
+   + tombstones) sont validées avant toute écriture ;
 2. `CanonicalSnapshotPlan` compare aux lignes stockées (`listKeys`, lignes
    illisibles comprises) : upsert des dispositifs valides, suppression de ceux
-   **absents de l'amont**, suppression d'une ligne stockée sous un autre id pour
-   le même slug (id aléatoire écrit par le CMS : « réidentifiée »), et
-   **conservation** de la ligne d'un dispositif dont l'entrée amont est invalide ;
+   **absents de l'amont**, et **conservation** de la ligne d'un dispositif dont
+   l'entrée amont est invalide ;
 3. `CanonicalSnapshotGuard` refuse le snapshot, store inchangé et code de sortie
    non nul (la suite de `data:daily`, dont le push Grist, ne tourne pas), s'il ne
    contient aucun dispositif valide ou s'il retirerait plus de
@@ -210,7 +212,22 @@ fichier : le résultat ne dépend pas du répertoire de lancement.
 1. `import:tee --remote` : lecture HTTP de `programs.json` **et** `redirects.json`
    amont (`UpstreamJsonSource`, betagouv/mission-transition-ecologique), puis
    régénération complète du store canonical (+ tombstones de redirection) ;
-2. `grist-setup` (idempotent) puis `export:grist --push`.
+2. `grist-setup` (idempotent) puis `export:grist --push` ;
+3. `import:projects --remote` (depuis le 2026-10-01, ADR 0014) : lecture HTTP de
+   `projects.json` et `redirects.json`, puis alignement du store des projets
+   (`canonical.canonical_projects`, + tombstones de `project_redirects`) par
+   `CanonicalProjectService.applySnapshot`, avec le même garde-fou. Les projets
+   n'entrent pas dans l'export Grist : cette étape n'alimente que l'API AGIR
+   des projets.
+
+L'import des projets est **en dernier** (ordre revu le 2026-10-01 après revue de
+code) : la chaîne est un enchaînement `&&`, et un échec côté projets (snapshot
+refusé par le garde-fou, panne réseau sur `projects.json`) ne doit pas figer
+l'open data Grist, qui ne lit que les dispositifs. Contrepartie : un échec de
+l'import des dispositifs ou de l'export Grist arrête la chaîne avant les projets,
+dont le store garde alors son état de la veille. Un enregistrement de
+`projects.json` dont la forme est cassée n'arrête rien : il est écarté, listé
+dans le compte rendu, et sa ligne du store est conservée.
 
 Aucun commit de données : le store vit dans PostgreSQL (schéma `canonical`), plus
 dans un fichier du dépôt. L'ancien `.github/workflows/daily_data.yml` a été

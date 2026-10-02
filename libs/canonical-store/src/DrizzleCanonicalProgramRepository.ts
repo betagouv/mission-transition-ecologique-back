@@ -1,4 +1,4 @@
-import { eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray, ne } from 'drizzle-orm'
 import type { z } from 'zod'
 import { CanonicalProgramValidator, NullEventSink } from '@tee-backoffice/canonical'
 import type {
@@ -44,21 +44,31 @@ export class DrizzleCanonicalProgramRepository implements CanonicalProgramReposi
   }
 
   async save(program: CanonicalProgram): Promise<void> {
-    await this.upsert(this.db, program)
+    const replaced = await this.db.transaction((tx) => this.upsert(tx, program))
+    this.reportReplaced(replaced)
   }
 
-  async delete(canonicalId: string): Promise<void> {
-    await this.db.delete(canonicalPrograms).where(eq(canonicalPrograms.canonicalId, canonicalId))
+  async delete(canonicalId: string): Promise<boolean> {
+    const deleted = await this.db
+      .delete(canonicalPrograms)
+      .where(eq(canonicalPrograms.canonicalId, canonicalId))
+      .returning({ canonicalId: canonicalPrograms.canonicalId })
+    return deleted.length > 0
   }
 
   async applyChanges(changes: CanonicalProgramChanges): Promise<void> {
-    await this.db.transaction(async (tx) => {
+    const replaced = await this.db.transaction(async (tx) => {
       // Deletions first: a superseded row frees its slug for the upstream row.
       if (changes.delete.length > 0) {
         await tx.delete(canonicalPrograms).where(inArray(canonicalPrograms.canonicalId, changes.delete))
       }
-      for (const program of changes.save) await this.upsert(tx, program)
+      const replaced: CanonicalProgramKey[] = []
+      for (const program of changes.save) replaced.push(...(await this.upsert(tx, program)))
+      return replaced
     })
+    // A row evicted then written again in the same batch (slug swap) was not lost.
+    const savedIds = new Set<string>(changes.save.map((program) => program.id))
+    this.reportReplaced(replaced.filter((key) => !savedIds.has(key.canonicalId)))
   }
 
   async listKeys(): Promise<CanonicalProgramKey[]> {
@@ -91,7 +101,12 @@ export class DrizzleCanonicalProgramRepository implements CanonicalProgramReposi
     return programs
   }
 
-  private async upsert(db: Pick<CanonicalDb, 'insert'>, program: CanonicalProgram): Promise<void> {
+  /**
+   * Must run in a transaction. The slug is unique: a row holding it under
+   * another canonical id (e.g. written by the other source, CMS or upstream) is
+   * evicted first, and returned, so the upsert never hits the unique constraint.
+   */
+  private async upsert(db: Pick<CanonicalDb, 'insert' | 'delete'>, program: CanonicalProgram): Promise<CanonicalProgramKey[]> {
     const data = program.toJSON()
     const row = {
       canonicalId: data.id,
@@ -99,6 +114,10 @@ export class DrizzleCanonicalProgramRepository implements CanonicalProgramReposi
       data: JSON.stringify(data),
       updatedAt: data.date_mise_a_jour,
     }
+    const replaced = await db
+      .delete(canonicalPrograms)
+      .where(and(eq(canonicalPrograms.slug, row.slug), ne(canonicalPrograms.canonicalId, row.canonicalId)))
+      .returning({ canonicalId: canonicalPrograms.canonicalId, slug: canonicalPrograms.slug })
     await db
       .insert(canonicalPrograms)
       .values(row)
@@ -106,6 +125,14 @@ export class DrizzleCanonicalProgramRepository implements CanonicalProgramReposi
         target: canonicalPrograms.canonicalId,
         set: { slug: row.slug, data: row.data, updatedAt: row.updatedAt },
       })
+    return replaced
+  }
+
+  /** Emitted once the transaction is committed: an evicted row is a program id consumers lose. */
+  private reportReplaced(replaced: CanonicalProgramKey[]): void {
+    for (const { canonicalId, slug } of replaced) {
+      this.events.emit({ type: 'program_removed', severity: 'info', slug, canonicalId })
+    }
   }
 
   /** Validates a stored row, reporting (and dropping) it when it no longer fits. */

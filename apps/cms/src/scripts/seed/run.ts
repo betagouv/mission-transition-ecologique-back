@@ -1,11 +1,15 @@
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import { UpstreamAssetSource, UpstreamJsonSource, type TeeRecord } from '@tee-backoffice/format-adapters'
+import {
+  TeeProjectRecords,
+  UpstreamAssetSource,
+  UpstreamJsonSource,
+  type TeeRecord,
+} from '@tee-backoffice/format-adapters'
 import { GeographicAreasSeed } from './geographic-areas'
 import { UpstreamMediaImporter } from './media/UpstreamMediaImporter'
 import { ProgramsSeed } from './programs'
 import { ProjectsSeed } from './projects'
-import type { SourceProject } from './projects/types'
 import { UsersSeed } from './users'
 import { Config } from '@/config/Config'
 
@@ -19,9 +23,11 @@ process.stdout.write(`Source : ${source.describe()}\n`)
 process.stdout.write(`Fichiers : ${assets.describe()}\n`)
 const [programs, projects, operators] = await Promise.all([
   source.programs<TeeRecord[]>(),
-  source.projects<SourceProject[]>(),
+  source.projects(),
   source.operators(),
 ])
+// A broken upstream record is set aside, the others are still seeded: it counts as an error below.
+const rejectedProjects = source.rejectedProjects
 
 const payload = await getPayload({ config })
 const media = new UpstreamMediaImporter(payload, assets)
@@ -44,6 +50,10 @@ for (const [warning, count] of media.warnings) {
   process.stdout.write(`  ⚠ ${count.toString()} × ${warning}\n`)
 }
 // A partial seed must fail the job (CI, deployment) rather than pass unnoticed.
-const errors = programsResult.errors + projectsResult.errors
+if (rejectedProjects.length > 0) {
+  process.stderr.write(`Projets amont écartés (${rejectedProjects.length.toString()}) :\n`)
+  for (const rejected of rejectedProjects) process.stderr.write(`  ✗ ${TeeProjectRecords.describe(rejected)}\n`)
+}
+const errors = programsResult.errors + projectsResult.errors + rejectedProjects.length
 if (errors > 0) process.stderr.write(`Seed incomplet : ${errors.toString()} erreur(s).\n`)
 process.exit(errors > 0 ? 1 : 0)

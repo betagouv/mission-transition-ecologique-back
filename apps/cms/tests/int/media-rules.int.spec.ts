@@ -59,6 +59,15 @@ describe('Media access, sourcePath lock and category filters', () => {
     await payload.delete({ collection: 'media', where: { id: { in: createdMedia } } })
   })
 
+  it('copies an imported media as a manual upload, without its source path', async () => {
+    // Trusted server-side call: field access, which also strips the value, is bypassed.
+    const copy = await payload.duplicate({ collection: 'media', id: operatorLogo })
+    createdMedia.push(copy.id)
+
+    expect(copy.sourcePath ?? null).toBeNull()
+    expect(copy.filename).not.toBe('fixture-rules-logo.webp')
+  })
+
   it('refuses a media upload to a non-admin user', async () => {
     await expect(
       payload.create({

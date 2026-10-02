@@ -3,8 +3,14 @@ export * from './tee/tee-program.schema';
 export * from './tee/TeeExporter';
 export * from './tee/TeeImporter';
 export * from './tee/SlugCanonicalId';
+export * from './tee/SlugRedirects';
 export * from './tee/ProgramRedirects';
 export * from './tee/RedirectTombstoneBuilder';
+export * from './tee/tee-project.schema';
+export * from './tee/TeeProjectRecords';
+export * from './tee/TeeProjectImporter';
+export * from './tee/ProjectRedirects';
+export * from './tee/ProjectTombstoneBuilder';
 export * from './tee/UpstreamFile';
 export * from './tee/LocalJsonSnapshot';
 export * from './tee/UpstreamFetchError';
@@ -26,6 +32,7 @@ export * from './agir/agir-detail.schema';
 export * from './agir/ademe-pivot.types';
 export * from './agir/ademe-pivot.schema';
 export * from './agir/AgirVocabulary';
+export * from './agir/AgirRoutes';
 export * from './agir/AgirSourceMapper';
 export * from './agir/AgirEtatMapper';
 export * from './agir/AgirThemeMapper';
@@ -35,6 +42,15 @@ export * from './agir/AgirExportPolicy';
 export * from './agir/AgirListeExporter';
 export * from './agir/AgirDetailExporter';
 export * from './agir/AdemePivotExporter';
+
+// AGIR projects export (index + pivot)
+export * from './agir/projects/agir-projet-liste.types';
+export * from './agir/projects/agir-projet-pivot.types';
+export * from './agir/projects/agir-projet-pivot.schema';
+export * from './agir/projects/AgirProjetEtatMapper';
+export * from './agir/projects/AgirProjetReferences';
+export * from './agir/projects/AgirProjetListeExporter';
+export * from './agir/projects/AgirProjetPivotExporter';
 
 // Etalab schema export → Grist (dispositif-aide + extension professionnels)
 export * from './schema/schema-row.types';

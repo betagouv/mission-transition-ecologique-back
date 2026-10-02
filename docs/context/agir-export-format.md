@@ -4,7 +4,12 @@
 > Le convertisseur vit dans `libs/format-adapters/src/agir/`;
 > les endpoints publics dans `apps/cms/src/endpoints/agir/`. 
 > Source des données = **store canonical**
-> (`CanonicalProgramRepository`), jamais les collections Payload.
+> (`CanonicalProgramRepository`, `CanonicalProjectRepository`), jamais les
+> collections Payload.
+>
+> Ce document décrit d'abord les **dispositifs** (index, détail R2DA, pivot
+> ADEME), puis les **projets** (index et pivot, section « Projets » en fin de
+> document, ADR 0014).
 
 ## Endpoints (publics, lecture seule, JSON)
 
@@ -13,8 +18,10 @@
 | GET | `/api/agir/programs` | `ListeDispositif[]` (index, 2 URLs/entrée) | `repository.findAll()` |
 | GET | `/api/agir/programs/{slug}/detail` | `DetailDispositif` (proposition 1, R2DA) | `repository.findBySlug(slug)` |
 | GET | `/api/agir/programs/{slug}/pivot` | `AdemePivot` (proposition 2) | `repository.findBySlug(slug)` |
+| GET | `/api/agir/projects` | `ListeProjet[]` (index, 1 URL/entrée) | store des projets, `findAll()` |
+| GET | `/api/agir/projects/{slug}/pivot` | `AgirProjetPivot` | store des projets, `findBySlug(slug)` ; références résolues sur les deux stores |
 
-Règles communes :
+Règles communes aux routes des dispositifs (celles des projets sont dans la section « Projets ») :
 
 - N'exposer que les dispositifs **publiés** (`statut_edition === 'pret_prod'`,
   `ExportPolicy.isPublished`) **et** dont `statut_dispositif ∈ { valide,
@@ -39,6 +46,8 @@ Règles communes :
 | Review app (une par PR) | URL de la review app Scalingo (`tee-back-preprod-pr<n>`) | `{baseUrl}/api/agir/programs` |
 | Production | pas encore déployée | |
 
+L'index des projets est à la même base : `{baseUrl}/api/agir/projects`.
+
 Aucune authentification : un simple `GET` suffit.
 
 ```sh
@@ -50,16 +59,31 @@ curl "$BASE/api/agir/programs/accelerateur-decarbonation/pivot"   # pivot ADEME
 ```
 
 Les liens absolus `urlDetail`/`urlPivot` de l'index sont construits à partir
-de la base URL publique, résolue dans cet ordre (`resolveBaseUrl` dans
-`agirEndpoints.ts`) :
+de la base URL publique (`PublicBaseUrlResolver.resolve` de `src/utils/`,
+partagé par `agirProgramEndpoints.ts` et `agirProjectEndpoints.ts`).
 
-1. la variable `PUBLIC_BASE_URL` (`Config.publicBaseUrl()`), à renseigner sur
-   chaque app Scalingo ; sur les review apps, `scalingo.json` la redéfinit avec
-   l'URL de la review app ;
-2. sinon les en-têtes `x-forwarded-host` / `x-forwarded-proto` posés par le
-   routeur ;
-3. sinon `req.origin`, qui derrière le routeur Scalingo vaut l'adresse interne
-   du conteneur (`localhost:36xxx`) : liens inutilisables.
+La forme des URL n'est écrite qu'à un endroit, `AgirRoutes`
+(`libs/format-adapters/src/agir/`) : les endpoints y prennent leur `path`
+(`AgirRoutes.PROGRAM_PIVOT` = `/agir/programs/:slug/pivot`...) et les exporters
+d'index y construisent leurs liens à partir des mêmes gabarits (slug encodé,
+préfixe `/api` de Payload). Une route renommée ne peut donc pas laisser l'index
+servir des liens vers l'ancienne. Ces routes restent un contrat avec AGIR : les
+specs les écrivent en toutes lettres, pour qu'un changement fasse échouer un
+test.
+
+**En production** (`NODE_ENV=production` : prod, préprod, review apps), seule
+la variable `PUBLIC_BASE_URL` (`Config.publicBaseUrl()`) est lue. Elle est à
+renseigner sur chaque app Scalingo ; sur les review apps, `scalingo.json` la
+redéfinit avec l'URL de la review app. Sans elle, les endpoints qui produisent
+des liens absolus répondent en erreur : les en-têtes `x-forwarded-*` ne sont
+pas lus, un client qui atteindrait l'app sans passer par le routeur pouvant les
+forger et faire apparaître son propre domaine dans les liens.
+
+**Hors production**, la base est résolue dans cet ordre :
+
+1. la variable `PUBLIC_BASE_URL` si elle est renseignée ;
+2. sinon les en-têtes `x-forwarded-host` / `x-forwarded-proto` ;
+3. sinon `req.origin` (`http://localhost:3000` en local).
 
 La préprod étant réinitialisée et reseedée à chaque déploiement (ADR 0012), son
 contenu reflète l'amont au moment du dernier déploiement, complété par le
@@ -279,9 +303,206 @@ Questions de vocabulaire encore ouvertes : voir « Vocabulaire AGIR » plus haut
 (chaînes `etatDispositif`/`statut`/`source`/`typeDispositif`/`typeSecteur`, et
 noms des clés `urlDetail`/`urlPivot`).
 
+## Projets (index + pivot)
+
+Ajoutés le 2026-10-01 (ADR 0014, feature 008). La projection vit dans
+`libs/format-adapters/src/agir/projects/`, les endpoints dans
+`apps/cms/src/endpoints/agir/agirProjectEndpoints.ts`. Ils lisent le store
+`canonical.canonical_projects`, jamais la collection Payload `Projects`.
+
+> ⚠️ **Format placeholder** : AGIR n'a pas encore spécifié ce qu'il attend pour
+> les projets. Les noms de clés (`idProjet`, `etatProjet`, `urlPivot`) et le
+> vocabulaire reprennent ceux des dispositifs et sont **à confirmer avec AGIR**.
+> Il n'y a pas de « détail R2DA » pour les projets : R2DA décrit un dispositif
+> d'aide.
+
+### Routes
+
+| Méthode | Route | Réponse |
+|---|---|---|
+| GET | `/api/agir/projects` | `ListeProjet[]` : tous les projets stockés |
+| GET | `/api/agir/projects/{slug}/pivot` | `AgirProjetPivot` : pivot du projet avec ses deltas d'export |
+
+```sh
+# Local (pnpm nx run @tee-backoffice/cms:dev)
+curl http://localhost:3000/api/agir/projects
+curl http://localhost:3000/api/agir/projects/plan-action-eco-energie/pivot
+curl -i http://localhost:3000/api/agir/projects/inconnu/pivot          # 404
+
+# Préprod
+BASE=https://preprod.back.mission-transition-ecologique.incubateur.net
+curl "$BASE/api/agir/projects"
+curl "$BASE/api/agir/projects/plan-action-eco-energie/pivot"
+curl "$BASE/api/agir/projects/vehicule-propre/pivot"                   # tombstone : statut remplace, remplace_par voiture-propre
+```
+
+Aucune authentification, pas de pagination (91 projets et 6 tombstones au
+2026-10-01).
+
+### Règles
+
+- **Pas de filtre d'export** : le store ne contient que des projets publiés
+  (`ProjectCanonicalSyncPolicy`), donc tout projet stocké est servi, tombstones
+  de redirection compris (`etatProjet` / `statut` = `remplace`). Un brouillon du
+  CMS est absent de l'index et répond `404` en pivot ; un brouillon enregistré
+  par-dessus une version publiée laisse servie la version publiée.
+- **`404`** `{ "error": "Projet introuvable" }` si le slug n'est pas dans le
+  store, `200` + corps JSON sinon.
+- **Les tombstones n'existent qu'après un passage de l'import amont direct**
+  (`import:projects`, pipeline quotidien) : le seed n'en produit pas. Juste
+  après une réinitialisation de la préprod, un ancien slug répond donc `404`
+  jusqu'à la tâche planifiée suivante.
+- **Slug encodé** dans `urlPivot` (`encodeURIComponent`) : un tombstone peut
+  garder un ancien slug non kebab-case (`maintenance-préventive`).
+- **Aucun lien mort** (`AgirProjetReferences`) : le pivot interne référence
+  dispositifs et projets par identifiant pivot ; l'export les résout en slugs
+  et écarte ce que l'API ne sert pas :
+  - `dispositifs` : seulement les dispositifs **exportables vers AGIR**
+    (`AgirExportPolicy.isExportable`, la règle de `/api/agir/programs`) ; un
+    dispositif non publié, `inconnu` ou absent du store est écarté ;
+  - `projets_lies.projets` : seulement les projets `valide` ; un projet lié
+    remplacé (tombstone) ou absent du store est écarté ;
+  - `remplace_par` : slug du projet courant, omis s'il est introuvable ;
+  - une liste dont toutes les références sont écartées reste présente, vide.
+  Cas passager : un projet créé dans l'admin sous le slug d'un projet amont
+  remplace, à sa publication, la ligne amont du store (un slug, une ligne ;
+  voir `canonical-project-format.md`, « Règles du store »). Les projets qui
+  référençaient l'identifiant amont perdent ce lien dans leur pivot exporté
+  jusqu'à l'import quotidien suivant, qui remet la ligne amont. L'`id` exporté
+  étant le slug, AGIR ne voit aucun changement d'identifiant.
+- **Image** : `image.url` est rendue absolue (un chemin enraciné
+  `/api/media/file/...` est préfixé par la base URL publique). L'image est
+  **omise** si le résultat n'est pas une URL `http(s)` absolue (URL relative au
+  protocole `//hôte/...`, `mailto:`, base URL inutilisable). `chemin_source`
+  n'est jamais exposé.
+- **Liste blanche** : `AgirProjetPivotExporter` construit la sortie champ par
+  champ puis la revalide par `agirProjetPivotSchema` (`.strict()`) : un champ
+  ajouté plus tard au pivot interne ne peut pas fuir.
+
+### Vocabulaire (placeholder, centralisé dans `AgirVocabulary`)
+
+- `source` : comme les dispositifs (`INTERNE → tee`, `AgirSourceMapper`).
+- `etatProjet` (index) et `statut` (pivot), `AgirVocabulary.ETAT_PROJET` via
+  `AgirProjetEtatMapper` : `valide → en_prod`, `remplace → remplace`. Pas d'état
+  « indisponible » : tout projet stocké est publié.
+- `theme_principal` et `themes` : vocabulaire wire à 7 valeurs des dispositifs
+  (`AgirThemeMapper`, famille environnement repliée sur `environnement`, sans
+  doublon dans `themes`).
+
+### `ListeProjet` (index)
+
+Type `ListeProjet` (`agir-projet-liste.types.ts`), produit par
+`AgirProjetListeExporter`.
+
+| Champ | Source pivot |
+|---|---|
+| `idProjet` | `slug` |
+| `titre` | `titre` |
+| `source` | `AgirSourceMapper(source)` |
+| `etatProjet` | `AgirProjetEtatMapper(statut_projet)` |
+| `dateDerniereModification` | `date_mise_a_jour` |
+| `urlPivot` | `{baseUrl}/api/agir/projects/{slug encodé}/pivot` |
+
+```json
+{
+  "idProjet": "plan-action-eco-energie",
+  "titre": "Mettre en place un plan d’action éco-énergie",
+  "source": "tee",
+  "etatProjet": "en_prod",
+  "dateDerniereModification": "2026-03-19T17:00:00+01:00",
+  "urlPivot": "https://preprod.back.mission-transition-ecologique.incubateur.net/api/agir/projects/plan-action-eco-energie/pivot"
+}
+```
+
+### `AgirProjetPivot` (pivot)
+
+= pivot interne du projet (`docs/context/canonical-project-format.md`) + deltas
+d'export. Type inféré de `agirProjetPivotSchema` (`agir-projet-pivot.schema.ts`).
+
+| Champ exporté | Type | Delta par rapport au pivot interne |
+|---|---|---|
+| `id` | slug (ancien slug toléré si `statut = remplace`) | `slug`, jamais le cuid2 |
+| `source` | `tee` / `ademe` / `schema` | minuscules (`AgirSourceMapper`) |
+| `date_mise_a_jour` | date-heure ISO | aucun |
+| `statut` | `en_prod` \| `remplace` | remplace `statut_projet` |
+| `remplace_par` | slug | cuid2 résolu en slug du projet courant |
+| `titre`, `nom_court`, `description_courte` | chaîne | aucun |
+| `image` | `{ url }` | URL `http(s)` absolue, sans `chemin_source` |
+| `description_longue`, `description_complementaire` | `{ titre?, contenu }` | aucun |
+| `theme_principal`, `themes` | thème AGIR | vocabulaire wire (`AgirThemeMapper`) |
+| `secteurs` | code NAF[] | aucun |
+| `priorite` | `{ defaut?, mise_en_avant?, par_secteur? }` | aucun |
+| `dispositifs` | slug[] | cuid2 résolus en slugs, dispositifs non exportables écartés |
+| `projets_lies` | `{ titre?, description?, projets: slug[] }` | cuid2 résolus en slugs, projets remplacés écartés |
+| `faq` | `{ titre?, questions[{ question, reponse }] }` | aucun |
+| `seo` | `{ titre?, description? }` | aucun |
+
+`remplace_par` et `dispositifs[]` acceptent un **slug hérité** (non kebab-case) :
+ils peuvent désigner un tombstone, qui garde son ancien slug.
+`projets_lies.projets[]` reste en kebab-case strict : seuls des projets `valide`
+y figurent.
+
+Exemple abrégé, d'après le projet complet des fixtures (slugs de dispositifs fictifs) :
+
+```json
+{
+  "id": "plan-action-eco-energie",
+  "source": "tee",
+  "date_mise_a_jour": "2026-03-19T17:00:00+01:00",
+  "statut": "en_prod",
+  "titre": "Mettre en place un plan d’action éco-énergie",
+  "nom_court": "Plan éco-énergie",
+  "description_courte": "Réduire durablement vos consommations d’énergie.",
+  "image": { "url": "https://cdn.example.org/media/plan-eco-energie.webp" },
+  "description_longue": { "titre": "Pourquoi agir ?", "contenu": "Un plan d’action structure vos **économies d’énergie**." },
+  "theme_principal": "energie",
+  "themes": ["energie", "batiment"],
+  "secteurs": ["C", "I"],
+  "priorite": { "defaut": 3, "mise_en_avant": 1, "par_secteur": [{ "code_naf": "C", "priorite": 1 }] },
+  "dispositifs": ["slug-du-dispositif-1", "slug-du-dispositif-2"],
+  "projets_lies": { "titre": "Projets complémentaires", "projets": ["isolation-thermique"] },
+  "faq": { "titre": "Questions fréquentes", "questions": [{ "question": "Par où commencer ?", "reponse": "Par un **diagnostic** de vos consommations." }] },
+  "seo": { "titre": "Plan d’action éco-énergie" }
+}
+```
+
+Tombstone de redirection :
+
+```json
+{
+  "id": "vehicule-propre",
+  "statut": "remplace",
+  "remplace_par": "voiture-propre",
+  "...": "le reste est le contenu du projet courant"
+}
+```
+
+### Questions à poser à AGIR pour les projets
+
+- Noms de clés de l'index (`idProjet`, `etatProjet`, `urlPivot`) et valeurs de
+  `statut`.
+- Références par slug : est-ce suffisant, ou faut-il un identifiant stable
+  indépendant d'un slug renommable (même question que pour les dispositifs) ?
+- `secteurs` et `priorite.par_secteur[].code_naf` : codes NAF bruts, sans
+  libellé.
+- Faut-il exposer les tombstones dans l'index, ou seulement en pivot ?
+
 ## Tests
 
 `libs/format-adapters/src/agir/*.spec.ts` (golden fixtures `valid-minimal` /
 `valid-full` de `__fixtures__/canonical-programs.ts`, + variantes
 `indisponible`/`archived`/`draft` pour les filtres). Les endpoints ne portent pas
 de logique testable : la projection est couverte par la lib.
+
+Projets : `libs/format-adapters/src/agir/projects/*.spec.ts` (fixtures
+`minimalProject` / `fullProject` / `replacedProject` de
+`__fixtures__/canonical-projects.ts`) et, côté CMS,
+`apps/cms/tests/int/agir-projects.int.spec.ts` (handlers appelés directement
+avec `createLocalReq`, sans serveur HTTP : index des projets publiés, brouillon
+absent, slugs des dispositifs et projets liés dans le pivot, 404).
+
+Disponibilité : les endpoints ouvrent le store à la première requête. Si cette
+ouverture échoue (base momentanément injoignable), la requête répond `500` et
+la suivante réessaie (`RetryableMemo`) : l'échec n'est plus gardé en mémoire
+jusqu'au redémarrage du conteneur. Vaut pour les routes des dispositifs comme
+pour celles des projets.
