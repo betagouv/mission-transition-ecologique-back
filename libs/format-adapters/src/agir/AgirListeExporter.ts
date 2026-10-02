@@ -1,6 +1,7 @@
 import type { CanonicalProgram } from '@tee-backoffice/canonical'
 import { AgirEtatMapper } from './AgirEtatMapper'
 import { AgirExportPolicy } from './AgirExportPolicy'
+import { AgirRoutes } from './AgirRoutes'
 import { AgirSourceMapper } from './AgirSourceMapper'
 import type { ListeDispositif, ListeDispositifDate } from './agir-liste.types'
 
@@ -15,10 +16,10 @@ export interface AgirListeExporterOptions {
  * base URL — never hard-coded. `exportMany` applies the AGIR inclusion filter.
  */
 export class AgirListeExporter {
-  private readonly baseUrl: string
+  private readonly routes: AgirRoutes
 
   constructor(options: AgirListeExporterOptions) {
-    this.baseUrl = options.baseUrl.replace(/\/+$/, '')
+    this.routes = new AgirRoutes(options.baseUrl)
   }
 
   /** Exportable programs only (published + exportable status). */
@@ -40,8 +41,8 @@ export class AgirListeExporter {
       source: AgirSourceMapper.toAgir(d.source),
       dateDispositif,
       etatDispositif: AgirEtatMapper.toEtat(d.statut_dispositif),
-      urlDetail: `${this.baseUrl}/api/agir/programs/${encodeURIComponent(d.slug)}/detail`,
-      urlPivot: `${this.baseUrl}/api/agir/programs/${encodeURIComponent(d.slug)}/pivot`,
+      urlDetail: this.routes.programDetailUrl(d.slug),
+      urlPivot: this.routes.programPivotUrl(d.slug),
     }
     if (d.date_mise_a_jour) out.dateDerniereModification = d.date_mise_a_jour
 

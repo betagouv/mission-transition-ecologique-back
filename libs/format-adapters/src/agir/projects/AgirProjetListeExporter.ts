@@ -1,4 +1,5 @@
 import type { CanonicalProject } from '@tee-backoffice/canonical'
+import { AgirRoutes } from '../AgirRoutes'
 import { AgirSourceMapper } from '../AgirSourceMapper'
 import { AgirProjetEtatMapper } from './AgirProjetEtatMapper'
 import type { ListeProjet } from './agir-projet-liste.types'
@@ -14,10 +15,10 @@ export interface AgirProjetListeExporterOptions {
  * ship too, with `etatProjet: remplace`.
  */
 export class AgirProjetListeExporter {
-  private readonly baseUrl: string
+  private readonly routes: AgirRoutes
 
   constructor(options: AgirProjetListeExporterOptions) {
-    this.baseUrl = options.baseUrl.replace(/\/+$/, '')
+    this.routes = new AgirRoutes(options.baseUrl)
   }
 
   exportMany(projects: readonly CanonicalProject[]): ListeProjet[] {
@@ -33,7 +34,7 @@ export class AgirProjetListeExporter {
       source: AgirSourceMapper.toAgir(d.source),
       etatProjet: AgirProjetEtatMapper.toEtat(d.statut_projet),
       dateDerniereModification: d.date_mise_a_jour,
-      urlPivot: `${this.baseUrl}/api/agir/projects/${encodeURIComponent(d.slug)}/pivot`,
+      urlPivot: this.routes.projectPivotUrl(d.slug),
     }
   }
 }

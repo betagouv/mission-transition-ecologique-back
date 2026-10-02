@@ -32,6 +32,7 @@ export * from './agir/agir-detail.schema';
 export * from './agir/ademe-pivot.types';
 export * from './agir/ademe-pivot.schema';
 export * from './agir/AgirVocabulary';
+export * from './agir/AgirRoutes';
 export * from './agir/AgirSourceMapper';
 export * from './agir/AgirEtatMapper';
 export * from './agir/AgirThemeMapper';

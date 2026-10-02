@@ -13,7 +13,7 @@ import { Programs } from '@/collections/Programs'
 import { Projects } from '@/collections/Projects'
 import { GeographicAreas } from '@/collections/GeographicAreas'
 import { ReviewComments } from '@/collections/ReviewComments'
-import { agirEndpoints } from '@/endpoints/agir/agirEndpoints'
+import { agirProgramEndpoints } from '@/endpoints/agir/agirProgramEndpoints'
 import { agirProjectEndpoints } from '@/endpoints/agir/agirProjectEndpoints'
 import { migrations } from '@/migrations'
 import { Config } from '@/config/Config'
@@ -79,7 +79,7 @@ export default buildConfig({
     GeographicAreas,
     ReviewComments,
   ],
-  endpoints: [...agirEndpoints, ...agirProjectEndpoints],
+  endpoints: [...agirProgramEndpoints, ...agirProjectEndpoints],
   editor: lexicalEditor(),
   secret: Config.payloadSecret(),
   typescript: {

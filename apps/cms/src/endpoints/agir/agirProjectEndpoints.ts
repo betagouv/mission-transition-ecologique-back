@@ -2,11 +2,12 @@ import {
   AgirProjetListeExporter,
   AgirProjetPivotExporter,
   AgirProjetReferences,
+  AgirRoutes,
 } from '@tee-backoffice/format-adapters'
 import type { Endpoint, PayloadRequest } from 'payload'
 import { getCanonicalProjectRepository } from '@/services/canonical/canonicalProjectRepository'
 import { getCanonicalProgramRepository } from '@/services/canonical/canonicalRepository'
-import { AgirBaseUrlResolver } from './AgirBaseUrlResolver'
+import { PublicBaseUrlResolver } from '@/utils/PublicBaseUrlResolver'
 
 /**
  * Public, read-only AGIR endpoints for projects. Like the program endpoints they
@@ -25,7 +26,7 @@ function notFound(): Response {
 const listeHandler = async (req: PayloadRequest): Promise<Response> => {
   const repository = await getCanonicalProjectRepository(req.payload.logger)
   const projects = await repository.findAll()
-  return Response.json(new AgirProjetListeExporter({ baseUrl: AgirBaseUrlResolver.resolve(req) }).exportMany(projects))
+  return Response.json(new AgirProjetListeExporter({ baseUrl: PublicBaseUrlResolver.resolve(req) }).exportMany(projects))
 }
 
 const pivotHandler = async (req: PayloadRequest): Promise<Response> => {
@@ -39,11 +40,11 @@ const pivotHandler = async (req: PayloadRequest): Promise<Response> => {
   const programRepository = await getCanonicalProgramRepository(req.payload.logger)
   const [projects, programs] = await Promise.all([projectRepository.findAll(), programRepository.findAll()])
   const references = new AgirProjetReferences({ projects, programs })
-  const exporter = new AgirProjetPivotExporter(references, { baseUrl: AgirBaseUrlResolver.resolve(req) })
+  const exporter = new AgirProjetPivotExporter(references, { baseUrl: PublicBaseUrlResolver.resolve(req) })
   return Response.json(exporter.export(project))
 }
 
 export const agirProjectEndpoints: Endpoint[] = [
-  { path: '/agir/projects', method: 'get', handler: listeHandler },
-  { path: '/agir/projects/:slug/pivot', method: 'get', handler: pivotHandler },
+  { path: AgirRoutes.PROJECTS, method: 'get', handler: listeHandler },
+  { path: AgirRoutes.PROJECT_PIVOT, method: 'get', handler: pivotHandler },
 ]

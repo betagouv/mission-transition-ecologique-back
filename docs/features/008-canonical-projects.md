@@ -156,6 +156,7 @@ Les tableaux ci-dessous sont ceux du plan. Tous les fichiers listés ont été c
 | `src/agir/projects/AgirProjetListeExporter.ts` (+ `.spec.ts`) | Créer |
 | `src/agir/projects/AgirProjetPivotExporter.ts` (+ `.spec.ts`) | Créer |
 | `src/agir/AgirVocabulary.ts` | Modifier : `ETAT_PROJET` |
+| `src/agir/AgirRoutes.ts` (+ `.spec.ts`) | Créer : gabarits de route et liens absolus AGIR, partagés par les endpoints du CMS et les exporters d'index (dispositifs et projets) |
 | `src/__fixtures__/canonical-projects.ts` | Créer |
 | `src/index.ts` | Modifier : exports |
 | `scripts/import-projects.ts` | Créer |
@@ -181,10 +182,10 @@ Les tableaux ci-dessous sont ceux du plan. Tous les fichiers listés ont été c
 | `src/services/canonical/to-payload/CanonicalProjectToPayloadMapper.ts` | Créer |
 | `src/services/canonical/to-payload/ProjectRelations.ts`, `PayloadProjectRelations.ts` | Créer : port et adaptateur de résolution des relations |
 | `src/services/canonical/observability/PayloadLoggerEventSink.ts` | Modifier : nouveaux événements |
-| `src/endpoints/agir/AgirBaseUrlResolver.ts` | Créer : `resolveBaseUrl` extrait de `agirEndpoints.ts` |
-| `src/endpoints/agir/agirEndpoints.ts` | Modifier : utilise `AgirBaseUrlResolver` |
+| `src/utils/PublicBaseUrlResolver.ts` | Créer : `resolveBaseUrl` extrait des endpoints AGIR des dispositifs |
+| `src/endpoints/agir/agirProgramEndpoints.ts` | Renommer (ex `agirEndpoints.ts`) : utilise `PublicBaseUrlResolver` |
 | `src/endpoints/agir/agirProjectEndpoints.ts` | Créer |
-| `payload.config.ts` | Modifier : `endpoints: [...agirEndpoints, ...agirProjectEndpoints]` |
+| `payload.config.ts` | Modifier : `endpoints: [...agirProgramEndpoints, ...agirProjectEndpoints]` |
 | `src/scripts/seed/projects/index.ts`, `ProjectImporter.ts`, `LinkedProjectsUpdater.ts` | Modifier : passent par `TeeProjectImporter` + `CanonicalProjectToPayloadMapper` |
 | `src/scripts/seed/projects/ProjectMapper.ts`, `types.ts` | Supprimer |
 | `src/scripts/seed/run.ts` | Modifier : type `TeeProject` |
@@ -400,9 +401,9 @@ Tout ce qui est logique de format vit dans `libs/format-adapters/src/agir/projec
    - `image.url` rendue absolue (`baseUrl` + chemin enraciné), `chemin_source` non exposé ;
    - le reste (`titre`, `nom_court`, descriptions, `secteurs`, `priorite`, `faq`, `seo`, `date_mise_a_jour`) tel quel.
 5. `src/__fixtures__/canonical-projects.ts` : `minimal`, `full`, `replaced`. Tests des deux exporters (liens absolus, slug encodé, dispositif non exportable écarté, projet lié remplacé écarté, URL d'image relative rendue absolue, champ interne absent de la sortie).
-6. **`AgirBaseUrlResolver`** (`apps/cms/src/endpoints/agir/`) : `static resolve(req: PayloadRequest): string`, logique actuelle de `resolveBaseUrl`. `agirEndpoints.ts` l'utilise.
+6. **`PublicBaseUrlResolver`** (`apps/cms/src/utils/`, sans lien avec AGIR) : `static resolve(req: PayloadRequest): string`, logique actuelle de `resolveBaseUrl`. `agirProgramEndpoints.ts` (ex `agirEndpoints.ts`) l'utilise.
 7. **`agirProjectEndpoints.ts`** : `GET /agir/projects` (`repository.findAll()` → `AgirProjetListeExporter`) et `GET /agir/projects/:slug/pivot` (`findBySlug`, 404 `{ error: 'Projet introuvable' }` si absent, sinon références construites depuis `findAll()` des deux repositories → `AgirProjetPivotExporter`). Tout projet stocké est exportable : pas de politique d'export dédiée.
-8. `payload.config.ts` : `endpoints: [...agirEndpoints, ...agirProjectEndpoints]`.
+8. `payload.config.ts` : `endpoints: [...agirProgramEndpoints, ...agirProjectEndpoints]`.
 9. **Test d'intégration `agir-projects.int.spec.ts`** : après seed des fixtures, l'index liste les projets publiés, le pivot d'un projet renvoie les slugs de ses dispositifs et projets liés, un slug inconnu renvoie 404, un brouillon est absent de l'index.
 
 ### Lot 8 : documentation

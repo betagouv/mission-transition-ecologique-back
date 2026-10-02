@@ -4,16 +4,18 @@ import {
   AgirDetailExporter,
   AgirExportPolicy,
   AgirListeExporter,
+  AgirRoutes,
   RemplaceParResolver,
 } from '@tee-backoffice/format-adapters'
 import type { Endpoint, PayloadRequest } from 'payload'
 import { getCanonicalProgramRepository } from '@/services/canonical/canonicalRepository'
-import { AgirBaseUrlResolver } from './AgirBaseUrlResolver'
+import { PublicBaseUrlResolver } from '@/utils/PublicBaseUrlResolver'
 
 /**
- * Public, read-only AGIR endpoints. They only TRANSPORT: read the canonical
- * store, filter exportable programs, hand off to the format-adapters exporters,
- * and serialize. All projection logic (and its tests) live in the library.
+ * Public, read-only AGIR endpoints for programs. They only TRANSPORT: read the
+ * canonical store, filter exportable programs, hand off to the format-adapters
+ * exporters, and serialize. All projection logic (and its tests) live in the
+ * library.
  *
  * Mounted under `/api` by Payload: `/api/agir/programs`,
  * `/api/agir/programs/:slug/detail`, `/api/agir/programs/:slug/pivot`.
@@ -34,8 +36,8 @@ async function findExportable(req: PayloadRequest, slug: string): Promise<Canoni
 const listeHandler = async (req: PayloadRequest): Promise<Response> => {
   const repository = await getCanonicalProgramRepository(req.payload.logger)
   const programs = await repository.findAll()
-  // Index links are absolute; see AgirBaseUrlResolver for the reverse-proxy caveat.
-  return Response.json(new AgirListeExporter({ baseUrl: AgirBaseUrlResolver.resolve(req) }).exportMany(programs))
+  // Index links are absolute; see PublicBaseUrlResolver for the reverse-proxy caveat.
+  return Response.json(new AgirListeExporter({ baseUrl: PublicBaseUrlResolver.resolve(req) }).exportMany(programs))
 }
 
 const detailHandler = async (req: PayloadRequest): Promise<Response> => {
@@ -53,8 +55,8 @@ const pivotHandler = async (req: PayloadRequest): Promise<Response> => {
   return Response.json(new AdemePivotExporter(resolver).export(program))
 }
 
-export const agirEndpoints: Endpoint[] = [
-  { path: '/agir/programs', method: 'get', handler: listeHandler },
-  { path: '/agir/programs/:slug/detail', method: 'get', handler: detailHandler },
-  { path: '/agir/programs/:slug/pivot', method: 'get', handler: pivotHandler },
+export const agirProgramEndpoints: Endpoint[] = [
+  { path: AgirRoutes.PROGRAMS, method: 'get', handler: listeHandler },
+  { path: AgirRoutes.PROGRAM_DETAIL, method: 'get', handler: detailHandler },
+  { path: AgirRoutes.PROGRAM_PIVOT, method: 'get', handler: pivotHandler },
 ]

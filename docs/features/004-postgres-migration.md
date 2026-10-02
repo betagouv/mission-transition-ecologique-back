@@ -44,7 +44,7 @@ Sur Scalingo, le système de fichiers d'un conteneur est éphémère : les deux 
 | `docker/postgres/init/01-create-test-db.sql` | Créer : `CREATE DATABASE tee_test` (exécuté une seule fois, au premier démarrage du volume) |
 | `apps/cms/payload.config.ts` | Modifier : `postgresAdapter({ pool: { connectionString, max }, migrationDir, prodMigrations })` |
 | `apps/cms/src/config/Config.ts` | Créer (+ `objectStorage()` pour Scaleway) : point d'entrée unique des variables d'environnement du CMS (URL de base avec repli `SCALINGO_POSTGRESQL_URL`, taille du pool, secret Payload, URL publique), avec valeurs par défaut et erreurs explicites |
-| `apps/cms/src/endpoints/agir/agirEndpoints.ts` | Modifier : `PUBLIC_BASE_URL` lu via `Config` |
+| `apps/cms/src/endpoints/agir/agirProgramEndpoints.ts` | Modifier : `PUBLIC_BASE_URL` lu via `Config` |
 | `apps/cms/src/migrations/` | Créer : migration initiale générée (`payload migrate:create initial`) + `index.ts` généré |
 | `apps/cms/project.json` | Modifier : targets `migrate`, `migrate:create`, `migrate:status` (`payload migrate…`, cwd projet) |
 | `apps/cms/.env.example` | Modifier : `DATABASE_URI` et `CANONICAL_DATABASE_URI` en `postgres://tee:tee@localhost:5432/tee` |

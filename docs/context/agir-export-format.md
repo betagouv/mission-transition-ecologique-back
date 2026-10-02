@@ -59,16 +59,31 @@ curl "$BASE/api/agir/programs/accelerateur-decarbonation/pivot"   # pivot ADEME
 ```
 
 Les liens absolus `urlDetail`/`urlPivot` de l'index sont construits à partir
-de la base URL publique, résolue dans cet ordre (`AgirBaseUrlResolver.resolve`,
-partagé par `agirEndpoints.ts` et `agirProjectEndpoints.ts`) :
+de la base URL publique (`PublicBaseUrlResolver.resolve` de `src/utils/`,
+partagé par `agirProgramEndpoints.ts` et `agirProjectEndpoints.ts`).
 
-1. la variable `PUBLIC_BASE_URL` (`Config.publicBaseUrl()`), à renseigner sur
-   chaque app Scalingo ; sur les review apps, `scalingo.json` la redéfinit avec
-   l'URL de la review app ;
-2. sinon les en-têtes `x-forwarded-host` / `x-forwarded-proto` posés par le
-   routeur ;
-3. sinon `req.origin`, qui derrière le routeur Scalingo vaut l'adresse interne
-   du conteneur (`localhost:36xxx`) : liens inutilisables.
+La forme des URL n'est écrite qu'à un endroit, `AgirRoutes`
+(`libs/format-adapters/src/agir/`) : les endpoints y prennent leur `path`
+(`AgirRoutes.PROGRAM_PIVOT` = `/agir/programs/:slug/pivot`...) et les exporters
+d'index y construisent leurs liens à partir des mêmes gabarits (slug encodé,
+préfixe `/api` de Payload). Une route renommée ne peut donc pas laisser l'index
+servir des liens vers l'ancienne. Ces routes restent un contrat avec AGIR : les
+specs les écrivent en toutes lettres, pour qu'un changement fasse échouer un
+test.
+
+**En production** (`NODE_ENV=production` : prod, préprod, review apps), seule
+la variable `PUBLIC_BASE_URL` (`Config.publicBaseUrl()`) est lue. Elle est à
+renseigner sur chaque app Scalingo ; sur les review apps, `scalingo.json` la
+redéfinit avec l'URL de la review app. Sans elle, les endpoints qui produisent
+des liens absolus répondent en erreur : les en-têtes `x-forwarded-*` ne sont
+pas lus, un client qui atteindrait l'app sans passer par le routeur pouvant les
+forger et faire apparaître son propre domaine dans les liens.
+
+**Hors production**, la base est résolue dans cet ordre :
+
+1. la variable `PUBLIC_BASE_URL` si elle est renseignée ;
+2. sinon les en-têtes `x-forwarded-host` / `x-forwarded-proto` ;
+3. sinon `req.origin` (`http://localhost:3000` en local).
 
 La préprod étant réinitialisée et reseedée à chaque déploiement (ADR 0012), son
 contenu reflète l'amont au moment du dernier déploiement, complété par le
