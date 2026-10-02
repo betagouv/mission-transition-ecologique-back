@@ -24,6 +24,7 @@ export const Projects: CollectionConfig = {
   },
   admin: {
     useAsTitle: 'title',
+    defaultColumns: ['title', 'nameTag', 'mainTheme', '_status', 'updatedAt'],
     hidden: ({ user }) => !UserRole.isAdmin(user as unknown as { role: UserRoleValue }),
   },
   hooks: {
