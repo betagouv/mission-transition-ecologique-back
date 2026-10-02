@@ -75,6 +75,32 @@ describe('CanonicalToPayloadMapper', () => {
     expect(data).toMatchObject({ contactMethod: 'url', workflowStatus: 'en-creation', _status: 'draft' })
   })
 
+  it('writes every optional field upstream does not carry as empty, never undefined', () => {
+    const { data } = map({ operateurs: { contact: { nom: 'ADEME' } } })
+
+    expect(data).toMatchObject({
+      additionalInfo: null,
+      otherOperators: [],
+      validityStart: null,
+      validityEnd: null,
+      contactMethod: null,
+      contactEmail: null,
+      contactPageUrl: null,
+      fundingAmount: null,
+      loanAmount: null,
+      taxBenefitAmount: null,
+      formationRemainingCost: null,
+      formationDuration: null,
+      studyRemainingCost: null,
+      studyDuration: null,
+      variants: [],
+      replacedBy: null,
+      metaTitle: null,
+      metaDescription: null,
+    })
+    expect(Object.entries(data).filter(([, value]) => value === undefined)).toEqual([])
+  })
+
   it('fails loudly on an unknown contact operator', () => {
     expect(() => map({ operateurs: { contact: { nom: 'Inconnu' } } })).toThrow('opérateur introuvable')
   })
@@ -88,9 +114,9 @@ describe('CanonicalToPayloadMapper', () => {
   })
 
   it.each([
-    ['advisor', { type: 'conseiller_entreprise' as const }, { contactMethod: 'advisor' }],
-    ['email', { type: 'email' as const, valeur: 'a@b.fr' }, { contactMethod: 'email', contactEmail: 'a@b.fr' }],
-    ['url', { type: 'url' as const, valeur: 'https://x.fr' }, { contactMethod: 'url', contactPageUrl: 'https://x.fr' }],
+    ['advisor', { type: 'conseiller_entreprise' as const }, { contactMethod: 'advisor', contactEmail: null, contactPageUrl: null }],
+    ['email', { type: 'email' as const, valeur: 'a@b.fr' }, { contactMethod: 'email', contactEmail: 'a@b.fr', contactPageUrl: null }],
+    ['url', { type: 'url' as const, valeur: 'https://x.fr' }, { contactMethod: 'url', contactEmail: null, contactPageUrl: 'https://x.fr' }],
   ])('maps a %s contact', (_label, contact_question, expected) => {
     expect(map({ contact_question }).data).toMatchObject(expected)
   })
@@ -199,12 +225,17 @@ describe('CanonicalToPayloadMapper', () => {
       expect(data.fundingAmount).toBe("Jusqu'à 10 000 €")
     })
 
+    it('empties the amount fields of the other aid types', () => {
+      const { data } = map({ types_aides: ['etude'], montant: { type: 'Coût restant à charge', valeur: '500 €' } })
+      expect(data).toMatchObject({ studyRemainingCost: '500 €', studyDuration: null, fundingAmount: null, loanAmount: null })
+    })
+
     it('reports an amount the aid type has no field for', () => {
       const { data, warnings } = map({
         types_aides: ['etude'],
         montant: { type: 'montant du financement', valeur: '50 %' },
       })
-      expect(data.studyRemainingCost).toBeUndefined()
+      expect(data.studyRemainingCost).toBeNull()
       expect(warnings).toEqual(['montant « montant du financement » sans champ pour le type diagnostic-etude'])
     })
 

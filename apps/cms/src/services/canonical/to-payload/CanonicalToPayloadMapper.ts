@@ -28,12 +28,15 @@ export interface CanonicalToPayloadResult {
 type AidType = Program['aidType']
 type EligibiliteInput = NonNullable<CanonicalProgramInput['eligibilite']>
 type GeographyData = Pick<PayloadProgramData, 'geographicCoverage' | 'geographicAreas' | 'geographicAreaFeedback'>
+type ContactData = Pick<PayloadProgramData, 'contactMethod' | 'contactEmail' | 'contactPageUrl'>
 
 const CANONICAL_TO_AID_TYPE = Object.fromEntries(
   Object.entries(AID_TYPE_TO_CANONICAL).map(([aidType, typeAide]) => [typeAide, aidType]),
 ) as Partial<Record<TypeAide, AidType>>
 
 const ALL_NAF_SECTIONS: readonly NafSection[] = NAF_SECTIONS_OPTIONS.map((option) => option.value)
+
+const AMOUNT_FIELDS = [...Object.values(MONTANT_BY_AID_TYPE), ...Object.values(DUREE_BY_AID_TYPE)].map(({ field }) => field)
 
 /**
  * Canonical program → Payload `programs` data, the inverse of
@@ -45,6 +48,10 @@ const ALL_NAF_SECTIONS: readonly NafSection[] = NAF_SECTIONS_OPTIONS.map((option
  * link are valid; otherwise it stays `en-creation` so editors can spot and fix it.
  * A program upstream redirects (`remplace`) keeps that status and points at its
  * replacement, which must already be in the CMS.
+ *
+ * Every field upstream can carry is written, an absent one as `null` or `[]`: a
+ * Payload `update` starts from the latest version, a pending editor draft
+ * included, and would publish whatever that draft holds in a field left out.
  */
 export class CanonicalToPayloadMapper {
   private readonly variants: CanonicalVariantToPayloadMapper
@@ -85,7 +92,7 @@ export class CanonicalToPayloadMapper {
       promise: input.promesse ?? '',
       aidType,
       description: this.richText.convert(input.description),
-      additionalInfo: input.description_longue ? this.richText.convert(input.description_longue) : undefined,
+      additionalInfo: input.description_longue ? this.richText.convert(input.description_longue) : null,
       operator,
       otherOperators: this.operatorIds(input.operateurs.autres),
       // Required on publish only: a program without url is saved as a draft.
@@ -93,8 +100,8 @@ export class CanonicalToPayloadMapper {
       ...this.mapAmounts(input, aidType, typeAide, warnings),
       steps,
       ...contact,
-      validityStart: input.date_ouverture,
-      validityEnd: input.date_cloture,
+      validityStart: input.date_ouverture ?? null,
+      validityEnd: input.date_cloture ?? null,
       ...this.mapCompanySize(input.eligibilite),
       ...this.mapGeography(input.eligibilite),
       ...this.mapActivitySector(input.eligibilite),
@@ -103,11 +110,10 @@ export class CanonicalToPayloadMapper {
       variants: this.variants.map(input.variantes, warnings),
       temporarilyUnavailable: input.statut_dispositif === 'temporairement_indisponible',
       workflowStatus,
-      // null rather than undefined so a former replacement is cleared on update.
       replacedBy: replaced ? this.replacementId(input) : null,
       _status: workflowStatus === 'publie' ? 'published' : 'draft',
-      metaTitle: input.meta?.titre,
-      metaDescription: input.meta?.description,
+      metaTitle: input.meta?.titre ?? null,
+      metaDescription: input.meta?.description ?? null,
     }
 
     if (input.eligibilite?.categorie_legale) {
@@ -122,11 +128,10 @@ export class CanonicalToPayloadMapper {
     return id
   }
 
-  private operatorIds(operateurs: { nom: string }[] | undefined): number[] | undefined {
-    const ids = (operateurs ?? [])
+  private operatorIds(operateurs: { nom: string }[] | undefined): number[] {
+    return (operateurs ?? [])
       .map((operateur) => this.relations.operatorId(operateur.nom))
       .filter((id): id is number => id !== undefined)
-    return ids.length > 0 ? ids : undefined
   }
 
   private mapSteps(input: CanonicalProgramInput, warnings: string[]): NonNullable<PayloadProgramData['steps']> {
@@ -144,6 +149,7 @@ export class CanonicalToPayloadMapper {
    * Payload has one amount (and at most one duration) field per aid type. It
    * takes the label `ProgramCanonicalMapper` emits or an upstream one; any other
    * label (e.g. a financing amount on a study) has no field and is reported.
+   * The fields of the other aid types are emptied.
    */
   private mapAmounts(
     input: CanonicalProgramInput,
@@ -151,7 +157,7 @@ export class CanonicalToPayloadMapper {
     typeAide: TypeAide,
     warnings: string[],
   ): Partial<PayloadProgramData> {
-    const amounts: Partial<PayloadProgramData> = {}
+    const amounts: Partial<PayloadProgramData> = Object.fromEntries(AMOUNT_FIELDS.map((field) => [field, null]))
 
     const montant = MONTANT_BY_AID_TYPE[aidType]
     if (input.montant) {
@@ -178,17 +184,18 @@ export class CanonicalToPayloadMapper {
     return accepted.some((candidate) => candidate.toLowerCase() === normalized)
   }
 
-  private mapContact(input: CanonicalProgramInput): Pick<Partial<PayloadProgramData>, 'contactMethod' | 'contactEmail' | 'contactPageUrl'> {
+  private mapContact(input: CanonicalProgramInput): ContactData {
+    const empty: ContactData = { contactMethod: null, contactEmail: null, contactPageUrl: null }
     const contact = input.contact_question
     switch (contact?.type) {
       case 'email':
-        return { contactMethod: 'email', contactEmail: contact.valeur }
+        return { ...empty, contactMethod: 'email', contactEmail: contact.valeur }
       case 'url':
-        return { contactMethod: 'url', contactPageUrl: contact.valeur }
+        return { ...empty, contactMethod: 'url', contactPageUrl: contact.valeur }
       case 'conseiller_entreprise':
-        return { contactMethod: 'advisor' }
+        return { ...empty, contactMethod: 'advisor' }
       default:
-        return {}
+        return empty
     }
   }
 
@@ -211,7 +218,6 @@ export class CanonicalToPayloadMapper {
     const codes = secteur?.structure?.inclusions ?? []
     if (codes.length > 0) return this.geographyFromCodes(codes)
     const texte = (secteur?.texte ?? []).join(', ')
-    // null rather than undefined so a stale value is cleared on update.
     return { geographicCoverage: null, geographicAreas: [], geographicAreaFeedback: texte || null }
   }
 

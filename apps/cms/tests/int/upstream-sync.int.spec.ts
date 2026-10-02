@@ -241,6 +241,51 @@ describe('UpstreamSync', () => {
       expect((await latestProgram(PROGRAM_A)).title).toBe(programA.title)
     }, 60_000)
 
+    it('does not publish what a pending draft holds in a field upstream leaves empty', async () => {
+      const programA = await latestProgram(PROGRAM_A)
+      const upstream = {
+        metaDescription: programA.metaDescription ?? null,
+        validityEnd: programA.validityEnd ?? null,
+        loanAmount: programA.loanAmount ?? null,
+        otherOperators: programA.otherOperators ?? [],
+      }
+      expect(upstream).toMatchObject({ metaDescription: null, loanAmount: null })
+      // Saving a draft over a published program is a workflow transition: it takes an editor.
+      const admin = await payload.create({
+        collection: 'users',
+        data: { email: 'upstream-sync-admin@tee.test', password: 'upstream-sync-admin@tee.test', role: 'admin' },
+      })
+      await payload.update({
+        collection: 'programs',
+        id: programA.id,
+        draft: true,
+        user: admin,
+        data: {
+          metaDescription: 'Description retouchée',
+          validityEnd: '2031-01-01T00:00:00.000Z',
+          loanAmount: '10 000 €',
+          otherOperators: [],
+        },
+      })
+
+      expect(await latestProgram(PROGRAM_A)).toMatchObject({
+        workflowStatus: 'en-cours-modification',
+        metaDescription: 'Description retouchée',
+      })
+
+      const report = await sync()
+
+      expect(report.programs).toMatchObject({ updated: 1, unchanged: 4 })
+      const after = await latestProgram(PROGRAM_A)
+      expect(after).toMatchObject({ workflowStatus: 'publie', _status: 'published' })
+      expect({
+        metaDescription: after.metaDescription ?? null,
+        validityEnd: after.validityEnd ?? null,
+        loanAmount: after.loanAmount ?? null,
+        otherOperators: after.otherOperators ?? [],
+      }).toEqual(upstream)
+    }, 60_000)
+
     it('is overwritten by the next run, for a project', async () => {
       const projectC = await projectBySlug(PROJECT_C)
       await payload.update({ collection: 'projects', id: projectC.id, data: { title: 'Titre retouché' } })
