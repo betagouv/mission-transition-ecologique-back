@@ -10,7 +10,9 @@ import { clearUpstreamFingerprint } from '@/hooks/shared/clearUpstreamFingerprin
 import { assignCopySlug } from '@/hooks/shared/assignCopySlug'
 import { assignCopyTitle } from '@/hooks/shared/assignCopyTitle'
 import { duplicateAsDraft } from '@/hooks/shared/duplicateAsDraft'
+import { readLinkedProjects } from '@/hooks/programs/readLinkedProjects'
 import { syncCanonicalOnPublish } from '@/hooks/programs/syncCanonicalOnPublish'
+import { syncLinkedProjects } from '@/hooks/programs/syncLinkedProjects'
 import { removeCanonicalOnDelete } from '@/hooks/programs/removeCanonicalOnDelete'
 import { THEMES_OPTIONS } from '@/constants/themesOptions'
 import { COMPANY_SIZE_OPTIONS } from '@/constants/companySizeOptions'
@@ -94,7 +96,7 @@ export const Programs: CollectionConfig = {
       trackLastModifiedBy,
       beforeChangeWorkflow('programs'),
     ],
-    afterChange: [syncCanonicalOnPublish],
+    afterChange: [syncCanonicalOnPublish, syncLinkedProjects],
     afterDelete: [removeCanonicalOnDelete],
   },
   access: {
@@ -412,12 +414,26 @@ export const Programs: CollectionConfig = {
           },
         },
         {
+          // Not stored: the link lives in `Projects.programs`, read and written back there by the hooks.
           name: 'linkedProjects',
           type: 'relationship',
           label: 'Projet(s) lié(s) au dispositif',
           relationTo: 'projects',
           hasMany: true,
+          virtual: true,
+          // A copy would otherwise link itself to the projects of the original.
+          disableDuplicate: true,
+          // Applied to published projects at once, without review: admins only, as for the projects.
+          access: {
+            create: ({ req }) => UserRole.isAdmin(req.user as { role: UserRoleValue } | null),
+            update: ({ req }) => UserRole.isAdmin(req.user as { role: UserRoleValue } | null),
+          },
+          hooks: { afterRead: [readLinkedProjects] },
           admin: {
+            // Payload makes a virtual field read-only unless told otherwise.
+            readOnly: false,
+            description:
+              'Même liaison que « Programmes associés » sur le projet. Appliquée dès l’enregistrement, y compris en brouillon.',
             // All projects offered, no thematic filtering (deliberate).
             sortOptions: 'title',
             // Disabled here: the project workflow stays separate from the program one.
