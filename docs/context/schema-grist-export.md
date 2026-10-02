@@ -73,6 +73,10 @@ export est produit par la TEE) et `statut` passe par le mapper partagé
 - `eligibilite_effectif_minimal/maximal` ← `effectif.structure.min/max`.
 - `eligibilite_forme_juridique_exclusions` ← `categorie_legale.structure.interdit`
   (`micro_entrepreneur` → `Microentrepreneur`).
+- Ouverture aux administrations publiques
+  (`categorie_legale.structure.autorise` contient `administration_publique`) :
+  puce « Ouvert aux administrations publiques » dans la colonne texte
+  `eligibilite`. Pas de colonne dédiée.
 
 `types_aides` est mappé vers le vocabulaire schéma via `TypesAidesSchemaMapper`
 (table dans `SchemaVocabulary`, ⚠️ à confirmer contre la liste Grist).

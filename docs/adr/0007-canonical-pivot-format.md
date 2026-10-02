@@ -62,7 +62,7 @@ Abandon des deux blocs parallèles (`eligibilite_textes` + `eligibilite`) au pro
 | `anciennete` | ✔ | — |
 | `autres_criteres` | ✔ | — |
 
-La catégorie légale vit dans `categorie_legale` (et non dans `effectif`) : deux listes `autorise` / `interdit`, chaque entrée étant une valeur du vocabulaire fermé `CategorieLegale` (V0 : `micro_entrepreneur` ; les autres valeurs viendront plus tard) ou un texte libre.
+La catégorie légale vit dans `categorie_legale` (et non dans `effectif`) : deux listes `autorise` / `interdit`, chaque entrée étant une valeur du vocabulaire fermé `CategorieLegale` (`micro_entrepreneur`, et depuis le 2026-10-02 `administration_publique`, qui porte dans `autorise` l'ouverture d'un dispositif aux administrations publiques ; les autres valeurs viendront plus tard) ou un texte libre.
 
 ### 9. API publique
 

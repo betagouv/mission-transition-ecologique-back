@@ -103,6 +103,8 @@ export class CanonicalToPayloadMapper {
       validityStart: input.date_ouverture ?? null,
       validityEnd: input.date_cloture ?? null,
       ...this.mapCompanySize(input.eligibilite),
+      openToPublicAdministration:
+        input.eligibilite?.categorie_legale?.structure?.autorise?.includes('administration_publique') ?? false,
       ...this.mapGeography(input.eligibilite),
       ...this.mapActivitySector(input.eligibilite),
       otherCriteria: this.mapOtherCriteria(input.eligibilite),
@@ -116,7 +118,7 @@ export class CanonicalToPayloadMapper {
       metaDescription: input.meta?.description ?? null,
     }
 
-    if (input.eligibilite?.categorie_legale) {
+    if (input.eligibilite?.categorie_legale?.structure?.interdit?.length) {
       warnings.push('restriction de catégorie légale (micro-entreprises) sans champ Payload')
     }
     return { data, warnings }

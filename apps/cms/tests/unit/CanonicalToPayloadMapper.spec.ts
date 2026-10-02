@@ -121,6 +121,28 @@ describe('CanonicalToPayloadMapper', () => {
     expect(map({ contact_question }).data).toMatchObject(expected)
   })
 
+  describe('legal category', () => {
+    it('opens the program to public administrations when the category is allowed', () => {
+      const { data, warnings } = map({
+        eligibilite: { categorie_legale: { structure: { autorise: ['administration_publique'] } } },
+      })
+      expect(data.openToPublicAdministration).toBe(true)
+      expect(warnings).toEqual([])
+    })
+
+    it('writes false when upstream does not carry the flag', () => {
+      expect(map().data.openToPublicAdministration).toBe(false)
+    })
+
+    it('still reports a micro-entreprise restriction, which has no field', () => {
+      const { data, warnings } = map({
+        eligibilite: { categorie_legale: { structure: { interdit: ['micro_entrepreneur'] } } },
+      })
+      expect(data.openToPublicAdministration).toBe(false)
+      expect(warnings).toEqual(['restriction de catégorie légale (micro-entreprises) sans champ Payload'])
+    })
+  })
+
   describe('company size', () => {
     it('picks the bucket matching the bounds exactly', () => {
       const { data } = map({ eligibilite: { effectif: { structure: { min: 50, max: 249 } } } })

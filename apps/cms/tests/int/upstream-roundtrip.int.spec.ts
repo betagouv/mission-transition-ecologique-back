@@ -77,6 +77,7 @@ function project(input: CanonicalProgramInput | undefined, side: 'upstream' | 'c
     },
     contact_question: input?.contact_question,
     effectif: e?.effectif?.structure ?? null,
+    administration_publique: e?.categorie_legale?.structure?.autorise?.includes('administration_publique') ?? false,
     secteur_activite: inclusions.length === ALL_NAF_SECTIONS ? [] : [...inclusions].sort(),
     national: codes.includes(COG_FRANCE),
     territoires: territories.sort(),

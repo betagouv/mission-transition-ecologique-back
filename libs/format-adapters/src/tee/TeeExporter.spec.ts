@@ -83,6 +83,27 @@ describe('TeeExporter', () => {
     })
   })
 
+  describe('administrations publiques', () => {
+    const validator = new CanonicalProgramValidator()
+    const exportWith = (autorise: string[]) =>
+      exporter.export(
+        validator.parse({
+          ...minimalProgram.toJSON(),
+          eligibilite: { categorie_legale: { structure: { autorise } } },
+        }),
+      )
+
+    it('émet openToPublicAdministration quand la catégorie est autorisée', () => {
+      expect(exportWith(['administration_publique']).eligibilityData?.company).toEqual({
+        openToPublicAdministration: true,
+      })
+    })
+
+    it('ne l’émet pas pour une autre catégorie', () => {
+      expect(exportWith(['Associations']).eligibilityData?.company.openToPublicAdministration).toBeUndefined()
+    })
+  })
+
   describe('programme minimal', () => {
     const out = exporter.export(minimalProgram)
 

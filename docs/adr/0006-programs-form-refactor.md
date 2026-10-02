@@ -189,3 +189,16 @@ Les outils one-shot d'export/restore depuis l'ancienne base (utilisés pendant l
 - AGIR : `typeSecteur` = `Régional et départemental` pour ce mélange de niveaux.
 
 Plan : `docs/features/007-mixed-geographic-coverage.md`.
+
+## Addendum du 02/10/2026 : ouverture aux administrations publiques
+
+**Contexte :** l'amont porte `eligibilityData.company.openToPublicAdministration` sur une soixantaine de dispositifs. Aucun lecteur ne le lisait : la valeur était perdue sans avertissement, pour le seed comme pour la sync quotidienne.
+
+**Décision :**
+
+- `Programs.openToPublicAdministration` (case à cocher de la section Éligibilité, sous la taille d'entreprise, `false` par défaut).
+- Pivot : valeur `administration_publique` ajoutée au vocabulaire `CategorieLegale`, portée dans `eligibilite.categorie_legale.structure.autorise`. Aucun changement de forme du schéma.
+- `TeeImporter` lit le drapeau amont, `TeeExporter` le réémet, `CanonicalToPayloadMapper` et `ProgramCanonicalMapper` font le lien avec la case. Le mapper écrit toujours un booléen : un drapeau retiré en amont décoche la case à la sync suivante.
+- L'avertissement « restriction de catégorie légale (micro-entreprises) sans champ Payload » ne sort plus que pour une liste `interdit` : `excludeMicroentrepreneur` reste hors du CMS (décision PO ci-dessus).
+- Migration `20261002_131830_program_open_to_public_administration` : colonne booléenne sur `programs` et `_programs_v`.
+- Le champ entre dans l'empreinte `upstreamFingerprint` : la première sync après déploiement réécrit tous les dispositifs.

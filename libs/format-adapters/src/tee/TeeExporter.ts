@@ -205,6 +205,9 @@ export class TeeExporter {
     if (elig?.categorie_legale?.structure?.interdit?.includes('micro_entrepreneur')) {
       company.excludeMicroentrepreneur = true
     }
+    if (elig?.categorie_legale?.structure?.autorise?.includes('administration_publique')) {
+      company.openToPublicAdministration = true
+    }
     const regions = elig?.secteur_geographique?.structure?.inclusions
     if (regions?.length) {
       const names = TerritoryNameResolver.namesOf(regions)

@@ -91,7 +91,9 @@ Catalogue complet des cas particuliers (Corse, DROM, COM, statuts particuliers, 
 
 ⚠️ Ne pas confondre `COM` (commune) et `OM` (outre-mer) — c'est le piège historique. La regex `cogCodeSchema` est une **garde de forme volontairement souple** (préfixe connu + corps alphanumérique) : elle accepte les cas irréguliers (`2A`, `69M`, SIREN…) et ne valide **pas** l'existence réelle. L'existence se vérifie contre le référentiel INSEE / `GeographicAreas`, keyé par `(niveau, code)` (hors paquet canonical).
 
-`categorie_legale.structure` porte deux listes optionnelles `autorise` / `interdit`. Chaque entrée est soit une valeur du vocabulaire fermé `CategorieLegale` (V0 : `micro_entrepreneur` — les autres valeurs seront ajoutées plus tard), soit un texte libre.
+`categorie_legale.structure` porte deux listes optionnelles `autorise` / `interdit`. Chaque entrée est soit une valeur du vocabulaire fermé `CategorieLegale` (`micro_entrepreneur`, `administration_publique` ; d'autres valeurs seront ajoutées plus tard), soit un texte libre.
+
+`autorise: ['administration_publique']` signifie que le dispositif s'adresse **aussi** aux administrations publiques, en plus des entreprises (drapeau amont `eligibilityData.company.openToPublicAdministration`, case `Programs.openToPublicAdministration` dans le CMS). `interdit: ['micro_entrepreneur']` reprend `excludeMicroentrepreneur`, que le CMS ne porte pas.
 
 `themes` : array ≥ 1 d'enum (V0, libellés français) : `batiment`, `mobilite`, `dechets`, `eau`, `energie`, `rh`, `environnemental`, `ecoconception`, `biodiversite`.
 

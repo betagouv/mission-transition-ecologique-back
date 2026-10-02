@@ -228,6 +228,10 @@ export class ProgramCanonicalMapper {
     const effectif = this.mapEffectif(program)
     if (effectif) eligibilite.effectif = effectif
 
+    if (program.openToPublicAdministration) {
+      eligibilite.categorie_legale = { structure: { autorise: ['administration_publique'] } }
+    }
+
     const secteurActivite = this.mapSecteurActivite(program)
     if (secteurActivite) eligibilite.secteur_activite = secteurActivite
 

@@ -22,6 +22,17 @@ describe('EligibiliteTextBuilder', () => {
     })
   })
 
+  it("signale l'ouverture aux administrations publiques", () => {
+    const text = EligibiliteTextBuilder.build({
+      categorie_legale: { structure: { autorise: ['administration_publique'] } },
+    })
+    expect(text).toBe('- Effectif éligible : Toutes tailles\n- Ouvert aux administrations publiques')
+  })
+
+  it("n'en dit rien pour un dispositif réservé aux entreprises", () => {
+    expect(EligibiliteTextBuilder.build(fullProgram.data.eligibilite)).not.toContain('administrations publiques')
+  })
+
   it('défaut « Toutes tailles » et résultat non vide sans éligibilité', () => {
     expect(EligibiliteTextBuilder.build(undefined)).toBe('- Effectif éligible : Toutes tailles')
   })

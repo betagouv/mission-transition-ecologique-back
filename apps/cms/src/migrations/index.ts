@@ -6,6 +6,7 @@ import * as migration_20261001_082515_mixed_geographic_coverage from './20261001
 import * as migration_20261001_092812_canonical_projects from './20261001_092812_canonical_projects';
 import * as migration_20261002_102758_upstream_sync from './20261002_102758_upstream_sync';
 import * as migration_20261002_123839_program_linked_projects from './20261002_123839_program_linked_projects';
+import * as migration_20261002_131830_program_open_to_public_administration from './20261002_131830_program_open_to_public_administration';
 
 export const migrations = [
   {
@@ -46,6 +47,11 @@ export const migrations = [
   {
     up: migration_20261002_123839_program_linked_projects.up,
     down: migration_20261002_123839_program_linked_projects.down,
-    name: '20261002_123839_program_linked_projects'
+    name: '20261002_123839_program_linked_projects',
+  },
+  {
+    up: migration_20261002_131830_program_open_to_public_administration.up,
+    down: migration_20261002_131830_program_open_to_public_administration.down,
+    name: '20261002_131830_program_open_to_public_administration'
   },
 ];

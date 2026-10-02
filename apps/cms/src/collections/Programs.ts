@@ -489,6 +489,16 @@ export const Programs: CollectionConfig = {
           ],
         },
         {
+          name: 'openToPublicAdministration',
+          type: 'checkbox',
+          label: 'Ouvert aux administrations publiques',
+          defaultValue: false,
+          admin: {
+            description:
+              "À cocher si l'aide s'adresse aussi aux administrations publiques, en plus des entreprises.",
+          },
+        },
+        {
           name: 'geographicCoverage',
           type: 'select',
           label: 'Couverture géographique',

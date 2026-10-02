@@ -22,6 +22,7 @@ interface SourceCompany {
   maxEmployees?: string
   allowedRegion?: string[]
   excludeMicroentrepreneur?: boolean
+  openToPublicAdministration?: boolean
 }
 
 /**
@@ -294,9 +295,8 @@ export class TeeImporter {
       }
     }
 
-    if (company.excludeMicroentrepreneur) {
-      eligibilite.categorie_legale = { structure: { interdit: ['micro_entrepreneur'] } }
-    }
+    const categorieLegale = this.categorieLegale(company)
+    if (categorieLegale) eligibilite.categorie_legale = categorieLegale
 
     const secteurActiviteTexte = this.strArray(conditions?.["secteur d'activité"])
     const nafSections = company.allowedNafSections ?? []
@@ -323,6 +323,13 @@ export class TeeImporter {
     if (autres.length > 0) eligibilite.autres_criteres = { texte: autres }
 
     return Object.keys(eligibilite).length > 0 ? eligibilite : undefined
+  }
+
+  private categorieLegale(company: SourceCompany): EligibiliteInput['categorie_legale'] | undefined {
+    const structure: NonNullable<NonNullable<EligibiliteInput['categorie_legale']>['structure']> = {}
+    if (company.openToPublicAdministration) structure.autorise = ['administration_publique']
+    if (company.excludeMicroentrepreneur) structure.interdit = ['micro_entrepreneur']
+    return Object.keys(structure).length > 0 ? { structure } : undefined
   }
 
   /**
