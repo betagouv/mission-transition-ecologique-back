@@ -168,3 +168,18 @@ Les outils one-shot d'export/restore depuis l'ancienne base (utilisés pendant l
 
 - L'ADR 0001 reste la référence pour les décisions encore valides (deux collections `Programs` + `Operators`, exclusion de `publicodes`, type `date` natif Payload, cycle de vie via `versions/drafts`). Ses sections sur le double modèle d'éligibilité et le schéma de champs sont remplacées par cet ADR.
 - Les composants `*RowLabel` et `LinkedProjectsCounter` sont spécifiques à ce formulaire — ne pas les généraliser sans ADR.
+
+## Addendum du 01/10/2026 : couverture « Régional et départemental »
+
+**Contexte :** l'amont liste pour certains dispositifs des régions et un département d'une autre région (`programme-marguerite` : cinq régions et les Bouches-du-Rhône). Avec un seul niveau par dispositif, le département partait dans `geographicAreaFeedback`.
+
+**Décision :**
+
+- `geographicCoverage` gagne la valeur `regional-departemental` (`src/constants/geographicCoverageOptions.ts`). Le champ `geographicAreas` accepte alors régions et départements.
+- **Les régions priment** : un département et sa région ne sont jamais portés ensemble. À l'import amont, `CanonicalToPayloadMapper` retire le département déjà couvert. En saisie, `GeographicAreaOverlapWarning` avertit en direct et `GeographicAreasValidator` refuse le doublon à l'enregistrement (hors brouillon, comme toute validation Payload). La règle vit dans `GeographicAreaOverlap`, partagée client et serveur.
+- `GeographicAreas.displayName` (calculé par `assignDisplayName`, « Guadeloupe (région) ») devient le titre des zones : un département d'outre-mer porte le nom de sa région, et les deux niveaux peuvent maintenant apparaître dans la même liste.
+- Les boutons de sélection groupée restent réservés aux couvertures à un seul niveau.
+- Migration `20261001_082515_mixed_geographic_coverage` : valeur ajoutée aux deux énumérations, colonne `display_name` et remplissage des lignes existantes (ajout manuel dans la migration générée).
+- AGIR : `typeSecteur` = `Régional et départemental` pour ce mélange de niveaux.
+
+Plan : `docs/features/007-mixed-geographic-coverage.md`.

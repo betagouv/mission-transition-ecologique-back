@@ -45,6 +45,9 @@ export class AgirVocabulary {
     EPCI: 'Intercommunal',
   }
 
+  /** Regions (or overseas collectivities) listed together with departments. */
+  static readonly TYPE_SECTEUR_REGIONAL_DEPARTEMENTAL = 'Régional et départemental'
+
   /** Fallback when the geographic level cannot be deduced (mixed or unknown). */
   static readonly TYPE_SECTEUR_INCONNU = 'Inconnu'
 }

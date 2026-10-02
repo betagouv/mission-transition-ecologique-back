@@ -1,3 +1,4 @@
+import { CanonicalProgramValidator } from '@tee-backoffice/canonical'
 import { AgirDetailExporter } from './AgirDetailExporter'
 import { fullProgram, minimalProgram } from '../__fixtures__/canonical-programs'
 
@@ -38,6 +39,21 @@ describe('AgirDetailExporter', () => {
       expect(out.elligibilite?.secteurActivite?.listeSecteurActivite).toEqual(['C'])
       expect(out.elligibilite?.secteurGeographique?.listeRegion).toEqual(['PAYS-99100'])
       expect(out.elligibilite?.secteurGeographique?.typeSecteur).toBe('National')
+    })
+
+    it('qualifie le secteur selon les niveaux des codes COG', () => {
+      const typeSecteur = (inclusions: string[]) => {
+        const data = fullProgram.toJSON()
+        const program = new CanonicalProgramValidator().parse({
+          ...data,
+          eligibilite: { ...data.eligibilite, secteur_geographique: { structure: { inclusions } } },
+        })
+        return exporter.export(program).elligibilite?.secteurGeographique?.typeSecteur
+      }
+      expect(typeSecteur(['REG-75', 'REG-76'])).toBe('Régional')
+      expect(typeSecteur(['DEP-13'])).toBe('Départemental')
+      expect(typeSecteur(['REG-75', 'OM-988', 'DEP-13'])).toBe('Régional et départemental')
+      expect(typeSecteur(['REG-75', 'COM-75056'])).toBe('Inconnu')
     })
 
     it('mappe la vignette depuis illustration', () => {
