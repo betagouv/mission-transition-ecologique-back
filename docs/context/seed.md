@@ -85,6 +85,8 @@ Chaque champ que l'amont peut porter est écrit à chaque sync, un champ absent 
 
 **Redirections** : `ProgramsSync` applique `program_redirects` (`RedirectTombstoneBuilder`). Un ancien slug encore présent en amont est marqué `remplace` ; un ancien slug absent devient un dispositif `remplace` cloné depuis sa cible, sous l'ancien slug gardé tel quel. Ces dispositifs sont importés après les autres, pour que `replacedBy` désigne un dispositif déjà en base, et sont enregistrés en version brouillon, comme l'action « Remplacer » de l'admin.
 
+Pour un ancien slug que l'amont ne publie plus, `RedirectedDocuments` regarde ce que le CMS détient déjà sous ce slug : rien, ou un clone d'une exécution précédente : le document `remplace` est cloné depuis sa cible ; un document **déjà publié** : il garde son contenu publié et reçoit seulement `workflowStatus: 'remplace'` et `replacedBy`, dans une version brouillon écrite à partir de la ligne publiée (un brouillon d'éditeur en attente est abandonné) ; un document **jamais publié** : il n'a jamais été dans le canonical, il n'y a rien à rediriger, il est laissé à l'annulation des disparus (`annule`). Un clone se reconnaît à son `replacedBy`, qu'il garde même annulé. Une base neuve (préprod, premier seed) clone donc toujours, alors qu'une base qui a connu le dispositif garde son ancien contenu : le contenu d'un document remplacé peut différer d'une base à l'autre, pas son statut ni son remplaçant.
+
 **Écriture sur différence** : `ProgramImporter` calcule l'empreinte des données Payload (`UpstreamFingerprint`) et la compare à `upstreamFingerprint` du document (dernière version). Identique, et dispositif présent dans le store canonical : rien n'est écrit, le dispositif est compté « unchanged ». Un dispositif que Payload refuse de publier est laissé en création **sans empreinte** : il est retenté et signalé à chaque exécution.
 
 ### Étape 3 : projets
@@ -99,7 +101,7 @@ Chaque champ Payload est écrit à chaque seed, un champ absent en amont étant 
 
 **Pivot** : les projets étant écrits publiés, le hook `syncProjectCanonicalOnChange` remplit `canonical.canonical_projects` pendant le seed, sans étape dédiée. La passe 1 écrit la ligne d'un projet avec ses projets liés déjà publiés (aucun au premier seed), la passe 2 la réécrit avec ceux de l'amont.
 
-**Redirections** (depuis le 2026-10-02) : `ProjectsSync` applique `project_redirects` (`ProjectTombstoneBuilder`). Chaque ancien slug devient un projet `workflowStatus: 'remplace'`, cloné depuis sa cible et relié à elle par `replacedBy` ; il est importé après les autres projets et enregistré en version brouillon, comme un dispositif remplacé. Le hook l'écrit dans le pivot avec `statut_projet: 'remplace'` et `remplace_par`.
+**Redirections** (depuis le 2026-10-02) : `ProjectsSync` applique `project_redirects` (`ProjectTombstoneBuilder`). Chaque ancien slug devient un projet `workflowStatus: 'remplace'`, cloné depuis sa cible et relié à elle par `replacedBy` ; il est importé après les autres projets et enregistré en version brouillon, comme un dispositif remplacé. Même règle que pour les dispositifs quand le CMS détient déjà un projet sous l'ancien slug (`RedirectedDocuments`) : publié, il garde son contenu ; jamais publié, il est annulé. Le hook l'écrit dans le pivot avec `statut_projet: 'remplace'` et `remplace_par`.
 
 **Écriture sur différence** : l'empreinte d'un projet couvre ses données Payload, son image et ses projets liés tels que le CMS les résout. Inchangée, et projet présent dans le store : ni la passe 1 ni la passe 2 n'écrivent. Un projet lié n'est à jour qu'après la passe 2, qui pose l'empreinte.
 
@@ -128,13 +130,13 @@ Found 12 operator groups. Upserting...
 Operator groups ready: 12 groups, 67 operators updated.
 Operators ready. Importing 288 programs...
 Programs complete: 288 created, 0 updated, 0 unchanged, 0 errors.
-Redirections : 1 dispositif(s) marqué(s) en place, 12 remplacé(s) cloné(s), 0 ignorée(s).
+Redirections : 1 dispositif(s) marqué(s) en place, 12 remplacé(s) cloné(s), 0 remplacé(s) avec leur contenu publié, 0 jamais publié(s) à annuler, 0 ignorée(s).
   ⚠ 47 × restriction de catégorie légale (micro-entreprises) sans champ Payload
   ...
 Found 91 projects in source.
 Pass 1: importing 97 projects...
 Pass 1 complete: 97 created, 0 updated, 0 unchanged, 0 errors.
-Redirections : 0 projet(s) marqué(s) en place, 6 remplacé(s) cloné(s), 0 ignorée(s).
+Redirections : 0 projet(s) marqué(s) en place, 6 remplacé(s) cloné(s), 0 remplacé(s) avec leur contenu publié, 0 jamais publié(s) à annuler, 0 ignorée(s).
 Pass 2: updating linked projects...
 Pass 2 complete: 74 updated, 0 errors.
 Médias : 136 créés, 0 réutilisés (dont 0 recatégorisés), 0 en échec.
