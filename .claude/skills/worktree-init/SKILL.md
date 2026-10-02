@@ -66,7 +66,7 @@ explicite, et la base du worktree part vide) :
    `apps/cms/.env`.
 2b. **Base PostgreSQL dédiée** (ménage : `make wt-db-list`, `make wt-db-drop BRANCH=…`, `make wt-db-prune`) : démarrage du conteneur Docker, création de la
    base `tee_<branche>` et réécriture de `DATABASE_URI` / `CANONICAL_DATABASE_URI`
-   dans le `apps/cms/.env` copié. Sans cette étape, tous les worktrees
+   dans le `apps/cms/.env` copié, et de `CANONICAL_DATABASE_URI` dans le `.env` racine copié (scripts `import:tee` / `export:grist`). Sans cette étape, tous les worktrees
    écriraient dans la base de dev commune (un seed effacerait les données des
    autres branches). Docker indisponible : le script avertit et poursuit.
 3. `pnpm install` — **obligatoire** (node_modules absent)

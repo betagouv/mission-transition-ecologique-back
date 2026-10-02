@@ -37,6 +37,8 @@ export class PayloadLoggerEventSink implements CanonicalEventSink {
     switch (event.type) {
       case 'program_saved':
         return `canonical saved "${event.slug}" (${event.canonicalId})`
+      case 'program_removed':
+        return `canonical removed "${event.slug}" (${event.canonicalId})`
       case 'program_dropped': {
         const detail =
           event.errors.length > 0 ? `${event.errors.length.toString()} validation issue(s)` : 'unreadable stored data'

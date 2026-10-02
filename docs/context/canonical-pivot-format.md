@@ -23,7 +23,7 @@ Référence consolidée du format **pivot interne** implémenté dans `libs/cano
 | Champ | Type | Requis | Notes |
 |---|---|---|---|
 | `id` | `Cuid2` | ✔ | Généré en amont, seulement validé. |
-| `slug` | `Slug` (kebab-case) | ✔ | Identifiant lisible unique (URLs). |
+| `slug` | `Slug` (kebab-case) | ✔ | Identifiant lisible unique (URLs). Exception : un dispositif `remplace` (tombstone de redirection) garde son ancien slug tel quel (apostrophe, majuscule), sans espace ni `/`. |
 | `source` | `ADEME` \| `INTERNE` \| `SCHEMA` | ✔ | Provenance. |
 | `date_mise_a_jour` | date-heure ISO | ✔ | Dernière modif réelle du contenu. |
 
@@ -86,6 +86,8 @@ Sémantique : exclusions prioritaires sur inclusions. Codes COG **préfixés par
 | `EPCI-` | EPCI / intercommunalité (et collectivités à SIREN) | SIREN 9 chiffres | `EPCI-200046977` (Métropole de Lyon) |
 
 Catalogue complet des cas particuliers (Corse, DROM, COM, statuts particuliers, arrondissements, cantons…) : voir `docs/adr/0007b-COG_CONVENTION.md` (convention partagée). `ARR-` (arrondissement départemental) ≠ arrondissement municipal de Paris/Lyon/Marseille, qui sont des codes commune `COM-`.
+
+`secteur_geographique.structure.inclusions` = `['PAYS-99100']` (`COG_FRANCE`) : dispositif ouvert à tout le territoire national. À l'import amont (`TeeImporter`), `allowedRegion` donne les codes (régions, collectivités d'outre-mer et départements, que l'amont mélange) ; sans `allowedRegion`, la mention « France et territoires d'outre-mer » du texte donne `PAYS-99100`. Le texte reste le libellé affiché, les consommateurs (CMS, AGIR, Grist) ne lisent que les codes.
 
 ⚠️ Ne pas confondre `COM` (commune) et `OM` (outre-mer) — c'est le piège historique. La regex `cogCodeSchema` est une **garde de forme volontairement souple** (préfixe connu + corps alphanumérique) : elle accepte les cas irréguliers (`2A`, `69M`, SIREN…) et ne valide **pas** l'existence réelle. L'existence se vérifie contre le référentiel INSEE / `GeographicAreas`, keyé par `(niveau, code)` (hors paquet canonical).
 

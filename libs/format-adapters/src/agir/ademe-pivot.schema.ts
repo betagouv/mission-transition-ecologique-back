@@ -8,11 +8,13 @@ import {
   isoDateOrDateTimeSchema,
   isoDateSchema,
   isoDateTimeSchema,
+  legacySlugSchema,
   markdownSchema,
   metaSchema,
   montantSchema,
   nonEmptyStringSchema,
   operateursSchema,
+  refineKebabCaseSlug,
   slugSchema,
   typeAideSchema,
   urlSchema,
@@ -47,7 +49,8 @@ export type AgirContactQuestion = z.infer<typeof ademeContactQuestionSchema>
 export const ademePivotSchema = z
   .object({
     // Identity (id = slug, never the cuid2; ademe_id_dsp surfaced if present).
-    id: slugSchema,
+    // A `remplace` tombstone keeps its former, possibly non kebab-case, slug.
+    id: legacySlugSchema,
     ademe_id_dsp: nonEmptyStringSchema.optional(),
     source: ademeSourceSchema,
     date_mise_a_jour: isoDateTimeSchema,
@@ -85,3 +88,4 @@ export const ademePivotSchema = z
     variantes: z.array(varianteSchema).optional(),
   })
   .strict()
+  .superRefine(refineKebabCaseSlug('id', (data) => data['statut'] === 'remplace'))

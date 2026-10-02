@@ -3,19 +3,23 @@ import { readFileSync } from 'fs'
 import { editorConfigFactory } from '@payloadcms/richtext-lexical'
 import type { SourceProject } from './types'
 import { ProjectMapper } from './ProjectMapper'
-import { ProjectImporter } from './ProjectImporter'
+import { ProjectImporter, type ImportResult } from './ProjectImporter'
 import { LinkedProjectsUpdater } from './LinkedProjectsUpdater'
 
 export class ProjectsSeed {
   constructor(
     private readonly payload: Payload,
-    private readonly projectsPath: string,
+    private readonly projects: SourceProject[],
   ) {}
 
-  async run(): Promise<void> {
-    process.stdout.write('Reading projects.json...\n')
-    const projects = JSON.parse(readFileSync(this.projectsPath, 'utf-8')) as SourceProject[]
-    process.stdout.write(`Found ${projects.length.toString()} projects in source file.\n`)
+  static fromFile(payload: Payload, path: string): ProjectsSeed {
+    return new ProjectsSeed(payload, JSON.parse(readFileSync(path, 'utf-8')) as SourceProject[])
+  }
+
+  /** Pass 2 link failures count as errors: a partial seed must not go unnoticed. */
+  async run(): Promise<ImportResult> {
+    const projects = this.projects
+    process.stdout.write(`Found ${projects.length.toString()} projects in source.\n`)
 
     const programsResult = await this.payload.find({
       collection: 'programs',
@@ -44,5 +48,6 @@ export class ProjectsSeed {
     process.stdout.write(
       `Pass 2 complete — ${updated.toString()} updated, ${errors.toString()} errors.\n`,
     )
+    return { ...result, errors: result.errors + errors }
   }
 }

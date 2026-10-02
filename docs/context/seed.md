@@ -1,8 +1,8 @@
-# Seed — Import initial des programmes
+# Seed : import des données amont dans le CMS
 
 ## Objectif
 
-Le script `apps/cms/src/seed/programs.ts` importe les 234 programmes d'aide à la transition écologique depuis `docs/sources/programs.json` dans PayloadCMS via la **Local API**.
+`pnpm seed` remplit PayloadCMS (via la **Local API**) avec les dispositifs et projets du dépôt GitHub amont `betagouv/mission-transition-ecologique` (`libs/data/static/programs.json`, `projects.json`), qui fait foi. Le store canonical est alimenté au passage par le hook `syncCanonicalOnPublish`.
 
 ---
 
@@ -15,82 +15,99 @@ Le script `apps/cms/src/seed/programs.ts` importe les 234 programmes d'aide à l
    CANONICAL_DATABASE_URI=postgres://tee:tee@localhost:5432/tee
    PAYLOAD_SECRET=<une-chaine-secrete>
    ```
+3. Optionnel : `TEE_PROGRAMS_URL` / `TEE_PROJECTS_URL` pour lire une autre source que le dépôt amont.
 
 ---
 
 ## Utilisation
 
 ```sh
-pnpm nx run @tee-backoffice/cms:seed
-# ou depuis apps/cms/ directement :
-pnpm seed
+pnpm seed               # = nx run @tee-backoffice/cms:seed
+pnpm data:snapshot      # rafraîchit la copie locale de secours (à commiter)
 ```
 
-Le point d'entrée est `apps/cms/src/seed/run.ts` (script npm `seed` → `tsx src/seed/run.ts`).
+Le point d'entrée est `apps/cms/src/scripts/seed/run.ts`.
+
+---
+
+## Source des données
+
+- `UpstreamJsonSource.fromSettings(Config.upstreamFallback())` lit les fichiers sur GitHub (timeout 30 s).
+- **Avec `TEE_UPSTREAM_LOCAL_FALLBACK=1`** dans le `.env` (usage local), une panne GitHub (réseau, timeout, 5xx) bascule sur la copie versionnée `libs/format-adapters/static/upstream/`, avec un avertissement. Un 404 ou un JSON invalide échoue toujours : c'est un vrai changement amont.
+- **Sans la variable**, pas de repli : le seed échoue. Sur Scalingo, la variable est **refusée** (erreur explicite), même si elle est posée.
+- `docs/sources/` n'est plus lu par le code (archive de la reprise historique).
 
 ---
 
 ## Comportement
 
-### Étape 1 — Opérateurs
+### Un seul lecteur du format amont
 
-- Déduplique tous les noms d'opérateurs présents dans le JSON (champs `opérateur de contact` et `autres opérateurs`).
-- Pour chaque opérateur : **upsert par slug** (si le slug existe déjà → skip, sinon → création).
-- Construit une map `nom → id` Payload pour la résolution des relations.
+Le format brut de `programs.json` n'est interprété que par `TeeImporter` (`libs/format-adapters`), le même lecteur que l'import canonical. Chaque dispositif devient un `CanonicalProgramInput` (identifiant `SlugCanonicalId` dérivé du slug), puis `CanonicalToPayloadMapper` le transforme en données Payload.
 
-### Étape 2 — Programmes
+### Étape 1 : opérateurs
 
-Pour chaque programme du JSON :
-1. Mappe les champs JSON → structure Payload (voir `docs/context/programs-model.md` pour le mapping complet).
-2. Convertit les dates `DD/MM/YYYY` → ISO 8601.
-3. Convertit le markdown → Lexical via `convertMarkdownToLexical` de `@payloadcms/richtext-lexical` (listes, titres, gras… correctement structurés en nœuds Lexical).
-4. Résout les relations opérateur par nom → id numérique Payload.
-5. **Upsert par `slug`** : si un programme avec ce slug existe → `payload.update`, sinon → `payload.create`.
+`OperatorImporter` déduplique les opérateurs cités (contact, autres, variantes), fait un **upsert par slug** et construit la table `nom → id`.
+
+### Étape 2 : dispositifs
+
+Pour chaque dispositif, `CanonicalToPayloadMapper` :
+1. résout les relations (opérateurs, zones géographiques par nom ou code COG) via `PayloadProgramRelations` ;
+2. convertit le markdown en Lexical (`PayloadMarkdownToRichText`) ;
+3. traduit thèmes, zones (les collectivités d'outre-mer, stockées comme régions à code INSEE à 3 chiffres, portent le niveau COG `OM`), type d'aide, montant/durée, contact (`formulaire` → conseiller), effectif (bornes structurées, tranche exacte sinon « taille spécifique »), secteurs NAF (les 21 sections → « tous secteurs »), territoires, critères (ancienneté + autres), variantes, statut « temporairement indisponible » ;
+4. publie (`publie`) si l'URL et tous les liens d'étape sont valides, sinon laisse en `en-creation`.
+
+L'écriture est un **upsert par `slug`**, faite sous `SystemWorkflowContext` : le statut de la source s'impose au workflow éditorial.
+
+### Étape 3 : projets
+
+`ProjectsSeed` importe `projects.json` (liaison vers les dispositifs par slug, puis projets liés en seconde passe).
 
 ### Idempotence
 
-Le script est **ré-exécutable sans effet de bord** : une deuxième exécution met à jour les données existantes au lieu de créer des doublons.
+Ré-exécutable : une deuxième exécution met à jour au lieu de créer des doublons.
 
 ### Logs de sortie
 
 ```
-[INFO] Reading programs.json...
-[INFO] Found 234 programs in source file.
-[INFO] Found 42 unique operators. Upserting...
-[INFO] Operators ready. Importing 234 programs...
-[INFO] Seed complete — 234 created, 0 updated, 0 errors.
+Source : https://raw.githubusercontent.com/.../programs.json + ...
+Found 276 programs in source.
+Found 76 unique operators. Upserting...
+Operators ready. Importing 276 programs...
+Seed complete: 276 created, 0 updated, 0 errors.
+  ⚠ 47 × restriction de catégorie légale (micro-entreprises) sans champ Payload
+  ...
 ```
+
+---
+
+## Données que le CMS ne porte pas (signalées en fin de seed)
+
+| Donnée amont | Volume (09/2026) | Raison |
+|---|---|---|
+| Non éligible aux micro-entreprises | 47 | aucun champ Payload |
+| Montant de financement d'une étude | 53 | une seule case montant par type d'aide (coût restant à charge pour une étude) |
+| Lien d'étape vers le formulaire conseiller | 31 | un lien Payload exige une URL |
+| Durée d'un prêt | 10 | pas de champ durée pour les prêts |
+| Territoires mêlant départements et régions (ex. « Landes, Nouvelle-Aquitaine, Occitanie ») | 12 | le formulaire n'a qu'un niveau de couverture : le niveau départemental est retenu, les régions restent dans le texte de retour (`geographicAreaFeedback`) |
+| Texte libre d'effectif sans bornes (ex. « Moins de 250 salariés ») | 9 | on suit les bornes structurées, que le site TEE utilise pour l'éligibilité |
+| `publicodes`, `illustration` | tous | exclus du modèle CMS (ADR 0001) |
 
 ---
 
 ## Tests
 
-Les tests d'intégration du seed se trouvent dans `apps/cms/tests/int/seed.int.spec.ts`.
-
 ```sh
-pnpm nx run @tee-backoffice/cms:test
+pnpm test         # intégration, base tee_test
+pnpm test:unit    # CanonicalToPayloadMapper.spec.ts, sans base
 ```
 
-Ils vérifient sur la base PostgreSQL de test (`tee_test`, vidée avant chaque exécution) :
-- Les opérateurs sont créés
-- Les programmes sont créés et chacun possède un opérateur
-- Le champ `description` est un état Lexical valide (nœud `root`)
-- La conversion markdown produit des nœuds structurés (`list`, `heading`)
-- Le script est idempotent (2ème exécution → 0 created, 234 updated)
-
----
-
-## Limitations connues
-
-| Limitation | Raison |
-|-----------|--------|
-| `publicodes` non importé | Exclu du modèle CMS — voir ADR `docs/adr/0001-programs-collection.md` |
-| `contactUrl` de l'opérateur non renseigné lors du seed | Non présent dans le JSON source |
+- `seed.int.spec.ts` : opérateurs, dispositifs, thèmes, Lexical, brouillon sur lien invalide, idempotence (fixture `apps/cms/tests/fixtures/programs.json`).
+- `upstream-roundtrip.int.spec.ts` : les 276 dispositifs de la copie amont passent par le CMS puis `ProgramCanonicalMapper`, et chaque champ porté doit ressortir identique à ce qu'a produit `TeeImporter`.
 
 ---
 
 ## En cas d'erreur
 
-- Les erreurs par programme sont loggées individuellement et ne bloquent pas les suivants.
-- Le compte final indique le nombre d'erreurs : `X created, Y updated, Z errors`.
-- Causes fréquentes : opérateur de contact absent dans le JSON, champ `id` manquant.
+- Les erreurs par dispositif sont loggées individuellement et ne bloquent pas les suivants (`X created, Y updated, Z errors`).
+- Causes fréquentes : opérateur de contact absent, type d'aide inconnu.

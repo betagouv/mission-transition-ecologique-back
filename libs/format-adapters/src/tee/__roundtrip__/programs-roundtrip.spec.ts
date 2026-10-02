@@ -46,8 +46,28 @@ const roundTrip = (source: Record<string, unknown>): Record<string, unknown> | n
 
 const allPrograms = programs as Record<string, unknown>[]
 
+/**
+ * Fixture records carrying a step link to a local file pasted behind `https://`
+ * (`https://file:///Users/...`): the pivot rejects such a url, so they cannot
+ * round-trip until upstream fixes the link.
+ */
+const REJECTED_IDS = [
+  'cheque-transition-tissu-economique',
+  'ibac-pme',
+  'etudes-de-faisabilite-de-projet-de-production-delectricite-renouvelable-en-outre-mer-et-corse',
+]
+
+const byId = (predicate: (id: string) => boolean) =>
+  allPrograms
+    .map((program) => [String(program['id']), program] as const)
+    .filter(([id]) => predicate(id))
+
 describe('TEE round-trip (programs.json)', () => {
-  it.each(allPrograms.map((program) => [String(program['id']), program] as const))(
+  it.each(byId((id) => REJECTED_IDS.includes(id)))('%s : rejeté par le pivot (lien local)', (_id, source) => {
+    expect(roundTrip(source)).toBeNull()
+  })
+
+  it.each(byId((id) => !REJECTED_IDS.includes(id)))(
     '%s : sortie conforme au schéma TEE et identique à l\'entrée (au trim près)',
     (_id, source) => {
       const actual = roundTrip(source)

@@ -16,12 +16,31 @@ export const markdownSchema = z.string()
 export const cuid2Schema = z.string().cuid2().brand<'Cuid2'>()
 export type Cuid2 = z.infer<typeof cuid2Schema>
 
+const KEBAB_CASE_SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+const KEBAB_CASE_MESSAGE = 'slug invalide (kebab-case attendu)'
+
 /** URL-readable identifier, e.g. `aide-decarbonation-industrie`. */
-export const slugSchema = z
-  .string()
-  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'slug invalide (kebab-case attendu)')
-  .brand<'Slug'>()
+export const slugSchema = z.string().regex(KEBAB_CASE_SLUG, KEBAB_CASE_MESSAGE).brand<'Slug'>()
 export type Slug = z.infer<typeof slugSchema>
+
+/**
+ * Slug kept verbatim from a former URL (apostrophe, capital letter), so a
+ * redirect tombstone answers under the exact old address. Only a `remplace`
+ * program may carry one: see {@link refineKebabCaseSlug}.
+ */
+export const legacySlugSchema = z
+  .string()
+  .regex(/^[^\s/]+$/, 'slug invalide (ni espace ni /)')
+  .brand<'Slug'>()
+
+/** Enforces kebab-case on `field` unless the program is replaced (redirect tombstone). */
+export const refineKebabCaseSlug =
+  (field: string, isReplaced: (data: Record<string, unknown>) => boolean) =>
+  (data: Record<string, unknown>, ctx: z.RefinementCtx): void => {
+    const slug = data[field]
+    if (typeof slug !== 'string' || isReplaced(data) || KEBAB_CASE_SLUG.test(slug)) return
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: [field], message: KEBAB_CASE_MESSAGE })
+  }
 
 /** ISO 8601 date (`2025-12-31`). */
 export const isoDateSchema = z.string().date()
@@ -50,8 +69,31 @@ export const nafCodeSchema = z
   .brand<'NafCode'>()
 export type NafCode = z.infer<typeof nafCodeSchema>
 
-/** Absolute URL. */
-export const urlSchema = z.string().url()
+const URL_PROTOCOLS: readonly string[] = ['http:', 'https:', 'mailto:']
+
+/**
+ * Link a front can render safely: http(s) or mailto only (no `javascript:` or
+ * `data:`), and an http(s) host that is a real domain, so a `file:///` path
+ * pasted behind `https://` (hostname `file`) is rejected. Same rule as the
+ * CMS `UrlValidator`.
+ */
+function isSafeUrl(value: string): boolean {
+  let parsed: URL
+  try {
+    parsed = new URL(value)
+  } catch {
+    return false
+  }
+  if (!URL_PROTOCOLS.includes(parsed.protocol)) return false
+  if (parsed.protocol === 'mailto:') return true
+  return parsed.hostname === 'localhost' || parsed.hostname.includes('.')
+}
+
+/** Absolute http(s) or mailto URL (see `isSafeUrl`). */
+export const urlSchema = z
+  .string()
+  .url()
+  .refine(isSafeUrl, { message: 'URL invalide (http, https ou mailto vers un domaine attendu)' })
 
 /**
  * Numeric interval, bounds included (headcount). Bounds optional: `{ min: 3 }`

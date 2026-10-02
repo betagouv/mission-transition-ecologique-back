@@ -6,6 +6,7 @@ import { normalizeGeographicCoverage } from '@/hooks/programs/normalizeGeographi
 import { trackLastModifiedBy } from '@/hooks/programs/trackLastModifiedBy'
 import { assignCanonicalId } from '@/hooks/programs/assignCanonicalId'
 import { syncCanonicalOnPublish } from '@/hooks/programs/syncCanonicalOnPublish'
+import { removeCanonicalOnDelete } from '@/hooks/programs/removeCanonicalOnDelete'
 import { THEMES_OPTIONS } from '@/constants/themesOptions'
 import { COMPANY_SIZE_OPTIONS } from '@/constants/companySizeOptions'
 import { ACTIVITY_SECTOR_OPTIONS } from '@/constants/activitySectorOptions'
@@ -82,6 +83,7 @@ export const Programs: CollectionConfig = {
       beforeChangeWorkflow,
     ],
     afterChange: [syncCanonicalOnPublish],
+    afterDelete: [removeCanonicalOnDelete],
   },
   access: {
     read: ProgramAccessPolicy.read,
@@ -355,6 +357,7 @@ export const Programs: CollectionConfig = {
           name: 'contactPageUrl',
           type: 'text',
           label: 'URL',
+          validate: UrlValidator.validate,
           admin: {
             condition: (data) => data?.contactMethod === 'url',
             description: 'Exemple : https://...',
@@ -876,6 +879,16 @@ export const Programs: CollectionConfig = {
         id: { not_equals: id },
         workflowStatus: { not_in: ['annule', 'archive', 'remplace'] },
       }),
+    },
+    {
+      name: 'temporarilyUnavailable',
+      type: 'checkbox',
+      label: 'Aide temporairement indisponible',
+      defaultValue: false,
+      admin: {
+        position: 'sidebar',
+        description: "L'aide reste publiée mais est signalée comme indisponible.",
+      },
     },
     {
       name: 'lastModifiedBy',

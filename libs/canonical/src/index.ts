@@ -27,6 +27,9 @@ export * from './canonical-program/CanonicalProgram'
 export * from './canonical-program/CanonicalProgramValidator'
 export * from './canonical-program/CanonicalProgramRepository'
 export * from './canonical-program/CanonicalProgramService'
+export * from './canonical-program/snapshot/CanonicalSnapshotPlan'
+export * from './canonical-program/snapshot/CanonicalSnapshotGuard'
+export * from './canonical-program/snapshot/CanonicalSnapshotRejectedError'
 
 // Observability (port + channels + routing)
 export * from './observability/CanonicalEvent'

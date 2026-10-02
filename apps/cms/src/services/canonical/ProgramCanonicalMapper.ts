@@ -6,6 +6,7 @@ import type {
   Lien,
   Montant,
 } from '@tee-backoffice/canonical'
+import { COG_FRANCE } from '@tee-backoffice/canonical'
 import type { GeographicArea, Program } from '../../../payload-types'
 import type { RichTextToMarkdown } from './rich-text/RichTextToMarkdown'
 import { COMPANY_SIZE_TO_INTERVAL } from '@/constants/variantOptions'
@@ -15,13 +16,13 @@ import {
   AID_TYPE_TO_CANONICAL,
   COMPANY_SIZE_BOUNDS,
   COMPANY_SIZE_LABELS,
-  COVERAGE_TYPE_TO_COG_PREFIX,
   DUREE_BY_AID_TYPE,
   MONTANT_BY_AID_TYPE,
   NAF_SECTION_LABELS,
   THEME_TO_CANONICAL,
   WORKFLOW_STATUS_TO_DISPOSITIF,
   WORKFLOW_STATUS_TO_EDITION,
+  cogCodeOf,
   isCompanySizeBucket,
 } from './canonicalMappings'
 
@@ -119,7 +120,7 @@ export class ProgramCanonicalMapper {
     const workflowStatus = program.workflowStatus ?? 'en-creation'
     return {
       statut_edition: WORKFLOW_STATUS_TO_EDITION[workflowStatus],
-      statut_dispositif: WORKFLOW_STATUS_TO_DISPOSITIF[workflowStatus],
+      statut_dispositif: this.mapStatutDispositif(program, workflowStatus),
       date_ouverture: toIsoDate(program.validityStart),
       date_cloture: toIsoDate(program.validityEnd),
       remplace_par: this.mapRemplacePar(program),
@@ -131,6 +132,15 @@ export class ProgramCanonicalMapper {
       url_source: clean(program.url),
       etapes_activation: this.mapEtapes(program),
     }
+  }
+
+  private mapStatutDispositif(
+    program: Program,
+    workflowStatus: NonNullable<Program['workflowStatus']>,
+  ): CanonicalProgramInput['statut_dispositif'] {
+    const statut = WORKFLOW_STATUS_TO_DISPOSITIF[workflowStatus]
+    // Unavailability only qualifies a live aid, not an archived or replaced one.
+    return statut === 'valide' && program.temporarilyUnavailable ? 'temporairement_indisponible' : statut
   }
 
   private mapRemplacePar(program: Program): string | undefined {
@@ -306,20 +316,16 @@ export class ProgramCanonicalMapper {
     const feedback = clean(program.geographicAreaFeedback)
     if (feedback) texte.push(feedback)
 
-    const inclusions = areas
-      .map((area) => this.toCogCode(area))
-      .filter((code): code is string => code !== undefined)
+    const inclusions =
+      program.geographicCoverage === 'national'
+        ? [COG_FRANCE]
+        : areas.map((area) => cogCodeOf(area)).filter((code): code is string => code !== undefined)
     const structure = inclusions.length > 0 ? { inclusions } : undefined
 
     if (texte.length === 0 && !structure) return undefined
     return { ...(texte.length > 0 ? { texte } : {}), ...(structure ? { structure } : {}) }
   }
 
-  private toCogCode(area: GeographicArea): string | undefined {
-    const prefix = COVERAGE_TYPE_TO_COG_PREFIX[area.coverageType]
-    const code = clean(area.inseeCode)
-    return prefix && code ? `${prefix}-${code}` : undefined
-  }
 
   private mapAutresCriteres(program: Program): EligibiliteInput['autres_criteres'] | undefined {
     const texte = (program.otherCriteria ?? [])
@@ -371,7 +377,7 @@ export class ProgramCanonicalMapper {
       .filter((row) => row.conditionType === 'geographicArea')
       .flatMap((row) => row.geographicAreaValue ?? [])
       .filter((area): area is GeographicArea => typeof area === 'object' && area !== null)
-      .map((area) => this.toCogCode(area))
+      .map((area) => cogCodeOf(area))
       .filter((code): code is string => code !== undefined)
     const unique = [...new Set(codes)]
     return unique.length > 0 ? unique : undefined

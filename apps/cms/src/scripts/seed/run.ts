@@ -1,26 +1,34 @@
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import { resolve } from 'path'
-import { fileURLToPath } from 'url'
+import { UpstreamJsonSource, type TeeRecord } from '@tee-backoffice/format-adapters'
 import { GeographicAreasSeed } from './geographic-areas'
 import { ProgramsSeed } from './programs'
 import { ProjectsSeed } from './projects'
+import type { SourceProject } from './projects/types'
 import { UsersSeed } from './users'
 import { Config } from '@/config/Config'
 
-const dirname = fileURLToPath(new URL('.', import.meta.url))
-const programsPath = resolve(dirname, '../../../../../docs/sources/programs.json')
-const projectsPath = resolve(dirname, '../../../../../docs/sources/projects.json')
+// Upstream GitHub files are the source of truth; the versioned local copy is an
+// opt-in development fallback, refused on Scalingo.
+const source = UpstreamJsonSource.fromSettings(Config.upstreamFallback())
+process.stdout.write(`Source : ${source.describe()}\n`)
+const [programs, projects] = await Promise.all([
+  source.programs<TeeRecord[]>(),
+  source.projects<SourceProject[]>(),
+])
 
 const payload = await getPayload({ config })
 await new GeographicAreasSeed(payload).run()
-await new ProgramsSeed(payload, programsPath).run()
-await new ProjectsSeed(payload, projectsPath).run()
-// The user fixtures use the email as password: never seed them in production,
-// where the first super-admin is created by hand.
-if (Config.isProduction()) {
-  process.stdout.write('NODE_ENV=production : utilisateurs de dev non seedés.\n')
-} else {
+const programsResult = await new ProgramsSeed(payload, programs).run()
+const projectsResult = await new ProjectsSeed(payload, projects).run()
+// The user fixtures use the email as password: in production they need the
+// explicit TEE_SEED_DEV_USERS opt-in (preprod, first prod deploy).
+if (Config.seedsDevUsers()) {
   await new UsersSeed(payload).run()
+} else {
+  process.stdout.write('NODE_ENV=production sans TEE_SEED_DEV_USERS : utilisateurs de dev non seedés.\n')
 }
-process.exit(0)
+// A partial seed must fail the job (CI, deployment) rather than pass unnoticed.
+const errors = programsResult.errors + projectsResult.errors
+if (errors > 0) process.stderr.write(`Seed incomplet : ${errors.toString()} erreur(s).\n`)
+process.exit(errors > 0 ? 1 : 0)

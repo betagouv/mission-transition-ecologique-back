@@ -5,6 +5,7 @@ import {
   type WorkflowStatus,
 } from '@/services/workflow/WorkflowTransitionPolicy'
 import { WorkflowAutomation } from '@/services/workflow/WorkflowAutomation'
+import { SystemWorkflowContext } from '@/services/workflow/SystemWorkflowContext'
 import type { UserRoleValue } from '@/utils/user/UserRole'
 
 export const beforeChangeWorkflow: CollectionBeforeChangeHook = ({
@@ -35,14 +36,18 @@ export const beforeChangeWorkflow: CollectionBeforeChangeHook = ({
 
   if (!nextStatusInput || nextStatusInput === previousStatus) return data
 
-  const role = req.user?.role as UserRoleValue | undefined
-  if (!role) throw new APIError('Utilisateur non authentifié', 401)
+  // The upstream sync mirrors the source status as is (e.g. archive, or back to
+  // publie when a program reappears), outside the editorial transition rules.
+  if (!SystemWorkflowContext.isActive(req.context)) {
+    const role = req.user?.role as UserRoleValue | undefined
+    if (!role) throw new APIError('Utilisateur non authentifié', 401)
 
-  if (!WorkflowTransitionPolicy.canTransition(previousStatus, nextStatusInput, role)) {
-    throw new APIError(
-      `Transition non autorisée : ${previousStatus} → ${nextStatusInput} pour le rôle ${role}`,
-      403,
-    )
+    if (!WorkflowTransitionPolicy.canTransition(previousStatus, nextStatusInput, role)) {
+      throw new APIError(
+        `Transition non autorisée : ${previousStatus} → ${nextStatusInput} pour le rôle ${role}`,
+        403,
+      )
+    }
   }
 
   // Trim to reject whitespace-only ids that would pass a plain truthiness check

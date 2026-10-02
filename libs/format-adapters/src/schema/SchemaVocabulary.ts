@@ -1,4 +1,4 @@
-import type { TypeAide } from '@tee-backoffice/canonical'
+import { COG_FRANCE, type TypeAide } from '@tee-backoffice/canonical'
 import type { Cible } from './schema-row.types'
 
 /**
@@ -18,7 +18,7 @@ export class SchemaVocabulary {
   static readonly SOURCE = 'tee' as const
 
   /** National coverage COG code, the `eligibilite_geographique` default. */
-  static readonly COG_NATIONAL = 'PAYS-99100'
+  static readonly COG_NATIONAL = COG_FRANCE
 
   /** `ciblage_secteur_activite` default when no sector restriction is declared. */
   static readonly SECTEUR_TOUS = "tous secteurs d'activité"

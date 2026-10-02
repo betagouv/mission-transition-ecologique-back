@@ -145,8 +145,9 @@ La table Grist porte les colonnes du schéma **entreprise** (l'`id` Etalab sous
 canonical **directement depuis `static/input/programs.json`**, sans Payload :
 `TeeImporter` mappe chaque dispositif, `SlugCanonicalId` lui donne un id stable
 dérivé du slug (cuid2 déterministe : diff minimal d'un jour à
-l'autre), `date_mise_a_jour` = heure du run, puis `CanonicalProgramService.save`
-valide + upsert. Les invalides sont ignorés et listés.
+l'autre), `date_mise_a_jour` = heure du run, puis
+`CanonicalProgramService.applySnapshot` aligne le store sur ce snapshot (voir
+plus bas). Les invalides sont ignorés et listés.
 
 **Redirections** (`static/input/redirects.json`, fallback `redirects-tests.json`) :
 après l'import, `ProgramRedirects` lit la table `program_redirects` (ancien slug
@@ -157,19 +158,38 @@ cible sous l'ancien slug, avec `statut_dispositif = remplace` et `remplace_par` 
 id de la cible (résolu en slug à l'export). AGIR sert alors l'ancien slug avec
 `statut: remplace` + le nouveau slug (redirection suivable) ; ces tombstones
 **n'entrent pas** dans l'export Grist (`SchemaExportPolicy` filtre `remplace`).
-Les redirections dont la cible est absente, ou dont l'ancien slug n'est pas un
-slug canonical valide (apostrophes), sont ignorées/journalisées, jamais en
-silence.
+Les redirections dont la cible est absente sont ignorées et journalisées, jamais
+en silence. Un ancien slug hors kebab-case (apostrophe droite ou typographique,
+majuscule, ex. `contrat-3S-occitanie`) est **conservé tel quel** : le canonical
+l'accepte sur un dispositif `remplace` uniquement, et AGIR l'encode dans ses URLs
+(`encodeURIComponent`), si bien que toutes les redirections amont sont servies.
+
+`TeeImporter` retire aussi les chevrons d'autolien markdown autour d'une URL amont
+(`<https://…>`), qui faisaient rejeter le dispositif à la validation.
 
 L'import lit `static/input/programs.json` (copie **vivante** amont, écrasée par le
 workflow) et retombe sur `static/input/programs-tests.json` (copie **figée**,
 fixture du round-trip) si la première est absente — un run local fonctionne donc
 sans `fetch` préalable.
 
-L'import est une **régénération complète** : le store est vidé puis réécrit,
-donc les suppressions amont sont reflétées. Le vidage n'intervient qu'une fois
-les entrées mappées et validées, pour ne jamais écraser un bon store sur une
-source cassée. Comme `TeeImporter` marque tout en `pret_prod`/`valide`, ce store
+L'import **aligne** le store sur l'amont sans jamais le vider
+(`CanonicalProgramService.applySnapshot`) :
+
+1. toutes les entrées (dispositifs + tombstones) sont validées avant toute écriture ;
+2. `CanonicalSnapshotPlan` compare aux lignes stockées (`listKeys`, lignes
+   illisibles comprises) : upsert des dispositifs valides, suppression de ceux
+   **absents de l'amont**, suppression d'une ligne stockée sous un autre id pour
+   le même slug (id aléatoire écrit par le CMS : « réidentifiée »), et
+   **conservation** de la ligne d'un dispositif dont l'entrée amont est invalide ;
+3. `CanonicalSnapshotGuard` refuse le snapshot, store inchangé et code de sortie
+   non nul (la suite de `data:daily`, dont le push Grist, ne tourne pas), s'il ne
+   contient aucun dispositif valide ou s'il retirerait plus de
+   `max(5, 10 % du store)` dispositifs. `--allow-mass-removal` lève ce plafond
+   pour un nettoyage amont volontaire ;
+4. suppressions puis upserts sont appliqués dans **une transaction**
+   (`applyChanges`) : tout passe, ou rien.
+
+Comme `TeeImporter` marque tout en `pret_prod`/`valide`, ce store
 contient **tout** l'amont (~280), plus large que le store alimenté par le CMS
 (filtré par le workflow éditorial Payload). C'est voulu : ce chemin traite
 l'amont `programs.json` comme source de vérité du flux open data.
@@ -177,7 +197,15 @@ l'amont `programs.json` comme source de vérité du flux open data.
 ## Pipeline quotidien (tâche planifiée Scalingo)
 
 `cron.json` à la racine lance `pnpm data:daily` chaque nuit (03h17 UTC) dans un
-conteneur one-off de l'application :
+conteneur one-off de l'application. La commande appelle les scripts en `tsx`
+direct, **sans nx** : `nx` est une devDependency (absente du conteneur de prod),
+`tsx` une dépendance de prod. Aucun `.env` n'est lu, les variables viennent de
+Scalingo. En local, lancer **`pnpm data:daily:dev`** : même enchaînement via les
+targets nx, qui chargent le `.env` racine (voir `.env.example`). Les scripts
+résolvent leurs chemins (`static/input/`, `static/exports/`) depuis leur propre
+fichier : le résultat ne dépend pas du répertoire de lancement.
+
+Étapes :
 
 1. `import:tee --remote` : lecture HTTP de `programs.json` **et** `redirects.json`
    amont (`UpstreamJsonSource`, betagouv/mission-transition-ecologique), puis
@@ -190,7 +218,7 @@ supprimé (ADR 0012).
 
 **Variables requises sur l'app Scalingo** : `GRIST_BASE_URL` (⚠️ obligatoire ici,
 l'instance n'est pas celle par défaut), `GRIST_DOC_ID`, `GRIST_TABLE_ID`,
-`GRIST_API_KEY`, éventuellement `TEE_PROGRAMS_URL` / `TEE_REDIRECTS_URL`.
+`GRIST_API_KEY`, éventuellement `TEE_PROGRAMS_URL` / `TEE_PROJECTS_URL` / `TEE_REDIRECTS_URL`.
 
 **Surveillance** : les logs partent dans ceux de l'application (`scalingo logs`),
 les tâches se listent avec `scalingo cron-tasks`. Scalingo ne notifie pas l'échec

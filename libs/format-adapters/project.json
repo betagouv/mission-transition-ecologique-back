@@ -26,6 +26,13 @@
         "command": "tsx scripts/import-tee.ts"
       }
     },
+    "snapshot:upstream": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "libs/format-adapters",
+        "command": "tsx scripts/snapshot-upstream.ts"
+      }
+    },
     "export:grist": {
       "executor": "nx:run-commands",
       "options": {

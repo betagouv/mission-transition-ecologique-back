@@ -72,6 +72,35 @@ describe('canonicalProgramSchema', () => {
     })
   })
 
+  describe('cross-field: kebab-case slug, except for a remplace tombstone', () => {
+    const tombstone = (slug: string) => {
+      const input = cloneMinimal()
+      input['slug'] = slug
+      input['statut_dispositif'] = 'remplace'
+      input['remplace_par'] = 'b1b2c3d4e5f6g7h8i9j0klmn'
+      return input
+    }
+
+    it.each(["etude-qualite-de-l'air", 'etude-qualite-de-l’air', 'contrat-3S-occitanie'])(
+      'accepts the former slug %s on a remplace program',
+      (slug) => {
+        expect(canonicalProgramSchema.safeParse(tombstone(slug)).success).toBe(true)
+      },
+    )
+
+    it('rejects the same former slug on a live program', () => {
+      const input = cloneMinimal()
+      input['slug'] = 'contrat-3S-occitanie'
+      const result = canonicalProgramSchema.safeParse(input)
+      expect(result.success).toBe(false)
+      expect(result.error?.issues[0]?.path).toEqual(['slug'])
+    })
+
+    it.each(['avec espace', 'avec/slash', ''])('rejects %j even on a remplace program', (slug) => {
+      expect(canonicalProgramSchema.safeParse(tombstone(slug)).success).toBe(false)
+    })
+  })
+
   describe('contact_question discriminated union', () => {
     it('rejects an invalid email', () => {
       const input = cloneMinimal()
@@ -83,6 +112,35 @@ describe('canonicalProgramSchema', () => {
       const input = cloneMinimal()
       input['contact_question'] = { type: 'conseiller_entreprise' }
       expect(canonicalProgramSchema.safeParse(input).success).toBe(true)
+    })
+  })
+
+  describe('urls a front can render safely', () => {
+    const withUrlSource = (url: string): Record<string, unknown> => ({ ...cloneMinimal(), url_source: url })
+
+    it.each([
+      'https://www.ademe.fr/aide',
+      'http://example.org',
+      'http://localhost:3000/page',
+      'mailto:contact@ademe.fr',
+    ])('accepts %s', (url) => {
+      expect(canonicalProgramSchema.safeParse(withUrlSource(url)).success).toBe(true)
+    })
+
+    it.each([
+      'javascript:alert(1)',
+      'data:text/html,<script>alert(1)</script>',
+      'ftp://files.example.org/doc.pdf',
+      'https://file:///Users/someone/Downloads/doc.pdf',
+      'not a url',
+    ])('rejects %s', (url) => {
+      expect(canonicalProgramSchema.safeParse(withUrlSource(url)).success).toBe(false)
+    })
+
+    it('rejects a javascript: contact url', () => {
+      const input = cloneMinimal()
+      input['contact_question'] = { type: 'url', valeur: 'javascript:alert(1)' }
+      expect(canonicalProgramSchema.safeParse(input).success).toBe(false)
     })
   })
 

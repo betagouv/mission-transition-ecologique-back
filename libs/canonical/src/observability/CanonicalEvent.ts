@@ -16,6 +16,7 @@ export type CanonicalEventPhase = 'write' | 'read'
  */
 export type CanonicalEvent =
   | { type: 'program_saved'; severity: 'info'; slug: string; canonicalId: string }
+  | { type: 'program_removed'; severity: 'info'; slug: string; canonicalId: string }
   | {
       type: 'program_dropped'
       severity: 'warning'

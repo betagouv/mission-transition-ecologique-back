@@ -8,32 +8,43 @@
 // With `--remote` (the daily refresh on Scalingo), the two JSON files are read
 // straight from the upstream repository instead of `static/input/`.
 //
-// The import is a FULL REBUILD: the store is emptied before the upsert, so
-// dispositifs removed upstream disappear here too. Emptying happens only once
-// every record has been mapped and validated, to avoid wiping a good store on a
-// broken input.
+// The store is aligned on the upstream snapshot, never emptied: upserts, plus
+// deletion of the programs gone upstream. The snapshot is rejected (store
+// untouched, non-zero exit) when it holds no valid program or would remove more
+// than the guard allows; `--allow-mass-removal` lifts that ceiling on purpose.
 import { existsSync, readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
-import { CanonicalProgramService, type CanonicalProgramInput } from '@tee-backoffice/canonical'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import {
+  CanonicalProgramService,
+  CanonicalSnapshotGuard,
+  type CanonicalProgramInput,
+  type CanonicalProgramKey,
+} from '@tee-backoffice/canonical'
 import { createCanonicalProgramRepository } from '@tee-backoffice/canonical-store'
 import { ProgramRedirects } from '../src/tee/ProgramRedirects'
 import { RedirectTombstoneBuilder } from '../src/tee/RedirectTombstoneBuilder'
 import { SlugCanonicalId } from '../src/tee/SlugCanonicalId'
 import { TeeImporter } from '../src/tee/TeeImporter'
 import type { TeeRecord } from '../src/tee/TeeImporter'
+import { UpstreamFallbackSettings } from '../src/tee/UpstreamFallbackSettings'
 import { UpstreamJsonSource } from '../src/tee/UpstreamJsonSource'
 
 const REMOTE = process.argv.includes('--remote')
+const ALLOW_MASS_REMOVAL = process.argv.includes('--allow-mass-removal')
+
+// Resolved from this file, not the cwd: `pnpm data:daily` runs from the repo root, nx from the lib.
+const LIB_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
 // Live upstream input (the daily workflow overwrites it). Falls back to the
 // frozen round-trip fixture so a local run works without fetching first.
-const LIVE_PATH = resolve(process.cwd(), 'static/input/programs.json')
-const FIXTURE_PATH = resolve(process.cwd(), 'static/input/programs-tests.json')
+const LIVE_PATH = resolve(LIB_ROOT, 'static/input/programs.json')
+const FIXTURE_PATH = resolve(LIB_ROOT, 'static/input/programs-tests.json')
 
 // Slug redirects (former → current), fetched next to programs.json by the daily
 // workflow. Falls back to the frozen fixture; absent → redirects step skipped.
-const LIVE_REDIRECTS_PATH = resolve(process.cwd(), 'static/input/redirects.json')
-const FIXTURE_REDIRECTS_PATH = resolve(process.cwd(), 'static/input/redirects-tests.json')
+const LIVE_REDIRECTS_PATH = resolve(LIB_ROOT, 'static/input/redirects.json')
+const FIXTURE_REDIRECTS_PATH = resolve(LIB_ROOT, 'static/input/redirects-tests.json')
 
 type RedirectsFile = ConstructorParameters<typeof ProgramRedirects>[0]
 
@@ -41,7 +52,7 @@ type RedirectsFile = ConstructorParameters<typeof ProgramRedirects>[0]
 async function loadInputs(): Promise<{ records: TeeRecord[]; redirects: ProgramRedirects }> {
   if (!REMOTE) return { records: loadLocalRecords(), redirects: loadLocalRedirects() }
 
-  const source = new UpstreamJsonSource()
+  const source = UpstreamJsonSource.fromSettings(UpstreamFallbackSettings.fromEnv())
   process.stdout.write(`Source distante : ${source.describe()}\n`)
   const records = await source.programs<TeeRecord[]>()
   const redirects = await source.redirects<RedirectsFile>()
@@ -93,22 +104,17 @@ async function main(): Promise<void> {
   const { tombstones, markedInPlace, skipped } = new RedirectTombstoneBuilder().build(redirects, inputsBySlug)
   inputs.push(...tombstones)
 
-  // Phase 3 — replace the store content: empty it, then validate + upsert
-  // everything (real programs + tombstones).
-  const replaced = (await service.getAll()).length
-  await repository.deleteAll()
-
-  let saved = 0
-  const invalid: string[] = []
-  for (const input of inputs) {
-    const result = await service.save(input)
-    if (result.status === 'saved') saved++
-    else invalid.push(result.slug || '(slug manquant)')
-  }
+  // Phase 3 — align the store on the snapshot: validated first, guarded, then
+  // deletions + upserts in one transaction.
+  const guard = new CanonicalSnapshotGuard(ALLOW_MASS_REMOVAL ? { maxRemovalRatio: 1 } : {})
+  const report = await service.applySnapshot(inputs, guard)
 
   process.stdout.write(
-    `\n✓ ${saved.toString()}/${inputs.length.toString()} dispositifs importés dans le store canonical (${replaced.toString()} remplacé(s))\n`,
+    `\n✓ ${report.saved.toString()}/${inputs.length.toString()} dispositifs écrits dans le store canonical\n`,
   )
+  writeKeys('Retirés (absents de l\'amont)', report.removed)
+  writeKeys('Réidentifiés (même slug, nouvel identifiant)', report.superseded)
+  writeKeys('Conservés tels quels (entrée amont invalide)', report.kept)
   if (redirects.size > 0) {
     process.stdout.write(
       `Redirections : ${markedInPlace.length.toString()} marquée(s) en place, ${tombstones.length.toString()} tombstone(s) créé(s)${
@@ -119,11 +125,21 @@ async function main(): Promise<void> {
       process.stdout.write(`  - ${skip.former} → ${skip.current} : ${skip.reason}\n`)
     }
   }
-  if (invalid.length > 0) {
-    process.stdout.write(`Ignorés (invalides) : ${invalid.length.toString()}\n`)
-    const preview = invalid.slice(0, 20).map((slug) => `  - ${slug}`)
-    process.stdout.write(`${preview.join('\n')}${invalid.length > 20 ? '\n  …' : ''}\n`)
-  }
+  writeList(
+    'Ignorés (invalides)',
+    report.invalid.map((entry) => entry.slug || '(slug manquant)'),
+  )
+}
+
+function writeKeys(label: string, keys: CanonicalProgramKey[]): void {
+  writeList(label, keys.map((key) => key.slug))
+}
+
+function writeList(label: string, slugs: string[]): void {
+  if (slugs.length === 0) return
+  process.stdout.write(`${label} : ${slugs.length.toString()}\n`)
+  const preview = slugs.slice(0, 20).map((slug) => `  - ${slug}`)
+  process.stdout.write(`${preview.join('\n')}${slugs.length > 20 ? '\n  …' : ''}\n`)
 }
 
 main().catch((err: unknown) => {

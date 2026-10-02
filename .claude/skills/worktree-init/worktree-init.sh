@@ -77,6 +77,13 @@ if (cd "$PROJECT_ROOT" && docker compose up -d --wait postgres >/dev/null 2>&1);
   (cd "$PROJECT_ROOT" && docker compose exec -T postgres \
     psql -q -U tee -d tee -c "CREATE DATABASE ${WORKTREE_DB}" >/dev/null 2>&1) || true
 
+  # The root .env feeds the non-CMS scripts (import:tee, export:grist): rewrite it too.
+  WORKTREE_ROOT_ENV="${WORKTREE_PATH}/.env"
+  if [ -f "$WORKTREE_ROOT_ENV" ]; then
+    sed -i.bak -E "s#^CANONICAL_DATABASE_URI=.*#CANONICAL_DATABASE_URI=${WORKTREE_DB_URL}#" "$WORKTREE_ROOT_ENV"
+    rm -f "${WORKTREE_ROOT_ENV}.bak"
+  fi
+
   if [ -f "$WORKTREE_CMS_ENV" ]; then
     sed -i.bak -E "s#^(DATABASE_URI|CANONICAL_DATABASE_URI)=.*#\1=${WORKTREE_DB_URL}#" "$WORKTREE_CMS_ENV"
     rm -f "${WORKTREE_CMS_ENV}.bak"

@@ -21,7 +21,7 @@ describe('review-comments', () => {
     const payloadConfig = await config
     payload = await getPayload({ config: payloadConfig })
 
-    await new ProgramsSeed(payload, programsFixture).run()
+    await ProgramsSeed.fromFile(payload, programsFixture).run()
     const programs = await payload.find({ collection: 'programs', limit: 1, depth: 0 })
     programId = programs.docs[0]!.id
 

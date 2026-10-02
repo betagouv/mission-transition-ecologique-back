@@ -1,3 +1,4 @@
+import { CanonicalProgramValidator } from '@tee-backoffice/canonical'
 import { AgirListeExporter } from './AgirListeExporter'
 import {
   archivedProgram,
@@ -10,6 +11,16 @@ import {
 
 describe('AgirListeExporter', () => {
   const exporter = new AgirListeExporter({ baseUrl: 'https://tee.example.gouv.fr/' })
+
+  it('encode dans les URLs l’ancien slug d’un tombstone (apostrophe typographique)', () => {
+    const tombstone = new CanonicalProgramValidator().parse({
+      ...remplaceProgram.toJSON(),
+      slug: 'etude-qualite-de-l’air',
+    })
+    const out = exporter.export(tombstone)
+    expect(out.idDispositif).toBe('etude-qualite-de-l’air')
+    expect(out.urlDetail).toBe('https://tee.example.gouv.fr/api/agir/programs/etude-qualite-de-l%E2%80%99air/detail')
+  })
 
   describe('entrée complète', () => {
     const out = exporter.export(fullProgram)

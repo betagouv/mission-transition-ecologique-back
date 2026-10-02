@@ -13,7 +13,7 @@ import { ConsoleExportLogger } from '../shared/ConsoleExportLogger'
 import type { ExportLogger } from '../shared/ExportLogger'
 import { ExportPolicy } from '../shared/ExportPolicy'
 import { NafSectionResolver } from '../shared/NafSectionResolver'
-import { RegionNameResolver } from '../shared/RegionNameResolver'
+import { TerritoryNameResolver } from '../shared/TerritoryNameResolver'
 import { ThemeMapper } from '../shared/ThemeMapper'
 import { TypeAideMapper } from '../shared/TypeAideMapper'
 import { TeeImporter } from './TeeImporter'
@@ -207,7 +207,7 @@ export class TeeExporter {
     }
     const regions = elig?.secteur_geographique?.structure?.inclusions
     if (regions?.length) {
-      const names = RegionNameResolver.namesOf(regions)
+      const names = TerritoryNameResolver.namesOf(regions)
       if (names.length) company.allowedRegion = names
     }
 
@@ -244,9 +244,9 @@ export class TeeExporter {
       if (effectif?.min !== undefined) toutes.push(`effectif >= ${effectif.min}`)
       if (effectif?.max !== undefined) toutes.push(`effectif <= ${effectif.max}`)
       if (toutes.length) champ['toutes ces conditions'] = toutes
-      // Resolve first: `namesOf` skips non-REG/OM COG levels, so guard on the
-      // resolved names to avoid emitting an empty `une de ces conditions: []`.
-      const regionNames = regions?.length ? RegionNameResolver.namesOf(regions) : []
+      // Resolve first: `namesOf` skips the codes without a territory name, so guard
+      // on the resolved names to avoid emitting an empty `une de ces conditions: []`.
+      const regionNames = regions?.length ? TerritoryNameResolver.namesOf(regions) : []
       if (regionNames.length) {
         champ['une de ces conditions'] = regionNames.map((name) => `région = ${name}`)
       }

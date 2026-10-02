@@ -6,6 +6,7 @@ import { eligibiliteSchema } from './fields/eligibilite.schema'
 import { themeSchema } from './enums'
 import { varianteSchema } from './variants/variante.schema'
 import { additionalDataSchema } from './additional-data/additional-data.schema'
+import { refineKebabCaseSlug } from '../shared/primitives'
 
 /**
  * Root zod schema for the canonical (pivot) program — the single source of truth
@@ -28,3 +29,4 @@ const baseCanonicalProgramSchema = identiteSchema
 export const canonicalProgramSchema = baseCanonicalProgramSchema
   .superRefine(refineDuree)
   .superRefine(refineRemplacePar)
+  .superRefine(refineKebabCaseSlug('slug', (data) => data['statut_dispositif'] === 'remplace'))

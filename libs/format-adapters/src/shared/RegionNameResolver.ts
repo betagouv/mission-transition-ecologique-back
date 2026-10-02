@@ -1,5 +1,3 @@
-import type { CogCode } from '@tee-backoffice/canonical'
-
 /**
  * Translates between the French territory names expected by
  * `eligibilityData.company.allowedRegion` (programs.json) and the pivot's
@@ -39,16 +37,13 @@ export class RegionNameResolver {
     'OM-988': 'Nouvelle-Calédonie',
   }
 
-  // ⚠️ ONE-SHOT IMPORT (Baserow → Payload): the inverse table + codesOf below
-  // exist only for the historical import. Delete with the import path after
-  // migration — see README cleanup checklist.
   /** Inverse table (name → COG code), derived from {@link CODE_TO_NAME}. */
   private static readonly NAME_TO_CODE: Record<string, string> = Object.fromEntries(
     Object.entries(RegionNameResolver.CODE_TO_NAME).map(([code, name]) => [name, code]),
   )
 
   /** Territory names for the given COG codes (unsupported levels ignored). */
-  static namesOf(codes: readonly CogCode[]): string[] {
+  static namesOf(codes: readonly string[]): string[] {
     const names: string[] = []
     for (const code of codes) {
       const name = RegionNameResolver.CODE_TO_NAME[code]

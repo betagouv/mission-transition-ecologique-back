@@ -1,3 +1,6 @@
+import { UpstreamFallbackSettings } from '@tee-backoffice/format-adapters'
+import { DeployDatabaseResetSettings } from './DeployDatabaseResetSettings'
+
 export interface ObjectStorageSettings {
   bucket: string
   accessKeyId: string
@@ -43,6 +46,25 @@ export class Config {
 
   static isProduction(): boolean {
     return process.env.NODE_ENV === 'production'
+  }
+
+  /** Local copy of the upstream files as a fallback: opt-in (TEE_UPSTREAM_LOCAL_FALLBACK), refused on Scalingo. */
+  static upstreamFallback(): UpstreamFallbackSettings {
+    return UpstreamFallbackSettings.fromEnv(process.env)
+  }
+
+  /** Database wipe and reseed at deploy time (preprod only, see the settings class). */
+  static deployDatabaseReset(): DeployDatabaseResetSettings {
+    return DeployDatabaseResetSettings.fromEnv(process.env)
+  }
+
+  /**
+   * The dev user fixtures (password = email) are seeded outside production, or
+   * on an explicit TEE_SEED_DEV_USERS opt-in (preprod, first prod deploy).
+   */
+  static seedsDevUsers(): boolean {
+    const flag = Config.string('TEE_SEED_DEV_USERS')?.toLowerCase()
+    return !Config.isProduction() || flag === '1' || flag === 'true'
   }
 
   /**

@@ -43,7 +43,8 @@ export const AID_TYPE_TO_CANONICAL: Record<AidType, TypeAide> = {
 /**
  * Editorial status (`statut_edition`) — content authoring progress. No canonical
  * state matches "en-relecture" exactly; it is folded into `en_creation` (content
- * not yet final).
+ * not yet final). An archived program keeps final content (`pret_prod`): its
+ * archiving is carried by `statut_dispositif`, so AGIR still receives it.
  */
 export const WORKFLOW_STATUS_TO_EDITION: Record<WorkflowStatus, StatutEdition> = {
   'en-creation': 'en_creation',
@@ -53,7 +54,7 @@ export const WORKFLOW_STATUS_TO_EDITION: Record<WorkflowStatus, StatutEdition> =
   'en-cours-modification': 'en_reecriture',
   importe: 'inconnu',
   annule: 'abandonne',
-  archive: 'archive',
+  archive: 'pret_prod',
   remplace: 'pret_prod',
 }
 
@@ -134,4 +135,16 @@ export const COVERAGE_TYPE_TO_COG_PREFIX: Record<CoverageType, string | null> = 
   commune: 'COM',
   epci: 'EPCI',
   autre: null,
+}
+
+/**
+ * COG code of a geographic area. Overseas collectivities (975, 987…) are stored
+ * as regions to match the source data, but COG gives them their own `OM` level:
+ * a 3-digit region code is one of them.
+ */
+export function cogCodeOf(area: Pick<GeographicArea, 'coverageType' | 'inseeCode'>): string | undefined {
+  const prefix = COVERAGE_TYPE_TO_COG_PREFIX[area.coverageType]
+  const code = area.inseeCode?.trim()
+  if (!prefix || !code) return undefined
+  return area.coverageType === 'region' && code.length === 3 ? `OM-${code}` : `${prefix}-${code}`
 }

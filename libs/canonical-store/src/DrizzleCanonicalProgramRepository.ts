@@ -1,8 +1,10 @@
-import { eq } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import type { z } from 'zod'
 import { CanonicalProgramValidator, NullEventSink } from '@tee-backoffice/canonical'
 import type {
   CanonicalProgram,
+  CanonicalProgramChanges,
+  CanonicalProgramKey,
   CanonicalProgramRepository,
   CanonicalEventSink,
 } from '@tee-backoffice/canonical'
@@ -42,25 +44,27 @@ export class DrizzleCanonicalProgramRepository implements CanonicalProgramReposi
   }
 
   async save(program: CanonicalProgram): Promise<void> {
-    const data = program.toJSON()
-    const row = {
-      canonicalId: data.id,
-      slug: data.slug,
-      data: JSON.stringify(data),
-      updatedAt: data.date_mise_a_jour,
-    }
-    await this.db
-      .insert(canonicalPrograms)
-      .values(row)
-      .onConflictDoUpdate({
-        target: canonicalPrograms.canonicalId,
-        set: { slug: row.slug, data: row.data, updatedAt: row.updatedAt },
-      })
+    await this.upsert(this.db, program)
   }
 
-  /** Empties the store, for a full rebuild from an upstream source. */
-  async deleteAll(): Promise<void> {
-    await this.db.delete(canonicalPrograms)
+  async delete(canonicalId: string): Promise<void> {
+    await this.db.delete(canonicalPrograms).where(eq(canonicalPrograms.canonicalId, canonicalId))
+  }
+
+  async applyChanges(changes: CanonicalProgramChanges): Promise<void> {
+    await this.db.transaction(async (tx) => {
+      // Deletions first: a superseded row frees its slug for the upstream row.
+      if (changes.delete.length > 0) {
+        await tx.delete(canonicalPrograms).where(inArray(canonicalPrograms.canonicalId, changes.delete))
+      }
+      for (const program of changes.save) await this.upsert(tx, program)
+    })
+  }
+
+  async listKeys(): Promise<CanonicalProgramKey[]> {
+    return this.db
+      .select({ canonicalId: canonicalPrograms.canonicalId, slug: canonicalPrograms.slug })
+      .from(canonicalPrograms)
   }
 
   async findBySlug(slug: string): Promise<CanonicalProgram | null> {
@@ -85,6 +89,23 @@ export class DrizzleCanonicalProgramRepository implements CanonicalProgramReposi
       if (program) programs.push(program)
     }
     return programs
+  }
+
+  private async upsert(db: Pick<CanonicalDb, 'insert'>, program: CanonicalProgram): Promise<void> {
+    const data = program.toJSON()
+    const row = {
+      canonicalId: data.id,
+      slug: data.slug,
+      data: JSON.stringify(data),
+      updatedAt: data.date_mise_a_jour,
+    }
+    await db
+      .insert(canonicalPrograms)
+      .values(row)
+      .onConflictDoUpdate({
+        target: canonicalPrograms.canonicalId,
+        set: { slug: row.slug, data: row.data, updatedAt: row.updatedAt },
+      })
   }
 
   /** Validates a stored row, reporting (and dropping) it when it no longer fits. */

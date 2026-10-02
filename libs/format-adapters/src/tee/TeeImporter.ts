@@ -1,5 +1,5 @@
 import type { CanonicalProgramInput } from '@tee-backoffice/canonical'
-import { RegionNameResolver } from '../shared/RegionNameResolver'
+import { TerritoryNameResolver } from '../shared/TerritoryNameResolver'
 import { ThemeMapper } from '../shared/ThemeMapper'
 import { TypeAideMapper } from '../shared/TypeAideMapper'
 
@@ -25,11 +25,9 @@ interface SourceCompany {
 }
 
 /**
- * ⚠️ ONE-SHOT IMPORT (Baserow → Payload) — ephemeral code. Used only for the
- * single import of the historical TEE data into the pivot. Once the migration is
- * done, the only remaining direction is export (pivot → TEE). DELETE after
- * migration together with the whole import path (see the cleanup checklist in
- * README.md).
+ * The single reader of the upstream `programs.json` format: the daily canonical
+ * import and the CMS seed (through `CanonicalToPayloadMapper`) both go through
+ * it, so a format change is handled in one place.
  *
  * Rebuilds a raw `CanonicalProgramInput` from an iso `programs.json` record
  * (without `publicodes` or `activable en autonomie`). Inverse of
@@ -107,7 +105,7 @@ export class TeeImporter {
     const contact = this.contactQuestion(record)
     if (contact) input.contact_question = contact
 
-    const url = this.str(record['url'])
+    const url = this.url(record['url'])
     if (url) input.url_source = url
 
     const dateOuverture = this.isoDate(record['début de validité'])
@@ -167,7 +165,7 @@ export class TeeImporter {
     if (min !== undefined || max !== undefined) {
       conditions.effectif = { ...(min !== undefined ? { min } : {}), ...(max !== undefined ? { max } : {}) }
     }
-    const regions = RegionNameResolver.codesOf(names)
+    const regions = TerritoryNameResolver.codesOf(names)
     if (regions.length > 0) conditions.regions = regions
     return conditions.effectif || conditions.regions ? conditions : undefined
   }
@@ -178,7 +176,7 @@ export class TeeImporter {
     const operateurs = this.varianteOperateurs(champ)
     if (operateurs) modifications.operateurs = operateurs
 
-    const url = this.str(champ['url'])
+    const url = this.url(champ['url'])
     if (url) modifications.url_source = url
 
     const montant = this.str(champ['Montant du dispositif'])
@@ -234,7 +232,7 @@ export class TeeImporter {
     if (!value) return undefined
     if (value.startsWith('mailto:')) return { type: 'email', valeur: value.slice('mailto:'.length) }
     if (value === 'formulaire') return { type: 'conseiller_entreprise' }
-    return { type: 'url', valeur: value }
+    return { type: 'url', valeur: this.url(value) ?? value }
   }
 
   /** A single montant/duree pair: the dynamic key carries the label (a "durée …" key → duree). */
@@ -275,7 +273,7 @@ export class TeeImporter {
     return liens
       .map((lien): LienInput | undefined => {
         if (lien['formulaire'] === true) return { conseiller_entreprise: true }
-        const url = this.str(lien['lien'])
+        const url = this.url(lien['lien'])
         const texte = this.str(lien['texte'])
         return url && texte ? { texte, url } : undefined
       })
@@ -310,11 +308,11 @@ export class TeeImporter {
     }
 
     const secteurGeoTexte = this.strArray(conditions?.['secteur géographique'])
-    const regions = RegionNameResolver.codesOf(company.allowedRegion ?? [])
-    if (secteurGeoTexte.length > 0 || regions.length > 0) {
+    const inclusions = this.territoires(company.allowedRegion ?? [], secteurGeoTexte)
+    if (secteurGeoTexte.length > 0 || inclusions.length > 0) {
       eligibilite.secteur_geographique = {
         ...(secteurGeoTexte.length > 0 ? { texte: secteurGeoTexte } : {}),
-        ...(regions.length > 0 ? { structure: { inclusions: regions } } : {}),
+        ...(inclusions.length > 0 ? { structure: { inclusions } } : {}),
       }
     }
 
@@ -325,6 +323,18 @@ export class TeeImporter {
     if (autres.length > 0) eligibilite.autres_criteres = { texte: autres }
 
     return Object.keys(eligibilite).length > 0 ? eligibilite : undefined
+  }
+
+  /**
+   * `allowedRegion` (what the TEE front filters on, regions and departments
+   * mixed) as COG codes; without it, the national wording of the free text
+   * becomes `PAYS-99100`.
+   */
+  private territoires(allowedRegion: string[], texte: string[]): string[] {
+    const codes = TerritoryNameResolver.codesOf(allowedRegion)
+    if (codes.length > 0) return codes
+    const names = texte.flatMap((value) => value.split(','))
+    return names.some((name) => TerritoryNameResolver.isNational(name)) ? [TerritoryNameResolver.NATIONAL_CODE] : []
   }
 
   private effectifStructure(company: SourceCompany): { min?: number; max?: number } | undefined {
@@ -351,6 +361,12 @@ export class TeeImporter {
 
   private str(value: unknown): string | undefined {
     return typeof value === 'string' && value.length > 0 ? value : undefined
+  }
+
+  /** Upstream sometimes wraps a link in markdown autolink brackets: `<https://…>`. */
+  private url(value: unknown): string | undefined {
+    const url = this.str(value)?.trim()
+    return url?.replace(/^<(.+)>$/, '$1') || undefined
   }
 
   private strArray(value: unknown): string[] {
