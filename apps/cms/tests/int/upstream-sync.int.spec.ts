@@ -2,7 +2,7 @@
 import type { Payload } from 'payload'
 import { getPayload } from 'payload'
 import config from '@payload-config'
-import { describe, it, beforeAll, expect } from 'vitest'
+import { describe, it, beforeAll, afterAll, expect } from 'vitest'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import { fileURLToPath } from 'url'
@@ -410,6 +410,129 @@ describe('UpstreamSync', () => {
       expect(archived.workflowStatus).toBe('archive')
       expect(archived.validityEnd?.slice(0, 10)).toBe(new Date().toISOString().slice(0, 10))
     })
+  })
+
+  describe('a redirect on a slug upstream no longer publishes', () => {
+    const PROGRAM_PUBLISHED = 'sync-prog-publie-avant'
+    const PROGRAM_UNPUBLISHED = 'sync-prog-jamais-publie'
+    const PROJECT_PUBLISHED = 'sync-proj-publie-avant'
+
+    const redirected = {
+      redirects: {
+        program_redirects: {
+          ...redirects.program_redirects,
+          [PROGRAM_PUBLISHED]: PROGRAM_A,
+          [PROGRAM_UNPUBLISHED]: PROGRAM_A,
+        },
+        project_redirects: { ...redirects.project_redirects, [PROJECT_PUBLISHED]: PROJECT_A },
+      },
+    }
+    let publishedTitle: string
+    let publishedProjectTitle: string
+    let report: UpstreamSyncReport
+
+    const publishedRow = async (collection: 'programs' | 'projects', slug: string) =>
+      (await payload.find({ collection, where: { slug: { equals: slug } }, draft: false, depth: 0, limit: 1 })).docs[0]
+
+    beforeAll(async () => {
+      // Upstream publishes them first: one program goes live, the other has no url and stays in creation.
+      const before = await sync({
+        programs: [
+          ...programs,
+          program('diag-ecoconception', PROGRAM_PUBLISHED),
+          { ...program('diag-ecoconception', PROGRAM_UNPUBLISHED), url: '' },
+        ],
+        projects: [
+          ...projects,
+          project('fixture-projet-eco-conception', { id: 905, slug: PROJECT_PUBLISHED, linkedProjects: [], programs: [] }),
+        ],
+      })
+      expect(before.errors).toBe(0)
+      const published = await latestProgram(PROGRAM_PUBLISHED)
+      expect(published.workflowStatus).toBe('publie')
+      expect((await latestProgram(PROGRAM_UNPUBLISHED)).workflowStatus).toBe('en-creation')
+      publishedTitle = published.title
+      publishedProjectTitle = (await projectBySlug(PROJECT_PUBLISHED)).title
+
+      // An editor leaves a draft pending on the published program.
+      const admin = await payload.create({
+        collection: 'users',
+        data: { email: 'redirect-admin@tee.test', password: 'redirect-admin@tee.test', role: 'admin' },
+      })
+      await payload.update({
+        collection: 'programs',
+        id: published.id,
+        draft: true,
+        user: admin,
+        data: { title: 'Titre en attente' },
+      })
+
+      // Then upstream drops the three records and redirects their slugs.
+      report = await sync(redirected)
+    }, 120_000)
+
+    // The other test files pick published programs in the same database: these would mislead them.
+    afterAll(async () => {
+      await payload.delete({ collection: 'projects', where: { slug: { equals: PROJECT_PUBLISHED } } })
+      await payload.delete({ collection: 'programs', where: { slug: { in: [PROGRAM_PUBLISHED, PROGRAM_UNPUBLISHED] } } })
+    })
+
+    it('keeps the published content of a program, marked replaced, and drops its pending draft', async () => {
+      expect(report.errors).toBe(0)
+      const target = await latestProgram(PROGRAM_A)
+      expect(target.title).not.toBe(publishedTitle)
+
+      expect(await latestProgram(PROGRAM_PUBLISHED)).toMatchObject({
+        workflowStatus: 'remplace',
+        replacedBy: target.id,
+        title: publishedTitle,
+      })
+      expect(await publishedRow('programs', PROGRAM_PUBLISHED)).toMatchObject({
+        workflowStatus: 'publie',
+        _status: 'published',
+        title: publishedTitle,
+      })
+      expect(await storedProgram(PROGRAM_PUBLISHED)).toMatchObject({
+        statut_dispositif: 'remplace',
+        remplace_par: SlugCanonicalId.from(PROGRAM_A),
+        titre: publishedTitle,
+      })
+    })
+
+    it('keeps the published content of a project, marked replaced', async () => {
+      const target = await projectBySlug(PROJECT_A)
+      expect(target.title).not.toBe(publishedProjectTitle)
+
+      expect(await latestProject(PROJECT_PUBLISHED)).toMatchObject({
+        workflowStatus: 'remplace',
+        replacedBy: target.id,
+        title: publishedProjectTitle,
+      })
+      expect(await storedProject(PROJECT_PUBLISHED)).toMatchObject({
+        statut_projet: 'remplace',
+        remplace_par: SlugCanonicalId.forProject(PROJECT_A),
+        titre: publishedProjectTitle,
+      })
+    })
+
+    it('cancels a program that was never published instead of redirecting it', async () => {
+      expect(report.programs.cancelled).toEqual([PROGRAM_UNPUBLISHED])
+      expect((await latestProgram(PROGRAM_UNPUBLISHED)).workflowStatus).toBe('annule')
+      expect(await storedProgram(PROGRAM_UNPUBLISHED)).toBeUndefined()
+    })
+
+    it('writes nothing more on the next run', async () => {
+      const program = await latestProgram(PROGRAM_PUBLISHED)
+      const project = await projectBySlug(PROJECT_PUBLISHED)
+      const before = [await versionCount('programs', program.id), await versionCount('projects', project.id)]
+
+      const second = await sync(redirected)
+
+      expect(second.errors).toBe(0)
+      expect(second.programs.cancelled).toEqual([])
+      expect([await versionCount('programs', program.id), await versionCount('projects', project.id)]).toEqual(before)
+      expect((await latestProgram(PROGRAM_UNPUBLISHED)).workflowStatus).toBe('annule')
+    }, 60_000)
   })
 })
 

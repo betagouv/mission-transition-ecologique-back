@@ -18,6 +18,8 @@ import { OperatorGroupImporter } from './OperatorGroupImporter'
 import { OperatorImporter } from './OperatorImporter'
 import { OperatorProfileImporter } from './OperatorProfileImporter'
 import { ProgramImporter, type ImportResult } from './ProgramImporter'
+import { RedirectedDocuments } from '../RedirectedDocuments'
+import { SyncErrorFormatter } from '../SyncErrorFormatter'
 
 /** Upstream `operators.json` entries and the importer that turns their logos into media. */
 export interface OperatorProfilesInput {
@@ -43,6 +45,8 @@ export interface ProgramsSyncResult extends ImportResult {
  * `CanonicalToPayloadMapper` turns each canonical program into Payload data.
  * Redirects are applied the way the direct canonical import does, so the CMS
  * holds the replaced programs too and the canonical gets them through the hook.
+ * A former slug upstream no longer publishes is cloned from its replacement,
+ * unless the CMS already holds a program under it (see `RedirectedDocuments`).
  */
 export class ProgramsSync {
   constructor(
@@ -73,7 +77,14 @@ export class ProgramsSync {
       redirects,
       new Map(programs.map((program) => [program.slug, program])),
     )
-    programs.push(...tombstones)
+    const former = await RedirectedDocuments.forPrograms(this.payload, this.options.storedCanonicalIds).load(
+      tombstones.map((tombstone) => tombstone.slug),
+    )
+    const stateOf = (program: CanonicalProgramInput) => former.stateOf(program.slug)
+    const cloned = tombstones.filter((tombstone) => stateOf(tombstone) === 'absent' || stateOf(tombstone) === 'cloned')
+    const kept = tombstones.filter((tombstone) => stateOf(tombstone) === 'published')
+    const neverPublished = tombstones.filter((tombstone) => stateOf(tombstone) === 'unpublished')
+    programs.push(...cloned)
     const isReplaced = (program: CanonicalProgramInput) => program.statut_dispositif === 'remplace'
 
     const operatorIdByName = await new OperatorImporter(this.payload).import(programs)
@@ -86,19 +97,33 @@ export class ProgramsSync {
     const result = await programImporter.import(programs.filter((program) => !isReplaced(program)))
     // A replaced program points at its replacement, which must exist first.
     const replaced = programs.filter(isReplaced)
-    if (replaced.length > 0) {
-      await relations.refreshPrograms()
-      ProgramsSync.merge(result, await programImporter.import(replaced))
+    if (replaced.length > 0 || kept.length > 0) await relations.refreshPrograms()
+    if (replaced.length > 0) ProgramsSync.merge(result, await programImporter.import(replaced))
+    for (const tombstone of kept) {
+      try {
+        const replacement = relations.programIdByCanonicalId(tombstone.remplace_par ?? '')
+        if (replacement === undefined) throw new Error('dispositif remplaçant introuvable dans le CMS')
+        result[await former.markReplaced(tombstone.slug, replacement)]++
+      } catch (err) {
+        process.stderr.write(`Error replacing program "${tombstone.slug}": ${SyncErrorFormatter.format(err)}\n`)
+        result.errors++
+      }
     }
 
     process.stdout.write(
       `Programs complete: ${result.created.toString()} created, ${result.updated.toString()} updated, ${result.unchanged.toString()} unchanged, ${result.errors.toString()} errors.\n`,
     )
-    this.reportRedirects(redirects, tombstones.length, markedInPlace.length, skipped)
+    this.reportRedirects(redirects, skipped, {
+      inPlace: markedInPlace.length,
+      cloned: cloned.length,
+      kept: kept.length,
+      neverPublished: neverPublished.length,
+    })
     for (const [warning, count] of result.warnings) {
       process.stdout.write(`  ⚠ ${count.toString()} × ${warning}\n`)
     }
-    return { ...result, snapshotSlugs: new Set(programs.map((program) => program.slug)) }
+    // A former slug that was never published is left out: it is cancelled with the documents gone upstream.
+    return { ...result, snapshotSlugs: new Set([...programs, ...kept].map((program) => program.slug)) }
   }
 
   private static merge(into: ImportResult, other: ImportResult): void {
@@ -109,10 +134,14 @@ export class ProgramsSync {
     for (const [warning, count] of other.warnings) into.warnings.set(warning, (into.warnings.get(warning) ?? 0) + count)
   }
 
-  private reportRedirects(redirects: ProgramRedirects, cloned: number, inPlace: number, skipped: RedirectSkip[]): void {
+  private reportRedirects(
+    redirects: ProgramRedirects,
+    skipped: RedirectSkip[],
+    counts: { inPlace: number; cloned: number; kept: number; neverPublished: number },
+  ): void {
     if (redirects.size === 0) return
     process.stdout.write(
-      `Redirections : ${inPlace.toString()} dispositif(s) marqué(s) en place, ${cloned.toString()} remplacé(s) cloné(s), ${skipped.length.toString()} ignorée(s).\n`,
+      `Redirections : ${counts.inPlace.toString()} dispositif(s) marqué(s) en place, ${counts.cloned.toString()} remplacé(s) cloné(s), ${counts.kept.toString()} remplacé(s) avec leur contenu publié, ${counts.neverPublished.toString()} jamais publié(s) à annuler, ${skipped.length.toString()} ignorée(s).\n`,
     )
     for (const skip of skipped) process.stdout.write(`  - ${skip.former} → ${skip.current} : ${skip.reason}\n`)
   }

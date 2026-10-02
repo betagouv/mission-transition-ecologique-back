@@ -15,6 +15,8 @@ import { PayloadProjectRelations } from '@/services/canonical/to-payload/Payload
 import { ProjectImporter, type ImportResult, type ProjectImport } from './ProjectImporter'
 import { LinkedProjectsUpdater } from './LinkedProjectsUpdater'
 import type { UpstreamMediaImporter } from '../media/UpstreamMediaImporter'
+import { RedirectedDocuments } from '../RedirectedDocuments'
+import { SyncErrorFormatter } from '../SyncErrorFormatter'
 
 export interface ProjectsSyncOptions {
   /** Upstream slug redirects: each one becomes a `remplace` project of the CMS. */
@@ -34,7 +36,9 @@ export interface ProjectsSyncResult extends ImportResult {
  * `CanonicalProjectToPayloadMapper` turns each canonical project into Payload
  * data. The canonical store is fed along the way by the `Projects` hooks.
  * Redirects are applied the way the direct canonical import does, so the CMS
- * holds the replaced projects too.
+ * holds the replaced projects too. A former slug upstream no longer publishes
+ * is cloned from its replacement, unless the CMS already holds a project under
+ * it (see `RedirectedDocuments`).
  */
 export class ProjectsSync {
   constructor(
@@ -61,7 +65,14 @@ export class ProjectsSync {
       redirects,
       new Map(projects.map((project) => [project.slug, project])),
     )
-    projects.push(...tombstones)
+    const former = await RedirectedDocuments.forProjects(this.payload, this.options.storedCanonicalIds).load(
+      tombstones.map((tombstone) => tombstone.slug),
+    )
+    const stateOf = (project: CanonicalProjectInput) => former.stateOf(project.slug)
+    const cloned = tombstones.filter((tombstone) => stateOf(tombstone) === 'absent' || stateOf(tombstone) === 'cloned')
+    const kept = tombstones.filter((tombstone) => stateOf(tombstone) === 'published')
+    const neverPublished = tombstones.filter((tombstone) => stateOf(tombstone) === 'unpublished')
+    projects.push(...cloned)
     const isReplaced = (project: CanonicalProjectInput) => project.statut_projet === 'remplace'
 
     const relations = await PayloadProjectRelations.fromPayload(this.payload)
@@ -82,17 +93,25 @@ export class ProjectsSync {
     const written = await importer.import(projects.filter((project) => !isReplaced(project)))
     // A replaced project points at its replacement, which must exist first.
     const replaced = projects.filter(isReplaced)
-    if (replaced.length > 0) {
-      await relations.refreshProjects()
-      ProjectsSync.merge(written, await importer.import(replaced))
-    }
+    if (replaced.length > 0 || kept.length > 0) await relations.refreshProjects()
+    if (replaced.length > 0) ProjectsSync.merge(written, await importer.import(replaced))
     const { result } = written
+    for (const tombstone of kept) {
+      try {
+        const replacement = relations.projectIdByCanonicalId(tombstone.remplace_par ?? '')
+        if (replacement === undefined) throw new Error('projet remplaçant introuvable dans le CMS')
+        result[await former.markReplaced(tombstone.slug, replacement)]++
+      } catch (err) {
+        process.stderr.write(`Error replacing project "${tombstone.slug}": ${SyncErrorFormatter.format(err)}\n`)
+        result.errors++
+      }
+    }
     process.stdout.write(
       `Pass 1 complete: ${result.created.toString()} created, ${result.updated.toString()} updated, ${result.unchanged.toString()} unchanged, ${result.errors.toString()} errors.\n`,
     )
     if (redirects.size > 0) {
       process.stdout.write(
-        `Redirections : ${markedInPlace.length.toString()} projet(s) marqué(s) en place, ${tombstones.length.toString()} remplacé(s) cloné(s), ${skipped.length.toString()} ignorée(s).\n`,
+        `Redirections : ${markedInPlace.length.toString()} projet(s) marqué(s) en place, ${cloned.length.toString()} remplacé(s) cloné(s), ${kept.length.toString()} remplacé(s) avec leur contenu publié, ${neverPublished.length.toString()} jamais publié(s) à annuler, ${skipped.length.toString()} ignorée(s).\n`,
       )
       for (const skip of skipped) process.stdout.write(`  - ${skip.former} → ${skip.current} : ${skip.reason}\n`)
     }
@@ -110,7 +129,8 @@ export class ProjectsSync {
       ...result,
       errors: result.errors + links.errors,
       warnings,
-      snapshotSlugs: new Set(projects.map((project) => project.slug)),
+      // A former slug that was never published is left out: it is cancelled with the documents gone upstream.
+      snapshotSlugs: new Set([...projects, ...kept].map((project) => project.slug)),
     }
   }
 

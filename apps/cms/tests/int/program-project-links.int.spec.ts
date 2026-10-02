@@ -74,8 +74,15 @@ describe('projects of a program', () => {
     await ProgramsSync.fromFile(payload, programsFixture).run()
     canonical = await getCanonicalProjectRepository(payload.logger)
 
+    // Latest versions: the other test files leave programs archived or replaced in a draft version.
     const published = (
-      await payload.find({ collection: 'programs', where: { workflowStatus: { equals: 'publie' } }, limit: 2, depth: 0 })
+      await payload.find({
+        collection: 'programs',
+        where: { workflowStatus: { equals: 'publie' } },
+        draft: true,
+        limit: 2,
+        depth: 0,
+      })
     ).docs
     expect(published).toHaveLength(2)
     programA = published[0]!
