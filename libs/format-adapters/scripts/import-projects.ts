@@ -9,8 +9,12 @@
 // the derived id only names an entity the store does not know yet.
 //
 // Run from the repo root: `nx run @tee-backoffice/format-adapters:import:projects`.
-// With `--remote` (the daily refresh on Scalingo), the two JSON files are read
-// straight from the upstream repository instead of `static/input/`.
+// With `--remote`, the two JSON files are read straight from the upstream
+// repository instead of `static/input/`.
+//
+// A rescue tool: the daily job no longer runs it. It syncs the CMS instead
+// (`pnpm data:sync`), whose hooks feed the store, and its reconciliation
+// withdraws from the store whatever the CMS does not serve.
 //
 // The store is aligned on the upstream snapshot, never emptied: upserts, plus
 // deletion of the projects gone upstream. The snapshot is rejected (store

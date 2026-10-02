@@ -66,4 +66,50 @@ describe('WorkflowActionPresenter', () => {
       expect(replace).toMatchObject({ label: 'Remplacer', requiresReplacement: true })
     })
   })
+
+  describe('projects', () => {
+    const projectActions = (status: Parameters<typeof WorkflowActionPresenter.getActions>[0]) =>
+      WorkflowActionPresenter.getActions(status, UserRole.ADMIN, 'projects')
+
+    it('lets an admin publish a project in creation directly, on a valid document only', () => {
+      const actions = projectActions('en-creation')
+      expect(actions.map((action) => action.label)).toEqual(['Enregistrer le brouillon', 'Publier', 'Supprimer'])
+      expect(actions.find((action) => action.kind === 'transition' && action.to === 'publie')).toMatchObject({
+        variant: 'primary',
+        placement: 'bar',
+        validate: true,
+      })
+    })
+
+    it('offers to edit, replace or delete a published project', () => {
+      const actions = projectActions('publie')
+      expect(actions.map((action) => action.label)).toEqual(['Modifier', 'Remplacer', 'Supprimer'])
+      expect(actions.find((action) => action.kind === 'transition' && action.to === 'remplace')).toMatchObject({
+        requiresReplacement: true,
+      })
+      expect(actions.find((action) => action.kind === 'transition' && action.to === 'annule')).toMatchObject({
+        placement: 'menu',
+        variant: 'danger',
+      })
+    })
+
+    it('republishes a project under rewrite', () => {
+      expect(projectActions('en-cours-modification').map((action) => action.label)).toEqual([
+        'Enregistrer le brouillon',
+        'Publier',
+        'Supprimer',
+      ])
+    })
+
+    it('leaves a replaced or deleted project without action', () => {
+      expect(projectActions('remplace')).toEqual([])
+      expect(projectActions('annule')).toEqual([])
+    })
+
+    it('gives no action to a creator: projects are written by admins', () => {
+      expect(WorkflowActionPresenter.getActions('en-creation', UserRole.CREATOR, 'projects').map((a) => a.kind)).toEqual([
+        'save-draft',
+      ])
+    })
+  })
 })

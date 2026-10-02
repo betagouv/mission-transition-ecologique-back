@@ -4,7 +4,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { UpstreamAssetSource } from '@tee-backoffice/format-adapters'
-import { UpstreamMediaImporter } from '@/scripts/seed/media/UpstreamMediaImporter'
+import { UpstreamMediaImporter } from '@/scripts/sync/media/UpstreamMediaImporter'
 import { FakeAssetFetch } from '../support/FakeAssetFetch'
 
 const IMAGE_PATH = '/images/projet/fixture-media-importer.webp'

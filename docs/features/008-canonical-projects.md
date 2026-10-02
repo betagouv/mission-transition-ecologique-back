@@ -48,7 +48,7 @@ Constats (vérifiés le 2026-10-01 sur le code et sur `libs/format-adapters/stat
 | Événements | Nouveaux types `project_saved`, `project_removed`, `project_dropped` ; `sync_failed` reçoit un champ optionnel `entity: 'program' \| 'project'` |
 | Store | Table `canonical.canonical_projects` (mêmes colonnes que `canonical_programs`), `DrizzleCanonicalProjectRepository`, `createCanonicalProjectRepository()`. La connexion est **mémoïsée par URL** : les deux repositories partagent un seul pool |
 | Statut de publication | Brouillons Payload activés sur `Projects` (`versions.drafts`, validé le 2026-10-01). Seuls les projets **publiés** vont dans le pivot |
-| Politique de sync | `ProjectCanonicalSyncPolicy` : publié → écrit ; brouillon enregistré par-dessus une version publiée → pivot inchangé (la version publiée reste servie) ; dépublié ou jamais publié → retiré ; suppression → retiré |
+| Politique de sync | (remplacée le 2026-10-02 par `CanonicalSyncPolicy`, commune aux dispositifs et aux projets : voir ADR 0014, révision du 2026-10-02) `ProjectCanonicalSyncPolicy` : publié → écrit ; brouillon enregistré par-dessus une version publiée → pivot inchangé (la version publiée reste servie) ; dépublié ou jamais publié → retiré ; suppression → retiré |
 | Statut dans le pivot | `statut_projet` : `valide` ou `remplace`. `remplace` exige `remplace_par` (identifiant pivot du projet courant). Pas de `statut_edition` : seuls des projets publiés sont stockés |
 | Identité | Champ `Projects.canonicalId` (cuid2, masqué, verrouillé par l'API), posé par le hook `assignCanonicalId` déjà utilisé par les dispositifs. Le seed et l'import amont posent `SlugCanonicalId.forProject(slug)` (dérivé de `project:<slug>`, pour ne jamais coïncider avec l'identifiant d'un dispositif de même slug) |
 | FAQ | Champs Payload `titleFaq` (texte) et `faqs` (array `question` texte + `answer` rich text). Pivot : `faq { titre?, questions[{ question, reponse }] }`. L'`id` numérique amont d'une question n'est pas gardé |
@@ -186,8 +186,8 @@ Les tableaux ci-dessous sont ceux du plan. Tous les fichiers listés ont été c
 | `src/endpoints/agir/agirProgramEndpoints.ts` | Renommer (ex `agirEndpoints.ts`) : utilise `PublicBaseUrlResolver` |
 | `src/endpoints/agir/agirProjectEndpoints.ts` | Créer |
 | `payload.config.ts` | Modifier : `endpoints: [...agirProgramEndpoints, ...agirProjectEndpoints]` |
-| `src/scripts/seed/projects/index.ts`, `ProjectImporter.ts`, `LinkedProjectsUpdater.ts` | Modifier : passent par `TeeProjectImporter` + `CanonicalProjectToPayloadMapper` |
-| `src/scripts/seed/projects/ProjectMapper.ts`, `types.ts` | Supprimer |
+| `src/scripts/sync/projects/index.ts`, `ProjectImporter.ts`, `LinkedProjectsUpdater.ts` | Modifier : passent par `TeeProjectImporter` + `CanonicalProjectToPayloadMapper` |
+| `src/scripts/sync/projects/ProjectMapper.ts`, `types.ts` | Supprimer |
 | `src/scripts/seed/run.ts` | Modifier : type `TeeProject` |
 | `src/migrations/20261001_092812_canonical_projects.{ts,json}` | Générée puis complétée (remplissage de `_status`, de `canonical_id` et de la table des versions) ; `src/migrations/index.ts` mis à jour |
 | `payload-types.ts` | Régénéré (`pnpm generate:types`, non versionné) ; `importMap.js` inchangé (aucun composant custom) |
@@ -340,7 +340,7 @@ Ordre imposé par les dépendances : lot 1 → lot 2 → lot 3 → lots 4 et 5 �
 4. **Port `ProjectRelations`** (`to-payload/ProjectRelations.ts`) : `programIdByCanonicalId(id): number | undefined`, `projectIdByCanonicalId(id): number | undefined`. `PayloadProjectRelations` charge les deux tables de correspondance par deux `payload.find` (`limit: 0`, `depth: 0`, `select`), avec une méthode `refreshProjects()` appelée entre les deux passes du seed.
 5. **`CanonicalProjectToPayloadMapper`** : `constructor(richText: MarkdownToRichText, relations: ProjectRelations)`, `map(input: CanonicalProjectInput)` renvoie `{ data, warnings }` où `data` porte tous les champs Payload **sauf** `image` et `linkedProjects` (calculés par l'importeur), avec `_status: 'published'` et `canonicalId: input.id`. Thèmes par l'inverse de `THEME_TO_CANONICAL`. Un dispositif introuvable devient un avertissement. Test unitaire.
 6. **Seed** :
-   - `ProjectsSeed(payload, projects: TeeProject[], media?)` : `new TeeProjectImporter(...).importMany(projects, now)` puis, pour chaque entrée, `CanonicalProjectToPayloadMapper.map`.
+   - `ProjectsSync(payload, projects: TeeProject[], media?)` : `new TeeProjectImporter(...).importMany(projects, now)` puis, pour chaque entrée, `CanonicalProjectToPayloadMapper.map`.
    - `ProjectImporter` : upsert par slug, image via `ImportedMediaPolicy` à partir de `input.image?.chemin_source`, écritures avec `context: SystemWorkflowContext.create()` pour que `assignCanonicalId` accepte l'identifiant fourni. Renvoie `Map<canonicalId, payloadId>`.
    - `LinkedProjectsUpdater` : seconde passe à partir de `input.projets_lies.projets`, toujours séquentielle (deadlocks sur `projects_rels`).
    - Les avertissements du lecteur et du mapper sont affichés en fin de seed, comme ceux des dispositifs.
@@ -510,7 +510,7 @@ Critères de fin :
 - `teeProjectSchema` est en **`.passthrough()`, sans transformation** : la copie versionnée (`pnpm data:snapshot`) reste une copie fidèle de l'amont. `scripts/snapshot-upstream.ts` a été ajusté à la nouvelle signature de `projects()`.
 - `TeeProjectImporter` : l'option `assetsBaseUrl` est **facultative** (défaut : la base de `UpstreamAssetSource`, donc `TEE_ASSETS_BASE_URL`) ; **avertissements supplémentaires** (thème inconnu, `highlightPriority` non numérique, question de FAQ incomplète, chemin d'image invalide, en plus du projet lié inconnu prévu) ; tableaux vides omis (`themes`, `secteurs`, `dispositifs`).
 - `CANONICAL_TO_THEME` est exporté depuis `canonicalMappings.ts` et partagé par les deux mappers vers Payload (dispositifs et projets).
-- `CanonicalProjectToPayloadMapper` : méthode `mapLinkedProjects` pour la seconde passe ; **libellé lisible** des identifiants dans les avertissements (le slug, fourni par `ProjectsSeed`) ; le mapper **écrit tous les champs**, un absent en `null` ou `[]`, parce qu'un `update` Payload part de la dernière version, brouillon en attente compris ; avertissement pour un secteur hors sections NAF.
+- `CanonicalProjectToPayloadMapper` : méthode `mapLinkedProjects` pour la seconde passe ; **libellé lisible** des identifiants dans les avertissements (le slug, fourni par `ProjectsSync`) ; le mapper **écrit tous les champs**, un absent en `null` ou `[]`, parce qu'un `update` Payload part de la dernière version, brouillon en attente compris ; avertissement pour un secteur hors sections NAF.
 - Le seed **vide désormais les projets liés** retirés en amont (ils restaient en place auparavant).
 - Un `theme_principal` absent est une **erreur du seed** (exception du mapper, comptée par projet), pas un avertissement.
 - `ImportResult.warnings` : les avertissements remontent jusqu'à `run.ts`.
@@ -552,15 +552,15 @@ Une revue de code de la branche a relevé quinze constats, tous vérifiés. Ils 
 |---|---|---|
 | « Dupliquer » donnait à la copie le `canonicalId` `<id> - Copy` | `disableDuplicate: true` sur le champ, pour les projets et les dispositifs | `collections/Projects.ts`, `collections/Programs.ts` |
 | Singletons mémoïsant une promesse rejetée | `RetryableMemo` : une promesse rejetée est oubliée, l'appel suivant réessaie | `services/canonical/RetryableMemo.ts`, `canonicalProjectRepository.ts`, `canonicalProjectService.ts`, `canonicalRepository.ts`, `canonicalProgramService.ts` |
-| Le seed publiait l'image ou les projets liés d'un brouillon en attente | `image` et `linkedProjects` toujours écrits en passe 1 (valeur de la ligne principale quand le seed n'a rien à y changer) | `scripts/seed/projects/ProjectImporter.ts` |
-| Image détachée sur chemin amont inexploitable | Le chemin brut est transmis à `ImportedMediaPolicy` : téléchargement en échec, compté, image conservée | `ProjectImporter.ts`, `scripts/seed/projects/index.ts` |
+| Le seed publiait l'image ou les projets liés d'un brouillon en attente | `image` et `linkedProjects` toujours écrits en passe 1 (valeur de la ligne principale quand le seed n'a rien à y changer) | `scripts/sync/projects/ProjectImporter.ts` |
+| Image détachée sur chemin amont inexploitable | Le chemin brut est transmis à `ImportedMediaPolicy` : téléchargement en échec, compté, image conservée | `ProjectImporter.ts`, `scripts/sync/projects/index.ts` |
 | Enregistrements amont écartés invisibles pour le seed | Listés en fin de seed et comptés dans les erreurs (code de sortie 1) | `scripts/seed/run.ts` |
 | Code NAF validé rogné, stocké brut | Valeur brute validée par `nafCodeSchema` (seconde copie de l'expression régulière supprimée) | `utils/NafCodeValidator.ts` |
 | Slug libre et priorités décimales acceptés par l'admin, refusés par le pivot | `SlugValidator` (`slugSchema` du pivot) sur `Projects.slug` et `Programs.slug` ; `IntegerValidator.nonNegative`, qui respecte désormais `required`, sur les trois priorités | `utils/SlugValidator.ts`, `utils/IntegerValidator.ts`, `collections/Projects.ts`, `collections/Programs.ts` |
 | Dispositif non lié quand sa ligne principale garde un ancien identifiant | Index par `canonicalId` stocké et par identifiant dérivé du slug (dispositifs et projets) | `services/canonical/to-payload/PayloadProjectRelations.ts` |
 | Compteur de projets liés comptant les brouillons | Filtre `where[_status][equals]=published` | `components/programs/LinkedProjectsCounter.tsx` |
 | `sync_failed` sans distinction projet / dispositif | Message « canonical project sync failed » quand `entity` vaut `project` | `services/canonical/observability/PayloadLoggerEventSink.ts` |
-| Suite `ProjectsSeed` dépendante de l'ordre des fichiers | Les projets de la fixture sont supprimés au début du `beforeAll` | `tests/int/seed.int.spec.ts` |
+| Suite `ProjectsSync` dépendante de l'ordre des fichiers | Les projets de la fixture sont supprimés au début du `beforeAll` | `tests/int/seed.int.spec.ts` |
 
 Non modifié, par choix : le hook `syncProjectCanonicalOnChange`. La relecture et le `DELETE` à vide d'un brouillon jamais publié restent ; l'événement fictif est supprimé côté domaine, et le seul garde sûr (`operation === 'create'`) n'épargnerait qu'un enregistrement.
 

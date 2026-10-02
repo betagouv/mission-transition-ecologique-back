@@ -18,14 +18,29 @@ hooks: beforeChange assignCanonicalId, afterChange syncProjectCanonicalOnChange,
 
 Les brouillons natifs de Payload sont activés (`versions: { drafts: true }`, ADR 0014 §3) : chaque projet porte un `_status` (`draft` ou `published`) et un historique de versions. Payload ne contrôle pas les champs requis d'un brouillon. La migration `20261001_092812_canonical_projects` a passé les projets existants en `published` et leur a créé une version publiée.
 
-Seuls les projets **publiés** vont dans le format pivot (store `canonical.canonical_projects`), donc dans l'API AGIR. Règle portée par `ProjectCanonicalSyncPolicy` et appliquée par le hook `syncProjectCanonicalOnChange` :
+Depuis le 2026-10-02, les projets suivent **le même workflow que les dispositifs** (ADR 0014, révision du 2026-10-02) : `workflowStatus` est le statut unique d'un projet et pilote `_status`. Le pivot (store `canonical.canonical_projects`), donc l'API AGIR, suit la règle commune `CanonicalSyncPolicy`, appliquée par le hook `syncProjectCanonicalOnChange` :
 
-| Situation | Effet sur le pivot |
-|---|---|
-| Projet publié | écrit |
-| Brouillon enregistré par-dessus une version publiée | inchangé : la version publiée reste servie |
-| Projet dépublié, ou jamais publié | retiré |
-| Projet supprimé | retiré (`removeProjectCanonicalOnDelete`) |
+| `workflowStatus` | `_status` | Effet sur le pivot |
+|---|---|---|
+| `en-creation` | brouillon | aucun |
+| `publie` | publié | écrit (`statut_projet: 'valide'`) |
+| `en-cours-modification` | brouillon enregistré par-dessus la version publiée | inchangé : la version publiée reste servie |
+| `remplace` | version brouillon | écrit avec `statut_projet: 'remplace'` et `remplace_par` = identifiant pivot de `replacedBy` : AGIR sert l'ancien slug comme une redirection suivable |
+| `annule` | version brouillon | retiré, fiche et historique conservés dans le CMS |
+| (projet supprimé) | | retiré (`removeProjectCanonicalOnDelete`) |
+
+Transitions ouvertes à un admin (`WorkflowTransitionPolicy`, table `projects`), sans relecture :
+
+| Depuis | Vers | Bouton |
+|---|---|---|
+| `en-creation` | `publie`, `annule` | « Publier », « Supprimer » |
+| `publie` | `en-cours-modification`, `remplace`, `annule` | « Modifier », « Remplacer », « Supprimer » |
+| `en-cours-modification` | `publie`, `annule` | « Publier », « Supprimer » |
+| `remplace`, `annule` | aucune (super-admin seulement) | |
+
+La fiche d'un projet affiche la barre d'actions des dispositifs à la place des boutons natifs de Payload. Chaque transition est ajoutée à `workflowHistory` (statut de départ, statut d'arrivée, auteur, date). La sync amont (`UpstreamSync`) pose `publie`, `remplace` et `annule` ; une modification faite à la main est réécrite depuis l'amont à la sync suivante.
+
+Comme pour un dispositif, `remplace` et `annule` sont enregistrés en **version brouillon** : la ligne principale du projet garde son ancien statut, et tout lecteur du statut doit lire la dernière version (`draft: true`).
 
 La synchronisation ne bloque jamais l'écriture CMS : un projet que le pivot refuse est journalisé (`project_dropped`), une panne du store aussi (`sync_failed`, journalisé « canonical project sync failed »). Les validations de la collection (slug, priorités, code NAF, voir plus bas) sont alignées sur le pivot : à la publication, ce que l'admin accepte, le pivot l'accepte. Si le store porte déjà le slug sous un autre identifiant (ligne écrite par l'import amont), la publication la remplace : la synchronisation ne bute pas sur l'unicité du slug. Un brouillon jamais publié ne produit aucun événement de retrait.
 
@@ -34,7 +49,11 @@ La synchronisation ne bloque jamais l'écriture CMS : un projet que le pivot ref
 | Champ | Type Payload | Contraintes | Source JSON |
 |-------|-------------|-------------|-------------|
 | `canonicalId` | text | unique, indexé, masqué dans l'admin, verrouillé par l'API (`access.create` et `access.update` à `false`), `disableDuplicate` | dérivé du slug : `SlugCanonicalId.forProject(slug)` |
-| `slug` | text | required, unique, sidebar, kebab-case (`SlugValidator`, règle `slugSchema` du pivot) | `slug` |
+| `slug` | text | required, unique, sidebar, kebab-case (`SlugValidator`, règle `slugSchema` du pivot) ; un projet `remplace`, écrit en brouillon, garde son ancien slug tel quel | `slug` |
+| `upstreamFingerprint` | text | masqué dans l'admin, verrouillé par l'API, `disableDuplicate` | empreinte des données écrites par la sync amont ; effacée par toute autre écriture (`clearUpstreamFingerprint`) |
+| `workflowStatus` | select | `en-creation` (défaut), `publie`, `en-cours-modification`, `annule`, `remplace` ; sidebar, visible des super-admins seulement, `disableDuplicate` | `publie` ; `remplace` pour un ancien slug de `project_redirects` ; `annule` posé par la sync quand le projet a disparu de l'amont |
+| `replacedBy` | relationship → 'projects' | exigé pour passer à `remplace` ; ne propose ni projet `remplace` ni projet `annule` ; sidebar, `disableDuplicate` | cible de la redirection amont |
+| `workflowHistory` | array | masqué, `disableDuplicate` ; `from`, `to`, `changedBy`, `changedAt` | écrit par `beforeChangeWorkflow` |
 | `title` | text | required, non vide (`RequiredTextValidator`) | `title` |
 | `nameTag` | text | required, non vide (`RequiredTextValidator`) | `nameTag` |
 | `shortDescription` | textarea | required, non vide (`RequiredTextValidator`) | `shortDescription` |
@@ -186,23 +205,30 @@ apps/cms/src/services/canonical/to-payload/
 ├── ProjectRelations.ts                 # port : identifiant pivot → id Payload (dispositif, projet)
 └── PayloadProjectRelations.ts          # adaptateur Payload du port (canonicalId stocké ou dérivé du slug), rechargé entre les deux passes
 
-apps/cms/src/scripts/seed/projects/
+apps/cms/src/scripts/sync/projects/
 ├── ProjectImporter.ts        # Passe 1 : image résolue en média, upsert par slug (image et projets liés toujours écrits), retourne Map<canonicalId, payloadId>
-├── LinkedProjectsUpdater.ts  # Passe 2 : projets liés (self-ref), projet republié
-└── index.ts                  # ProjectsSeed (lecteur, mapper, orchestration des 2 passes, avertissements)
+├── LinkedProjectsUpdater.ts  # Passe 2 : projets liés (self-ref), projet republié, empreinte posée
+└── index.ts                  # ProjectsSync (lecteur, redirections, mapper, orchestration des 2 passes, avertissements)
+
+apps/cms/src/scripts/sync/
+├── UpstreamSync.ts           # commande partagée par le seed et la tâche quotidienne
+├── GoneDocumentsCanceller.ts # dispositifs et projets disparus de l'amont : `annule`
+└── CanonicalReconciler.ts    # rapprochement CMS ↔ canonical en fin de sync
 ```
 
 `ProjectMapper.ts` et `types.ts` (`SourceProject`) ont été supprimés le 2026-10-01 : un seul lecteur du format amont, partagé avec l'import direct `import:projects` (ADR 0014 §8).
 
 ### Ordre d'exécution du seed global
 
-1. `ProgramsSeed` (seed Operators, groupes et logos d'opérateurs, Programs)
-2. `ProjectsSeed`
+1. `ProgramsSync` (seed Operators, groupes et logos d'opérateurs, Programs)
+2. `ProjectsSync`
    - Lecture : `TeeProjectImporter.importMany` transforme `projects.json` en projets pivot.
-   - Passe 1 : import des projets, écrits **publiés** sous `SystemWorkflowContext`, image importée via `UpstreamMediaImporter` (`apps/cms/src/scripts/seed/media/`). Les `linkedProjects` d'un projet qui n'a plus de projet lié en amont sont vidés ; les autres gardent leur valeur publiée (aucune pour un projet créé) jusqu'à la passe 2.
+   - Passe 1 : import des projets, écrits **publiés** sous `SystemWorkflowContext`, image importée via `UpstreamMediaImporter` (`apps/cms/src/scripts/sync/media/`). Les `linkedProjects` d'un projet qui n'a plus de projet lié en amont sont vidés ; les autres gardent leur valeur publiée (aucune pour un projet créé) jusqu'à la passe 2.
    - Passe 2 : mise à jour `linkedProjects` via `LinkedProjectsUpdater`, écritures séquentielles.
    - Les avertissements du lecteur et du mapper sont affichés en fin de seed ; une erreur (passe 1 ou 2), ou un enregistrement amont écarté pour sa forme (`source.rejectedProjects`), fait sortir `pnpm seed` en code 1.
 
-Le store pivot des projets est alimenté pendant le seed par le hook `syncProjectCanonicalOnChange` : la passe 1 écrit la ligne avec les projets liés déjà publiés (aucun au premier seed), la passe 2 la réécrit avec ceux de l'amont. Le seed ne produit pas de tombstones de redirection : ils viennent de l'import amont direct (`pnpm import:projects`, pipeline quotidien).
+   - Les projets `remplace` (redirections de `project_redirects`) sont importés après les autres, pour que `replacedBy` désigne un projet déjà en base.
 
-Idempotence : upsert par slug. Un second seed ne crée ni projet ni média (résultats du 2026-10-01 : 0 créé, 91 mis à jour).
+Le store pivot des projets est alimenté pendant le seed par le hook `syncProjectCanonicalOnChange` : la passe 1 écrit la ligne avec les projets liés déjà publiés (aucun au premier seed), la passe 2 la réécrit avec ceux de l'amont. Depuis le 2026-10-02, le seed produit aussi les projets `remplace` : il passe par `UpstreamSync`, la commande de la tâche quotidienne. `pnpm import:projects` n'est plus qu'un outil de secours.
+
+Idempotence : upsert par slug, écriture sur différence. Un second seed ne crée ni projet ni média et n'écrit rien si l'amont n'a pas changé (résultats du 2026-10-02 : 97 projets « unchanged », 6 remplacés compris).

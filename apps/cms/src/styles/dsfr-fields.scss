@@ -109,7 +109,7 @@ label.field-label {
   box-shadow: none !important;
   // `height` not `min-height`: Payload forces `min-height: auto !important` in its
   // `@layer` (which an unlayered `!important` cannot beat); an unlayered `height`,
-  // however, wins. Payload's `flex-wrap: nowrap` keeps multi-value chips on one line.
+  // however, wins. Multi-value selects opt out of it below.
   height: var(--tee-input-height);
   // The fixed height pins content to the bottom → re-center it.
   align-items: center;
@@ -126,21 +126,19 @@ label.field-label {
   }
 }
 
-// Relationship fields that can hold many values (e.g. geographic zones) must be
-// allowed to grow and wrap, instead of the fixed single-line `.rs__control`
-// height above: otherwise the chips overflow the bordered box and overlap the
-// next field. Capped with a vertical scroll so a very long list never blows up
-// the form layout.
-.field--geographic-areas {
-  .rs__control {
-    height: auto;
-    min-height: var(--tee-input-height) !important;
-    max-height: calc(var(--tee-input-height) * 4);
-    overflow-y: auto;
-    align-items: flex-start;
-    flex-wrap: wrap !important;
-    padding-block: var(--tee-space-1);
-  }
+// Multi-value selects (`hasMany` selects and relationships) must be allowed to
+// grow and wrap, instead of the fixed single-line `.rs__control` height above:
+// otherwise the chips overflow the bordered box and overlap the next field.
+// Capped with a vertical scroll so a very long list never blows up the form
+// layout. react-select only marks the value container as multi, hence `:has()`.
+.rs__control:has(.rs__value-container--is-multi) {
+  height: auto;
+  min-height: var(--tee-input-height) !important;
+  max-height: calc(var(--tee-input-height) * 4);
+  overflow-y: auto;
+  align-items: flex-start;
+  flex-wrap: wrap !important;
+  padding-block: var(--tee-space-1);
 
   .rs__value-container {
     flex-wrap: wrap !important;

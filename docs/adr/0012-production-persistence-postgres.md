@@ -103,6 +103,8 @@ Décision (2026-09-25) : **Scaleway Object Storage** (API S3, région `fr-par` p
 
 ## Qui écrit dans le canonical de production (tranché le 2026-09-24)
 
+> **Révision 2026-10-02** (feature 005, lot 4 ; [ADR 0014](0014-canonical-projects.md), révision du même jour) : la tâche quotidienne n'écrit plus dans le store. Elle écrit dans le **CMS** (`UpstreamSync`, la commande du seed), et le store ne reçoit que ce que les hooks lui envoient : **amont → CMS → canonical → Grist**. L'amont reste maître, mais c'est le CMS qu'il écrase désormais : un document modifié dans le back-office est réécrit à la sync suivante (son empreinte `upstreamFingerprint` est effacée par toute écriture d'éditeur). Les dispositifs et projets disparus de l'amont passent en `annule`, les redirections deviennent des documents `remplace`. Le texte ci-dessous décrit l'état antérieur (deux écrivains).
+
 Deux chemins alimentent le store : le **hook `syncCanonicalOnPublish`** (publication dans le CMS) et le **pipeline quotidien** (alignement sur le `programs.json` amont : upserts + retrait des dispositifs disparus, sans jamais vider le store, lui-même issu d'une transformation de données Baserow).
 
 **Décision : l'amont reste maître (option A).** La production n'est pas éditée par des utilisateurs ; elle est mise à jour par une tâche planifiée quotidienne. Le hook **reste actif** (pas d'interrupteur à poser) : il écrit simplement dans un store que le prochain import écrasera. C'est assumé, et ça garde le chemin de synchronisation vivant et testé.
@@ -117,6 +119,8 @@ Conséquences à connaître :
 ### Où tourne le pipeline
 
 **Tâche planifiée Scalingo** (`cron.json` à la racine, script `pnpm data:daily`), et non plus GitHub Actions :
+
+> **Révision 2026-10-02** : `pnpm data:daily` enchaîne `pnpm data:sync` (sync du CMS depuis l'amont et rapprochement CMS ↔ canonical, `apps/cms/src/scripts/sync/run.ts`) puis `pnpm data:grist` (`grist-setup`, `export:grist --push`). L'export Grist tourne même si la sync a signalé des erreurs, puisqu'il publie ce que le store contient ; la tâche sort en code non nul si l'une des deux étapes a échoué. `import:tee` et `import:projects` ne sont plus dans la chaîne. La révision du 2026-10-01 ci-dessous décrit l'enchaînement précédent.
 
 > **Révision 2026-10-01** ([ADR 0014](0014-canonical-projects.md), feature 008) : le pipeline importe aussi les **projets**. `pnpm data:daily` enchaîne `import:tee --remote`, puis Grist (`grist-setup`, `export:grist --push`), puis `import:projects --remote` (alignement de `canonical.canonical_projects` sur `projects.json` et les `project_redirects` amont, même garde-fou `CanonicalSnapshotGuard`). L'import des projets est en fin de chaîne depuis la revue de code du même jour : son échec ne bloque pas l'open data Grist. La règle « l'amont est maître » vaut aussi pour les projets : l'import écrase ce que le hook `syncProjectCanonicalOnChange` a écrit. Le hook `assignCanonicalId`, désormais partagé par `Programs` et `Projects`, vit dans `apps/cms/src/hooks/shared/`.
 

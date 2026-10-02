@@ -43,6 +43,8 @@ const ALL_NAF_SECTIONS: readonly NafSection[] = NAF_SECTIONS_OPTIONS.map((option
  *
  * A program is published only when its url, contact page url and every step
  * link are valid; otherwise it stays `en-creation` so editors can spot and fix it.
+ * A program upstream redirects (`remplace`) keeps that status and points at its
+ * replacement, which must already be in the CMS.
  */
 export class CanonicalToPayloadMapper {
   private readonly variants: CanonicalVariantToPayloadMapper
@@ -73,6 +75,9 @@ export class CanonicalToPayloadMapper {
       UrlValidator.isValid(contact.contactPageUrl) &&
       steps.every((step) => (step.links ?? []).every((link) => UrlValidator.isValid(link.url)))
 
+    const replaced = input.statut_dispositif === 'remplace'
+    const workflowStatus = replaced ? 'remplace' : canPublish ? 'publie' : 'en-creation'
+
     const data: PayloadProgramData = {
       canonicalId: input.id,
       slug: input.slug,
@@ -97,8 +102,10 @@ export class CanonicalToPayloadMapper {
       themes: (input.themes ?? []).map((theme) => CANONICAL_TO_THEME[theme]),
       variants: this.variants.map(input.variantes, warnings),
       temporarilyUnavailable: input.statut_dispositif === 'temporairement_indisponible',
-      workflowStatus: canPublish ? 'publie' : 'en-creation',
-      _status: canPublish ? 'published' : 'draft',
+      workflowStatus,
+      // null rather than undefined so a former replacement is cleared on update.
+      replacedBy: replaced ? this.replacementId(input) : null,
+      _status: workflowStatus === 'publie' ? 'published' : 'draft',
       metaTitle: input.meta?.titre,
       metaDescription: input.meta?.description,
     }
@@ -107,6 +114,12 @@ export class CanonicalToPayloadMapper {
       warnings.push('restriction de catégorie légale (micro-entreprises) sans champ Payload')
     }
     return { data, warnings }
+  }
+
+  private replacementId(input: CanonicalProgramInput): number {
+    const id = input.remplace_par ? this.relations.programIdByCanonicalId(input.remplace_par) : undefined
+    if (id === undefined) throw new Error('dispositif remplaçant introuvable dans le CMS')
+    return id
   }
 
   private operatorIds(operateurs: { nom: string }[] | undefined): number[] | undefined {

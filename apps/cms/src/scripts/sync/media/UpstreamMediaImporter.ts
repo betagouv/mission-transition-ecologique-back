@@ -2,7 +2,7 @@ import type { Payload } from 'payload'
 import { UpstreamFetchError, type UpstreamAssetSource } from '@tee-backoffice/format-adapters'
 import type { MediaCategory } from '@/constants/mediaCategoryOptions'
 import { SystemWorkflowContext } from '@/services/workflow/SystemWorkflowContext'
-import { SeedErrorFormatter } from '../SeedErrorFormatter'
+import { SyncErrorFormatter } from '../SyncErrorFormatter'
 
 export type UpstreamAssetFetcher = Pick<UpstreamAssetSource, 'fetch'>
 
@@ -84,6 +84,6 @@ export class UpstreamMediaImporter {
     if (err instanceof UpstreamFetchError) {
       return err.isNotFound ? 'fichier introuvable en amont (404)' : `téléchargement refusé (HTTP ${err.status.toString()})`
     }
-    return SeedErrorFormatter.format(err)
+    return SyncErrorFormatter.format(err)
   }
 }

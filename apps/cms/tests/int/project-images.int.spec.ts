@@ -6,8 +6,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 import { UpstreamAssetSource, type TeeProject } from '@tee-backoffice/format-adapters'
-import { UpstreamMediaImporter } from '@/scripts/seed/media/UpstreamMediaImporter'
-import { ProjectsSeed } from '@/scripts/seed/projects'
+import { UpstreamMediaImporter } from '@/scripts/sync/media/UpstreamMediaImporter'
+import { ProjectsSync } from '@/scripts/sync/projects/ProjectsSync'
 import { FakeAssetFetch } from '../support/FakeAssetFetch'
 
 const IMAGE = '/images/projet/fixture-project-image.webp'
@@ -39,7 +39,7 @@ const SLUGS = [
 
 let payload: Payload
 
-describe('ProjectsSeed images', () => {
+describe('ProjectsSync images', () => {
   const assets = new FakeAssetFetch([IMAGE, IMAGE_V2, REMOVED, THEN_404])
   let manualImage: number
 
@@ -48,7 +48,7 @@ describe('ProjectsSeed images', () => {
       payload,
       new UpstreamAssetSource({ baseUrl: FakeAssetFetch.BASE_URL, fetchImpl: known.fetch }),
     )
-    const result = await new ProjectsSeed(payload, projects, media).run()
+    const result = await new ProjectsSync(payload, projects, media).run()
     return { result, media: media.stats }
   }
   const imageOf = async (slug: string) => {
@@ -114,18 +114,19 @@ describe('ProjectsSeed images', () => {
     // Not rooted: the reader cannot turn it into a URL.
     const { result, media } = await seed([project(9005, UNUSABLE_PATH, 'images/projet/x.webp')])
 
-    expect(result).toMatchObject({ updated: 1, errors: 0 })
+    // Nothing to write: the project keeps its image, so it is left as it is.
+    expect(result).toMatchObject({ updated: 0, unchanged: 1, errors: 0 })
     expect(media.failed).toBe(1)
     expect(await imageOf(UNUSABLE_PATH)).toMatchObject({ sourcePath: IMAGE })
   })
 
-  it('creates neither a project nor a media when the same source is seeded again', async () => {
+  it('writes neither a project nor a media when the same source is seeded again', async () => {
     const { result, media } = await seed(
       [project(9001, SLUGS[0], IMAGE_V2), project(9002, SLUGS[1]), project(9004, SLUGS[3], IMAGE_V2)],
       new FakeAssetFetch([IMAGE_V2]),
     )
 
-    expect(result).toMatchObject({ created: 0, updated: 3, errors: 0 })
+    expect(result).toMatchObject({ created: 0, updated: 0, unchanged: 3, errors: 0 })
     expect(media).toMatchObject({ created: 0, failed: 0 })
     expect(await imageOf(SLUGS[0])).toMatchObject({ sourcePath: IMAGE_V2 })
   })

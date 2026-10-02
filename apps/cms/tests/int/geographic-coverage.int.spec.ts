@@ -7,7 +7,7 @@ import { resolve } from 'path'
 import { fileURLToPath } from 'url'
 import type { Program } from '../../payload-types'
 import { GeographicAreasSeed } from '@/scripts/seed/geographic-areas'
-import { ProgramsSeed } from '@/scripts/seed/programs'
+import { ProgramsSync } from '@/scripts/sync/programs/ProgramsSync'
 import { ProgramCanonicalMapper } from '@/services/canonical/ProgramCanonicalMapper'
 import { PayloadRichTextToMarkdown } from '@/services/canonical/rich-text/PayloadRichTextToMarkdown'
 import { PayloadProgramRelations } from '@/services/canonical/to-payload/PayloadProgramRelations'
@@ -33,7 +33,7 @@ describe('regional and departmental coverage', () => {
   beforeAll(async () => {
     payload = await getPayload({ config: await config })
     await new GeographicAreasSeed(payload).run()
-    await ProgramsSeed.fromFile(payload, programsFixture).run()
+    await ProgramsSync.fromFile(payload, programsFixture).run()
     const relations = await PayloadProgramRelations.fromPayload(payload, new Map())
     nouvelleAquitaine = relations.areaByCogCode('REG-75')!.id
     landes = relations.areaByCogCode('DEP-40')!.id

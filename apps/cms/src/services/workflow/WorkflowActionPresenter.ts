@@ -3,6 +3,7 @@ import {
   WORKFLOW_STATUS,
   TRANSITION_LABELS,
   WORKFLOW_STATUS_LABELS,
+  type WorkflowCollection,
   type WorkflowStatus,
 } from '@/services/workflow/WorkflowTransitionPolicy'
 import { UserRole, type UserRoleValue } from '@/utils/user/UserRole'
@@ -44,6 +45,14 @@ const DRAFT_EDITABLE_STATUSES: ReadonlySet<WorkflowStatus> = new Set([
 const VALIDATED_TRANSITIONS: ReadonlySet<WorkflowStatus> = new Set([
   WORKFLOW_STATUS.enRelecture,
   WORKFLOW_STATUS.enCoursPublication,
+  WORKFLOW_STATUS.publie,
+])
+
+/** Transitions that bring the document forward, rendered as the primary button. */
+const PRIMARY_TRANSITIONS: ReadonlySet<WorkflowStatus> = new Set([
+  WORKFLOW_STATUS.enRelecture,
+  WORKFLOW_STATUS.enCoursPublication,
+  WORKFLOW_STATUS.publie,
 ])
 
 /**
@@ -54,7 +63,11 @@ const VALIDATED_TRANSITIONS: ReadonlySet<WorkflowStatus> = new Set([
  * Pure logic (no framework deps) so it stays shared between client and server.
  */
 export class WorkflowActionPresenter {
-  static getActions(currentStatus: WorkflowStatus, role: UserRoleValue): WorkflowAction[] {
+  static getActions(
+    currentStatus: WorkflowStatus,
+    role: UserRoleValue,
+    collection: WorkflowCollection = 'programs',
+  ): WorkflowAction[] {
     const actions: WorkflowAction[] = []
 
     if (DRAFT_EDITABLE_STATUSES.has(currentStatus)) {
@@ -67,7 +80,7 @@ export class WorkflowActionPresenter {
       })
     }
 
-    const transitions = WorkflowTransitionPolicy.getAllowedTransitions(currentStatus, role)
+    const transitions = WorkflowTransitionPolicy.getAllowedTransitions(currentStatus, role, collection)
 
     // `annule` ("Supprimer") always sits last as the destructive action.
     const ordered = [...transitions].sort((a, b) => {
@@ -110,10 +123,7 @@ export class WorkflowActionPresenter {
 
   private static variantFor(to: WorkflowStatus): WorkflowActionVariant {
     if (to === WORKFLOW_STATUS.annule) return 'danger'
-    if (to === WORKFLOW_STATUS.enRelecture || to === WORKFLOW_STATUS.enCoursPublication) {
-      return 'primary'
-    }
-    return 'secondary'
+    return PRIMARY_TRANSITIONS.has(to) ? 'primary' : 'secondary'
   }
 
   // "Supprimer" (annule) lives in the "⋮" overflow menu, next to Duplicate;

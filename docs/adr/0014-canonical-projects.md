@@ -1,7 +1,7 @@
 # ADR 0014 : Format pivot, persistance et API des projets
 
 **Date :** 2026-10-01
-**Statut :** Accepté, mis en œuvre le 2026-10-01 (voir « Révisions » en fin de document)
+**Statut :** Accepté, mis en œuvre le 2026-10-01 (voir « Révisions » en fin de document). **§6 et §7 révisés le 2026-10-02** : le CMS est le seul écrivain du store, les redirections et les retraits y sont suivis
 **Décideurs :** Yohann
 **Plan de mise en œuvre :** [Feature 008 : Format pivot et API des projets](../features/008-canonical-projects.md)
 **Complète :** [ADR 0003](0003-projects-collection.md) (collection `Projects`), [ADR 0007](0007-canonical-pivot-format.md) (format pivot), [ADR 0008](0008-canonical-persistence-ddd.md) (persistance du canonical, DDD), [ADR 0012](0012-production-persistence-postgres.md) (schéma `canonical`, pipeline quotidien)
@@ -55,6 +55,8 @@ Les deux repositories sont deux classes distinctes, sans classe de base commune 
 Option écartée : **une table unique `canonical_entities` avec une colonne de type**. Elle mélangerait deux contrats de validation, compliquerait l'unicité du slug et rendrait le retrait d'une entité plus risqué.
 
 ### 3. Publication : brouillons Payload, seuls les projets publiés sont dans le pivot
+
+> **Révisé le 2026-10-02** : les projets suivent le workflow des dispositifs. `workflowStatus` pilote `_status`, `ProjectCanonicalSyncPolicy` est supprimée au profit de `CanonicalSyncPolicy`, et il n'y a plus de « dépublication » : un projet sort du pivot en passant à `annule`. Voir la révision en fin de document.
 
 Les brouillons natifs de Payload sont activés sur `Projects` (`versions: { drafts: true }`). La règle de synchronisation est portée par `ProjectCanonicalSyncPolicy` :
 
@@ -123,12 +125,16 @@ Options écartées :
 
 Les tombstones ne sont produits que par l'import amont direct : `Projects` n'a pas de champ « remplacé par ».
 
+> **Révisé le 2026-10-02** : `Projects` porte `workflowStatus` et `replacedBy`, et les redirections deviennent des projets `remplace` du CMS, écrits par le seed et par la sync quotidienne. Voir la révision en fin de document.
+
 Options écartées :
 
 - **Liste `anciens_slugs` sur le projet courant** : plus légère, mais elle ne permet pas à un consommateur qui détient un ancien slug d'obtenir une réponse explicite « remplacé par ».
 - **Ignorer les redirections** : un ancien slug répondrait 404 sans indication.
 
 ### 7. Deux écrivains, l'amont maître
+
+> **Révisé le 2026-10-02** : il n'y a plus qu'un écrivain. La tâche quotidienne écrit dans le CMS, et le store ne reçoit plus que ce que les hooks lui envoient. `import:projects` sort du pipeline et reste un outil de secours. Les divergences listées ci-dessous disparaissent. Voir la révision en fin de document.
 
 Comme pour les dispositifs (ADR 0012) :
 
@@ -191,9 +197,9 @@ Options écartées :
 - Migration de `Projects` (`20261001_092812_canonical_projects`) : tables de versions, nouvelles colonnes, deux arrays ; remplissage manuel dans la migration générée (`_status`, `canonical_id`, une version publiée par projet existant).
 - Chaque enregistrement d'un projet publié ajoute une écriture dans le store, et une version dans Payload.
 - Le seed écrit deux fois le pivot d'un projet lié (passe 1 avec ses projets liés déjà publiés, aucun au premier seed ; passe 2 avec ceux de l'amont), et la passe 2 réécrit ces projets à chaque seed, même sans changement (74 projets au 2026-10-01 : une version Payload et une écriture pivot de plus chacun).
-- Les tombstones n'existent qu'après un passage du pipeline quotidien : absents juste après une réinitialisation de la préprod.
+- ~~Les tombstones n'existent qu'après un passage du pipeline quotidien : absents juste après une réinitialisation de la préprod.~~ Levé le 2026-10-02 : le seed les produit.
 - Le format exposé à AGIR est un placeholder : noms de clés et vocabulaire à confirmer avec eux.
-- Tant que le flux amont → CMS → pivot n'est pas en place, les deux écrivains divergent sur les points listés au §7.
+- ~~Tant que le flux amont → CMS → pivot n'est pas en place, les deux écrivains divergent sur les points listés au §7.~~ Levé le 2026-10-02.
 - **Identité par slug** (§2, §7, révision « identité stable par slug à l'import ») : l'identifiant d'une entité présente des deux côtés ne change plus à l'import. Restent deux cas. Un slug renommé dans le CMS rompt le rapprochement : l'amont recrée l'entité sous l'ancien slug et la ligne renommée est retirée comme absente de l'amont. Et quand le CMS publie pour la première fois, sous son identifiant, une entité que l'import avait créée sous l'identifiant dérivé, la ligne dérivée est évincée : les références amont vers elle ne sont réalignées qu'à l'import suivant.
 - **Ordre du pipeline** : l'import des projets étant en dernier, un échec de l'import des dispositifs ou de l'export Grist (table absente, clé invalide, panne de l'instance Grist) bloque l'import des projets, dont le store garde l'état de la veille. Comportement cible, non implémenté (mis de côté le 2026-10-01) : l'échec d'une étape n'empêche pas les suivantes, la chaîne sortant quand même en code non nul ; à l'intérieur d'une étape, un enregistrement en erreur n'empêche pas les autres (déjà vrai pour les deux imports, à vérifier pour le push Grist).
 - `beforeChangeWorkflow` accepte à la **création** le `workflowStatus` fourni par l'appelant, sans contrôle de rôle : un appel d'API qui crée (ou duplique) un dispositif en envoyant `workflowStatus: publie` le publie directement. Antérieur à cette feature et sans rapport avec l'action « Dupliquer » de l'admin, qui n'envoie pas ce champ ; à traiter avec le workflow (ADR 0005).
@@ -247,7 +253,7 @@ Une revue de code de la feature a relevé quinze constats. Aucune décision de f
 | 8 | `PayloadProjectRelations` indexe aussi par identifiant dérivé du slug | Un dispositif dont la ligne principale garde un ancien identifiant n'était plus lié à ses projets |
 | 10 | `sync_failed` journalisé « canonical project sync failed » quand `entity` vaut `project` | Un échec de synchronisation de projet se lisait comme celui d'un dispositif |
 | Hors ADR | `LinkedProjectsCounter` ne compte que les projets publiés | Depuis l'activation des brouillons, il comptait des projets qu'AGIR ne reçoit pas |
-| Hors ADR | Job CI « Library tests » (`pnpm test:libs`) ; la suite `ProjectsSeed` ne dépend plus de l'ordre des fichiers de test | Les tests des trois libs ne tournaient qu'à la main ; un ordre de fichiers inversé faisait échouer douze tests |
+| Hors ADR | Job CI « Library tests » (`pnpm test:libs`) ; la suite `ProjectsSync` ne dépend plus de l'ordre des fichiers de test | Les tests des trois libs ne tournaient qu'à la main ; un ordre de fichiers inversé faisait échouer douze tests |
 
 ### 2026-10-01 : duplication en brouillon, textes faits d'espaces
 
@@ -294,3 +300,55 @@ Options écartées :
 
 - **dériver l'identifiant du slug dès la création dans le CMS** : ne corrige pas les documents existants et lie l'identité au premier slug saisi, souvent provisoire ;
 - **faire adopter par le CMS l'identifiant du store** : un hook devrait lire le store à chaque création, et l'identité d'un document Payload changerait après coup.
+
+### 2026-10-02 : un seul écrivain, redirections et retraits suivis dans le CMS
+
+Le §7 laissait deux écrivains au store des projets : les hooks du CMS et l'import quotidien direct. Le back-office ne voyait alors jamais les nouveautés amont entre deux seeds, alors que l'API AGIR les servait, et un projet remplacé ou retiré en amont n'avait aucune trace dans le CMS. Le lot 4 de la [feature 005](../features/005-cms-daily-sync.md), étendu aux projets, y met fin.
+
+**Flux.** Amont → CMS → canonical → Grist (dispositifs seulement). La tâche quotidienne lance `UpstreamSync` (`apps/cms/src/scripts/sync/`), la même commande que le seed : elle écrit dispositifs et projets dans Payload, et les hooks `syncCanonicalOnPublish` et `syncProjectCanonicalOnChange` alimentent le store, comme pour une écriture d'éditeur. `import:tee` et `import:projects` ne sont plus dans le cron ; ils restent utilisables pour reconstruire le store sans Payload.
+
+**Cycle de vie d'un projet dans le CMS : le workflow des dispositifs.** Une première version de cette révision posait un champ propre aux projets (`projectStatus`) à côté du `_status` natif. Deux champs indépendants autorisaient des états incohérents (un projet annulé mais publié) et dupliquaient ce que les dispositifs font déjà. Les projets suivent donc le même modèle :
+
+- `workflowStatus` est le **statut unique** d'un projet et pilote `_status`, par le même hook que les dispositifs (`beforeChangeWorkflow('projects')`, `apps/cms/src/hooks/shared/`) ;
+- même vocabulaire, restreint aux statuts qu'un projet traverse : `en-creation`, `publie`, `en-cours-modification`, `annule`, `remplace`. Pas de relecture ni d'archivage : les projets sont écrits par les admins, qui publient directement (`WorkflowTransitionPolicy`, table de transitions `projects`) ;
+- `replacedBy` (relation vers `projects`) est exigé pour passer à `remplace` ;
+- `workflowHistory` garde chaque transition, avec son auteur et sa date : c'est le suivi dans le CMS ;
+- dans l'admin, les boutons natifs de publication cèdent la place à la barre d'actions des dispositifs (« Enregistrer le brouillon », « Publier », « Modifier », « Remplacer », « Supprimer » dans le menu).
+
+La règle canonical est commune (`CanonicalSyncPolicy`) : `publie` et `remplace` sont écrits, `annule` est retiré, les états en cours ne touchent pas au pivot, si bien qu'un projet publié en cours de réécriture reste servi. `ProjectCanonicalSyncPolicy` est supprimée. Comme pour un dispositif, un passage à `remplace` ou `annule` est enregistré en version brouillon : la validation n'est pas rejouée, ce qui laisse à un projet remplacé son ancien slug tel quel.
+
+**Redirections.** `ProjectsSync` et `ProgramsSync` reçoivent `redirects.json` et réutilisent `ProjectTombstoneBuilder` et `RedirectTombstoneBuilder` : un ancien slug encore présent en amont est marqué `remplace` en place, un ancien slug absent devient un document `remplace` cloné depuis sa cible. Ces documents sont importés **après** leurs cibles, pour que `replacedBy` soit résolu. Le contenu servi par AGIR pour un ancien slug est donc le même qu'avec l'import direct.
+
+**Disparus de l'amont.** Un document importé (son `canonicalId` est celui que `SlugCanonicalId` dérive de son slug), absent du snapshot et sans redirection, passe en `annule` : une seule classe pour les deux collections, `GoneDocumentsCanceller`. Un document créé dans le CMS, à l'identifiant aléatoire, n'est jamais touché. Un enregistrement amont écarté pour sa forme n'est pas un disparu. `UpstreamRemovalGuard` refuse d'annuler plus de `max(5, 10 %)` des documents importés en une fois : le job sort alors en erreur sans rien annuler (`--allow-mass-removal` lève le plafond).
+
+**Écriture sur différence.** Champ masqué `upstreamFingerprint` sur les deux collections : SHA-256 des données Payload calculées depuis l'amont, relations résolues comprises (`UpstreamFingerprint`). Empreinte identique et ligne présente dans le store : le document n'est pas réécrit, aucune version n'est créée. Toute écriture qui ne vient pas d'un script de confiance efface l'empreinte (`clearUpstreamFingerprint`), donc la sync suivante réécrit le document depuis l'amont : la règle « l'amont est maître » s'applique désormais au CMS lui-même.
+
+**Rapprochement.** En fin de job, `CanonicalReconciler` compare ce que le CMS sert à ce que chaque store contient : une ligne attendue absente est une erreur (elle sera réécrite à la sync suivante, l'importeur vérifiant la présence dans le store) ; une ligne que le CMS n'attend pas est retirée, sous le même garde-fou.
+
+Vérifié sur une base jetable avec l'amont réel du 2026-10-02 : 290 dispositifs (278 + 12 remplacés clonés, 1 marqué en place) et 97 projets (91 + 6 remplacés) écrits sans erreur, rapprochement sans écart, et une seconde sync qui n'écrit rien (0,6 s contre 17 s).
+
+| § | Décision | Raison |
+|---|---|---|
+| 6 | Les redirections sont des documents du CMS | Le suivi d'un remplacement se lit dans le back-office, et le store n'a plus qu'une source |
+| 7 | Un seul écrivain du store : les hooks | Le back-office voit les nouveautés amont le jour même ; plus de divergence d'URL d'image, de Markdown ou d'identifiant entre deux écrivains |
+| 3, 7 | Les projets suivent le workflow des dispositifs (`workflowStatus`, `replacedBy`, `workflowHistory`), sans la relecture | Un seul modèle de statut à comprendre et à maintenir, une seule règle canonical, un seul code d'annulation ; l'historique des transitions donne le suivi dans le CMS |
+| 7 | Un projet `remplace` reste dans le pivot, un projet `annule` en sort | Le premier est encore servi par AGIR (redirection suivable), le second ne doit plus l'être |
+| 8 | Empreinte calculée sur les données Payload, pas sur l'enregistrement amont | Un changement de mapper réécrit les documents sans intervention ; l'identifiant aléatoire que le convertisseur Markdown pose sur les liens est exclu du calcul |
+
+Limites :
+
+- **Brouillon en attente.** Pour un projet comme pour un dispositif, un brouillon qu'un éditeur laisse en attente par-dessus la version publiée est écrasé à la sync suivante : l'empreinte est lue sur la dernière version.
+- **Contenu d'un document remplacé.** Un document existant qui devient `remplace` par clonage reçoit le contenu de sa cible ; l'ancien contenu reste dans l'historique des versions.
+- **Lien réparé le lendemain.** Un projet dont un projet lié était introuvable n'est réécrit qu'à la sync suivant l'arrivée de ce dernier, quand la résolution change son empreinte.
+- **Dispositif refusé à la publication.** Un dispositif que Payload refuse de publier reste en création sans empreinte : il est retenté, et signalé, à chaque sync.
+- **Ligne principale.** Comme pour l'action « Supprimer » de l'admin, un dispositif ou un projet annulé ou remplacé est enregistré en version brouillon : sa ligne principale garde l'ancien statut. Tout ce qui lit le statut doit lire la dernière version (`draft: true`). C'est une faiblesse du modèle des dispositifs, reproduite telle quelle sur les projets pour garder la symétrie ; la corriger est un chantier à part, pour les deux collections.
+- **Création par l'API.** Le hook accepte à la création le `workflowStatus` fourni, sans contrôle de rôle (limite déjà notée pour les dispositifs) : elle vaut maintenant aussi pour les projets.
+- **Tests des projets.** Publier ou modifier un projet par la Local API est une transition de workflow : il faut un utilisateur admin ou le contexte système.
+
+Options écartées :
+
+- **comparer l'enregistrement amont plutôt que les données Payload** : déterministe sans exclusion, mais un changement de mapper resterait sans effet tant que l'amont ne bouge pas, sauf à tenir un numéro de version à la main ;
+- **garder les tombstones hors du CMS** (store écrit directement pour eux seuls) : deux écrivains à nouveau, et aucun suivi dans le back-office ;
+- **supprimer les documents disparus** : perd la fiche et son historique, et un retour de l'entité en amont repartirait de zéro ;
+- **un champ de statut propre aux projets à côté de `_status`** (`projectStatus`, première version de cette révision) : deux sources de vérité, un vocabulaire différent de celui des dispositifs, une politique de sync et un code d'annulation en double ;
+- **porter tout le workflow éditorial sur les projets** (relecture, rôles, neuf états) : aucun circuit de relecture n'existe pour eux aujourd'hui. Le modèle reste extensible : il suffit d'ajouter des lignes à la table de transitions des projets.

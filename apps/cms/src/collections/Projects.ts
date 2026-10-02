@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { workflowHistoryField } from '@/collections/fields/workflowHistoryField'
 import type { MediaCategory } from '@/constants/mediaCategoryOptions'
 
 import { NAF_SECTIONS_OPTIONS } from '@/constants/nafSectionsOptions'
@@ -8,13 +9,16 @@ import { syncProjectCanonicalOnChange } from '@/hooks/projects/syncProjectCanoni
 import { assignCanonicalId } from '@/hooks/shared/assignCanonicalId'
 import { assignCopySlug } from '@/hooks/shared/assignCopySlug'
 import { assignCopyTitle } from '@/hooks/shared/assignCopyTitle'
+import { beforeChangeWorkflow } from '@/hooks/shared/beforeChangeWorkflow'
+import { clearUpstreamFingerprint } from '@/hooks/shared/clearUpstreamFingerprint'
 import { duplicateAsDraft } from '@/hooks/shared/duplicateAsDraft'
 import { IntegerValidator } from '@/utils/IntegerValidator'
 import { NafCodeValidator } from '@/utils/NafCodeValidator'
 import { RequiredRichTextValidator } from '@/utils/RequiredRichTextValidator'
 import { RequiredTextValidator } from '@/utils/RequiredTextValidator'
 import { SlugValidator } from '@/utils/SlugValidator'
-import { UserRole, type UserRoleValue } from '@/utils/user/UserRole';
+import { WORKFLOW_STATUS_LABELS, WorkflowTransitionPolicy } from '@/services/workflow/WorkflowTransitionPolicy'
+import { UserRole, type UserRoleValue } from '@/utils/user/UserRole'
 
 export const Projects: CollectionConfig = {
   slug: 'projects',
@@ -24,12 +28,23 @@ export const Projects: CollectionConfig = {
   },
   admin: {
     useAsTitle: 'title',
-    defaultColumns: ['title', 'nameTag', 'mainTheme', '_status', 'updatedAt'],
+    defaultColumns: ['title', 'nameTag', 'mainTheme', 'workflowStatus', 'updatedAt'],
     hidden: ({ user }) => !UserRole.isAdmin(user as unknown as { role: UserRoleValue }),
+    components: {
+      // Same controls as the programs: the workflow owns publication, so the
+      // native buttons give way to its action bar.
+      edit: {
+        PublishButton: '@/components/programs/WorkflowActionBar#WorkflowActionBar',
+        SaveDraftButton: '@/components/programs/WorkflowHiddenControl#WorkflowHiddenControl',
+        UnpublishButton: '@/components/programs/WorkflowHiddenControl#WorkflowHiddenControl',
+        editMenuItems: ['@/components/programs/WorkflowEditMenuItems#WorkflowEditMenuItems'],
+        Status: '@/components/programs/WorkflowStatusBadge#WorkflowStatusBadge',
+      },
+    },
   },
   hooks: {
     beforeOperation: [duplicateAsDraft],
-    beforeChange: [assignCanonicalId],
+    beforeChange: [assignCanonicalId, clearUpstreamFingerprint, beforeChangeWorkflow('projects')],
     afterChange: [syncProjectCanonicalOnChange],
     afterDelete: [removeProjectCanonicalOnDelete],
   },
@@ -67,6 +82,61 @@ export const Projects: CollectionConfig = {
         description: 'Unique identifier.',
       },
     },
+    {
+      // Fingerprint of the data the upstream sync last wrote: an unchanged
+      // document is skipped. Locked like `canonicalId`, and cleared by any
+      // other write (see `clearUpstreamFingerprint`).
+      name: 'upstreamFingerprint',
+      type: 'text',
+      disableDuplicate: true,
+      admin: { hidden: true, readOnly: true },
+      access: {
+        create: () => false,
+        update: () => false,
+      },
+    },
+    {
+      // Single status of a project, as on the programs: it drives `_status`
+      // through `beforeChangeWorkflow` and is changed by the action bar.
+      name: 'workflowStatus',
+      type: 'select',
+      label: 'Statut de workflow',
+      defaultValue: 'en-creation',
+      // A copy starts its own workflow, whatever became of the original.
+      disableDuplicate: true,
+      options: WorkflowTransitionPolicy.statusesOf('projects').map((status) => ({
+        label: WORKFLOW_STATUS_LABELS[status],
+        value: status,
+      })),
+      admin: {
+        position: 'sidebar',
+        // Driven by the WorkflowActionBar buttons; only super-admins keep the
+        // raw select for manual overrides.
+        condition: (_data, _siblingData, { user }) =>
+          UserRole.isSuperAdmin(user as { role: UserRoleValue } | null | undefined),
+        components: {
+          Cell: '@/components/programs/WorkflowStatusCell#WorkflowStatusCell',
+        },
+      },
+    },
+    {
+      name: 'replacedBy',
+      type: 'relationship',
+      label: 'Remplacé par',
+      relationTo: 'projects',
+      hasMany: false,
+      disableDuplicate: true,
+      admin: {
+        position: 'sidebar',
+        description: 'Projet de remplacement. Requis lors du passage à l’état "Remplacé".',
+        condition: (data) => data?.workflowStatus === 'remplace' || Boolean(data?.replacedBy),
+      },
+      filterOptions: ({ id }) => ({
+        ...(id ? { id: { not_equals: id } } : {}),
+        workflowStatus: { not_in: ['annule', 'remplace'] },
+      }),
+    },
+    workflowHistoryField,
     {
       name: 'title',
       type: 'text',

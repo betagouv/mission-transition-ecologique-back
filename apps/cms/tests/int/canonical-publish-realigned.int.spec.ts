@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url'
 import { createId } from '@paralleldrive/cuid2'
 import { CanonicalProgramValidator, type CanonicalProgramRepository } from '@tee-backoffice/canonical'
 import type { Program, User } from '../../payload-types'
-import { ProgramsSeed } from '@/scripts/seed/programs'
+import { ProgramsSync } from '@/scripts/sync/programs/ProgramsSync'
 import { getCanonicalProgramRepository } from '@/services/canonical/canonicalRepository'
 import { SystemWorkflowContext } from '@/services/workflow/SystemWorkflowContext'
 
@@ -52,7 +52,7 @@ async function mainRowId(program: Program): Promise<string | null | undefined> {
 describe('publishing a program whose draft carries a realigned canonical id', () => {
   beforeAll(async () => {
     payload = await getPayload({ config: await config })
-    await ProgramsSeed.fromFile(payload, programsFixture).run()
+    await ProgramsSync.fromFile(payload, programsFixture).run()
     canonical = await getCanonicalProgramRepository(payload.logger)
     superAdmin = await payload.create({
       collection: 'users',

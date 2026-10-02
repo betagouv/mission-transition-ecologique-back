@@ -5,6 +5,8 @@ import type { ProgramRelations } from '@/services/canonical/to-payload/ProgramRe
 import type { MarkdownToRichText } from '@/services/canonical/rich-text/MarkdownToRichText'
 import { richText } from './support/canonicalProgramFixtures'
 
+const REPLACEMENT = 'r1b2c3d4e5f6g7h8i9j0klmn'
+
 class StubMarkdownToRichText implements MarkdownToRichText {
   convert(markdown: string) {
     return richText(markdown)
@@ -14,6 +16,9 @@ class StubMarkdownToRichText implements MarkdownToRichText {
 class StubRelations implements ProgramRelations {
   operatorId(name: string) {
     return ({ ADEME: 1, Bpifrance: 2 } as Record<string, number>)[name]
+  }
+  programIdByCanonicalId(canonicalId: string) {
+    return ({ [REPLACEMENT]: 42 } as Record<string, number>)[canonicalId]
   }
   areaByCogCode(code: string) {
     const areas: Record<string, { id: number; name: string; parentId?: number }> = {
@@ -241,5 +246,20 @@ describe('CanonicalToPayloadMapper', () => {
     ])
     expect(data.variants?.[0]?.modifications).toEqual([{ field: 'montant', newValue: '80 %' }])
     expect(warnings).toEqual(['zone COM-99999 inconnue du CMS (condition de variante ignorée)'])
+  })
+
+  it('leaves a live program without replacement', () => {
+    expect(map().data.replacedBy).toBeNull()
+  })
+
+  it('keeps a redirected program replaced, pointing at its replacement', () => {
+    const { data } = map({ statut_dispositif: 'remplace', remplace_par: REPLACEMENT })
+    expect(data).toMatchObject({ workflowStatus: 'remplace', _status: 'draft', replacedBy: 42 })
+  })
+
+  it('refuses a replaced program whose replacement the CMS does not have', () => {
+    expect(() => map({ statut_dispositif: 'remplace', remplace_par: 'x1b2c3d4e5f6g7h8i9j0klmn' })).toThrow(
+      'dispositif remplaçant introuvable dans le CMS',
+    )
   })
 })

@@ -1,10 +1,12 @@
 import type { CollectionConfig, FieldAccess } from 'payload'
 import { ProgramAccessPolicy } from '@/services/access/ProgramAccessPolicy'
-import { beforeChangeWorkflow } from '@/hooks/programs/beforeChangeWorkflow'
+import { beforeChangeWorkflow } from '@/hooks/shared/beforeChangeWorkflow'
+import { workflowHistoryField } from '@/collections/fields/workflowHistoryField'
 import { assignCreatorOnCreate } from '@/hooks/programs/assignCreatorOnCreate'
 import { normalizeGeographicCoverage } from '@/hooks/programs/normalizeGeographicCoverage'
 import { trackLastModifiedBy } from '@/hooks/programs/trackLastModifiedBy'
 import { assignCanonicalId } from '@/hooks/shared/assignCanonicalId'
+import { clearUpstreamFingerprint } from '@/hooks/shared/clearUpstreamFingerprint'
 import { assignCopySlug } from '@/hooks/shared/assignCopySlug'
 import { assignCopyTitle } from '@/hooks/shared/assignCopyTitle'
 import { duplicateAsDraft } from '@/hooks/shared/duplicateAsDraft'
@@ -87,9 +89,10 @@ export const Programs: CollectionConfig = {
     beforeValidate: [normalizeGeographicCoverage],
     beforeChange: [
       assignCanonicalId,
+      clearUpstreamFingerprint,
       assignCreatorOnCreate,
       trackLastModifiedBy,
-      beforeChangeWorkflow,
+      beforeChangeWorkflow('programs'),
     ],
     afterChange: [syncCanonicalOnPublish],
     afterDelete: [removeCanonicalOnDelete],
@@ -838,6 +841,19 @@ export const Programs: CollectionConfig = {
       },
     },
     {
+      // Fingerprint of the data the upstream sync last wrote: an unchanged
+      // document is skipped. Locked like `canonicalId`, and cleared by any
+      // other write (see `clearUpstreamFingerprint`).
+      name: 'upstreamFingerprint',
+      type: 'text',
+      disableDuplicate: true,
+      admin: { hidden: true, readOnly: true },
+      access: {
+        create: () => false,
+        update: () => false,
+      },
+    },
+    {
       name: 'slug',
       type: 'text',
       label: 'Identifiant',
@@ -926,42 +942,7 @@ export const Programs: CollectionConfig = {
         readOnly: true,
       },
     },
-    {
-      name: 'workflowHistory',
-      type: 'array',
-      label: 'Historique des transitions',
-      disableDuplicate: true,
-      admin: {
-        // Removed from the sidebar (ticket #6, point 10). The data is still
-        // written by `beforeChangeWorkflow` and stays available in the API and
-        // version snapshots.
-        hidden: true,
-        readOnly: true,
-        description: 'Historique automatique des changements de statut.',
-      },
-      fields: [
-        {
-          name: 'from',
-          type: 'text',
-          label: 'Depuis',
-          admin: { readOnly: true },
-        },
-        { name: 'to', type: 'text', label: 'Vers', admin: { readOnly: true } },
-        {
-          name: 'changedBy',
-          type: 'relationship',
-          label: 'Par',
-          relationTo: 'users',
-          admin: { readOnly: true },
-        },
-        {
-          name: 'changedAt',
-          type: 'date',
-          label: 'Le',
-          admin: { readOnly: true, date: { pickerAppearance: 'dayAndTime' } },
-        },
-      ],
-    },
+    workflowHistoryField,
     {
       name: '_status',
       type: 'select',

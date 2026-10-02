@@ -33,6 +33,7 @@ export const WORKFLOW_STATUS_LABELS: Record<WorkflowStatus, string> = {
 export const TRANSITION_LABELS: Partial<Record<WorkflowStatus, string>> = {
   'en-relecture': 'Demander la relecture',
   'en-cours-publication': 'Publier',
+  publie: 'Publier',
   'en-cours-modification': 'Modifier',
   annule: 'Supprimer',
   archive: 'Archiver',
@@ -45,7 +46,12 @@ export const FINAL_STATUSES: ReadonlySet<WorkflowStatus> = new Set([
   'remplace',
 ])
 
-const ALLOWED_TRANSITIONS: Record<WorkflowStatus, Partial<Record<UserRoleValue, WorkflowStatus[]>>> = {
+/** Collections whose documents follow a workflow. */
+export type WorkflowCollection = 'programs' | 'projects'
+
+type TransitionTable = Partial<Record<WorkflowStatus, Partial<Record<UserRoleValue, WorkflowStatus[]>>>>
+
+const PROGRAM_TRANSITIONS: TransitionTable = {
   'en-creation': {
     [UserRole.CREATOR]: ['en-relecture', 'annule'],
     [UserRole.ADMIN]: ['en-relecture', 'annule'],
@@ -72,28 +78,59 @@ const ALLOWED_TRANSITIONS: Record<WorkflowStatus, Partial<Record<UserRoleValue, 
   remplace: {},
 }
 
+/**
+ * Projects are written by admins only, without review: same statuses and same
+ * vocabulary as the programs, restricted to the ones a project goes through.
+ */
+const PROJECT_TRANSITIONS: TransitionTable = {
+  'en-creation': {
+    [UserRole.ADMIN]: ['publie', 'annule'],
+  },
+  publie: {
+    [UserRole.ADMIN]: ['en-cours-modification', 'remplace', 'annule'],
+  },
+  'en-cours-modification': {
+    [UserRole.ADMIN]: ['publie', 'annule'],
+  },
+  annule: {},
+  remplace: {},
+}
+
+const TRANSITIONS: Record<WorkflowCollection, TransitionTable> = {
+  programs: PROGRAM_TRANSITIONS,
+  projects: PROJECT_TRANSITIONS,
+}
+
+/** `collection` defaults to the programs, the first collection to follow a workflow. */
 export class WorkflowTransitionPolicy {
-  static canTransition(from: WorkflowStatus, to: WorkflowStatus, role: UserRoleValue): boolean {
-    if (UserRole.isSuperAdmin({ role })) return true
-    return ALLOWED_TRANSITIONS[from]?.[role]?.includes(to) ?? false
+  static isWorkflowCollection(slug: string | undefined): slug is WorkflowCollection {
+    return slug !== undefined && slug in TRANSITIONS
   }
 
-  static getAllowedTransitions(from: WorkflowStatus, role: UserRoleValue): WorkflowStatus[] {
+  /** Statuses a document of the collection can be in, in workflow order. */
+  static statusesOf(collection: WorkflowCollection): WorkflowStatus[] {
+    return Object.keys(TRANSITIONS[collection]) as WorkflowStatus[]
+  }
+
+  static canTransition(
+    from: WorkflowStatus,
+    to: WorkflowStatus,
+    role: UserRoleValue,
+    collection: WorkflowCollection = 'programs',
+  ): boolean {
+    if (UserRole.isSuperAdmin({ role })) return WorkflowTransitionPolicy.statusesOf(collection).includes(to)
+    return TRANSITIONS[collection][from]?.[role]?.includes(to) ?? false
+  }
+
+  static getAllowedTransitions(
+    from: WorkflowStatus,
+    role: UserRoleValue,
+    collection: WorkflowCollection = 'programs',
+  ): WorkflowStatus[] {
     if (UserRole.isSuperAdmin({ role })) {
-      const all: WorkflowStatus[] = [
-        'en-creation',
-        'en-relecture',
-        'en-cours-publication',
-        'publie',
-        'en-cours-modification',
-        'importe',
-        'annule',
-        'archive',
-        'remplace',
-      ]
-      return all.filter((s) => s !== from)
+      return WorkflowTransitionPolicy.statusesOf(collection).filter((status) => status !== from)
     }
-    return ALLOWED_TRANSITIONS[from]?.[role] ?? []
+    return TRANSITIONS[collection][from]?.[role] ?? []
   }
 
   static isFinal(status: WorkflowStatus): boolean {

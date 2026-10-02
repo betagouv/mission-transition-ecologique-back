@@ -13,7 +13,7 @@ import {
   type TeeRecord,
 } from '@tee-backoffice/format-adapters'
 import { GeographicAreasSeed } from '@/scripts/seed/geographic-areas'
-import { ProgramsSeed } from '@/scripts/seed/programs'
+import { ProgramsSync } from '@/scripts/sync/programs/ProgramsSync'
 import { ProgramCanonicalMapper } from '@/services/canonical/ProgramCanonicalMapper'
 import { PayloadRichTextToMarkdown } from '@/services/canonical/rich-text/PayloadRichTextToMarkdown'
 import { PayloadProgramRelations } from '@/services/canonical/to-payload/PayloadProgramRelations'
@@ -102,7 +102,7 @@ describe('upstream → CMS → canonical round-trip', () => {
       return input
     })
 
-    const result = await new ProgramsSeed(payload, records).run()
+    const result = await new ProgramsSync(payload, records).run()
     expect(result.errors).toBe(0)
     relations = await PayloadProgramRelations.fromPayload(payload, new Map())
 

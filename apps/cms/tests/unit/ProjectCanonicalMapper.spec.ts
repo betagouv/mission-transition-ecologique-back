@@ -268,4 +268,32 @@ describe('ProjectCanonicalMapper', () => {
       expect(data.faq).toEqual({ questions: [{ question: 'Avec réponse ?', reponse: 'Oui.' }] })
     })
   })
+
+  describe('lifecycle', () => {
+    it('flags a replaced project with the canonical id of its replacement', () => {
+      const data = mapAndValidate(
+        buildProject({
+          slug: 'maintenance-préventive',
+          workflowStatus: 'remplace',
+          replacedBy: buildProject({ id: 2, canonicalId: LINKED_CUID, slug: 'maintenance-preventive' }),
+        }),
+      )
+      expect(data).toMatchObject({ statut_projet: 'remplace', remplace_par: LINKED_CUID })
+    })
+
+    it('leaves a replaced project without a populated replacement to the validator', () => {
+      const input = mapper.map(buildProject({ workflowStatus: 'remplace', replacedBy: 2 }))
+      expect(input.statut_projet).toBe('remplace')
+      expect(input.remplace_par).toBeUndefined()
+      expect(validator.validate(input).success).toBe(false)
+    })
+
+    it('ignores the replacement of a project that is not replaced', () => {
+      const data = mapAndValidate(
+        buildProject({ workflowStatus: 'publie', replacedBy: buildProject({ id: 2, canonicalId: LINKED_CUID }) }),
+      )
+      expect(data.statut_projet).toBe('valide')
+      expect(data.remplace_par).toBeUndefined()
+    })
+  })
 })

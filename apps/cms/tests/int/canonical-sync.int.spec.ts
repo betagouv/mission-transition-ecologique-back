@@ -9,7 +9,7 @@ import { fileURLToPath } from 'url'
 import type { CanonicalProgramRepository } from '@tee-backoffice/canonical'
 import { AgirExportPolicy, SchemaExportPolicy } from '@tee-backoffice/format-adapters'
 import type { Program } from '../../payload-types'
-import { ProgramsSeed } from '@/scripts/seed/programs'
+import { ProgramsSync } from '@/scripts/sync/programs/ProgramsSync'
 import { getCanonicalProgramRepository } from '@/services/canonical/canonicalRepository'
 import { SystemWorkflowContext } from '@/services/workflow/SystemWorkflowContext'
 
@@ -28,7 +28,7 @@ describe('canonical sync hooks', () => {
   beforeAll(async () => {
     const payloadConfig = await config
     payload = await getPayload({ config: payloadConfig })
-    await ProgramsSeed.fromFile(payload, programsFixture).run()
+    await ProgramsSync.fromFile(payload, programsFixture).run()
     canonical = await getCanonicalProgramRepository(payload.logger)
 
     const result = await payload.find({

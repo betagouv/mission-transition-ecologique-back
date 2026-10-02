@@ -3,7 +3,11 @@
 import { useAuth, useConfig, useDocumentInfo, useForm, useLocale } from '@payloadcms/ui'
 import { formatAdminURL } from 'payload/shared'
 import { WorkflowActionPresenter, type WorkflowAction } from '@/services/workflow/WorkflowActionPresenter'
-import { WORKFLOW_STATUS, type WorkflowStatus } from '@/services/workflow/WorkflowTransitionPolicy'
+import {
+  WORKFLOW_STATUS,
+  WorkflowTransitionPolicy,
+  type WorkflowStatus,
+} from '@/services/workflow/WorkflowTransitionPolicy'
 import type { UserRoleValue } from '@/utils/user/UserRole'
 
 type UseWorkflowSubmit = {
@@ -13,8 +17,9 @@ type UseWorkflowSubmit = {
 
 /**
  * Shared wiring between `WorkflowActionBar` (controls bar) and
- * `WorkflowEditMenuItems` (overflow menu): computes the available actions and
- * submits them with the right validation strategy.
+ * `WorkflowEditMenuItems` (overflow menu): computes the actions the workflow of
+ * the current collection allows and submits them with the right validation
+ * strategy.
  */
 export function useWorkflowSubmit(): UseWorkflowSubmit {
   const { id, collectionSlug, data } = useDocumentInfo()
@@ -29,7 +34,10 @@ export function useWorkflowSubmit(): UseWorkflowSubmit {
 
   const currentStatus = (data?.workflowStatus ?? WORKFLOW_STATUS.enCreation) as WorkflowStatus
   const role = user?.role as UserRoleValue | undefined
-  const actions = role ? WorkflowActionPresenter.getActions(currentStatus, role) : []
+  const actions =
+    role && WorkflowTransitionPolicy.isWorkflowCollection(collectionSlug)
+      ? WorkflowActionPresenter.getActions(currentStatus, role, collectionSlug)
+      : []
 
   // Mirrors Payload's native "Save draft": hits the API with `draft=true` so the
   // server skips required-field validation, keeping client and server in sync.
@@ -51,7 +59,7 @@ export function useWorkflowSubmit(): UseWorkflowSubmit {
 
     if (action.requiresReplacement) {
       const replacementId = window.prompt(
-        'ID du programme remplaçant (champ "id" du programme cible) :',
+        'ID du remplaçant (champ "id" du document cible) :',
       )?.trim()
       if (!replacementId) return
       void draftSubmit({ workflowStatus: action.to, replacedBy: replacementId })

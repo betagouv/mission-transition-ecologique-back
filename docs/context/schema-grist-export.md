@@ -141,6 +141,8 @@ La table Grist porte les colonnes du schéma **entreprise** (l'`id` Etalab sous
 
 ## Régénération du store sans Payload (`import:tee`)
 
+> **Outil de secours depuis le 2026-10-02.** Le pipeline quotidien n'appelle plus `import:tee` ni `import:projects` : il synchronise le CMS, et le store suit par les hooks (voir « Pipeline quotidien » plus bas). Ces deux imports restent utilisables pour reconstruire un store sans Payload ; le rapprochement de la sync suivante retirera du store ce que le CMS n'y attend pas.
+
 `pnpm nx run @tee-backoffice/format-adapters:import:tee` reconstruit le store
 canonical **directement depuis `static/input/programs.json`**, sans Payload :
 `TeeImporter` mappe chaque dispositif, `SlugCanonicalId` lui donne un id stable
@@ -207,27 +209,46 @@ targets nx, qui chargent le `.env` racine (voir `.env.example`). Les scripts
 résolvent leurs chemins (`static/input/`, `static/exports/`) depuis leur propre
 fichier : le résultat ne dépend pas du répertoire de lancement.
 
+Flux (depuis le 2026-10-02, feature 005 lot 4) : **amont → CMS → canonical →
+Grist**. Le store canonical n'est plus écrit directement : il reçoit ce que les
+hooks du CMS lui envoient.
+
 Étapes :
 
-1. `import:tee --remote` : lecture HTTP de `programs.json` **et** `redirects.json`
-   amont (`UpstreamJsonSource`, betagouv/mission-transition-ecologique), puis
-   régénération complète du store canonical (+ tombstones de redirection) ;
-2. `grist-setup` (idempotent) puis `export:grist --push` ;
-3. `import:projects --remote` (depuis le 2026-10-01, ADR 0014) : lecture HTTP de
-   `projects.json` et `redirects.json`, puis alignement du store des projets
-   (`canonical.canonical_projects`, + tombstones de `project_redirects`) par
-   `CanonicalProjectService.applySnapshot`, avec le même garde-fou. Les projets
-   n'entrent pas dans l'export Grist : cette étape n'alimente que l'API AGIR
-   des projets.
+1. `pnpm data:sync` (`apps/cms/src/scripts/sync/run.ts`, classe `UpstreamSync`,
+   la commande que le seed utilise aussi) :
+   - lecture HTTP de `programs.json`, `projects.json`, `operators.json` et
+     `redirects.json` amont (`UpstreamJsonSource`), avant le démarrage de Payload :
+     un amont injoignable fait échouer la tâche sans rien écrire ;
+   - écriture des **dispositifs** puis des **projets** dans Payload, redirections
+     comprises (un ancien slug devient un document `remplace`). Un document dont
+     l'empreinte (`upstreamFingerprint`) n'a pas changé n'est pas réécrit ;
+   - **annulation** des dispositifs et projets importés qui ont disparu de
+     l'amont sans redirection (`annule`), sous garde-fou : au-delà de
+     `max(5, 10 %)` des documents importés, rien n'est annulé et la tâche sort
+     en erreur (`pnpm data:sync --allow-mass-removal` lève le plafond) ;
+   - **rapprochement** CMS ↔ canonical (`CanonicalReconciler`) : une ligne
+     attendue absente du store est une erreur, une ligne que le CMS n'attend
+     pas est retirée.
+2. `pnpm data:grist` : `grist-setup` (idempotent) puis `export:grist --push`,
+   pour les **dispositifs** seulement. Les projets n'entrent pas dans l'export
+   Grist.
 
-L'import des projets est **en dernier** (ordre revu le 2026-10-01 après revue de
-code) : la chaîne est un enchaînement `&&`, et un échec côté projets (snapshot
-refusé par le garde-fou, panne réseau sur `projects.json`) ne doit pas figer
-l'open data Grist, qui ne lit que les dispositifs. Contrepartie : un échec de
-l'import des dispositifs ou de l'export Grist arrête la chaîne avant les projets,
-dont le store garde alors son état de la veille. Un enregistrement de
-`projects.json` dont la forme est cassée n'arrête rien : il est écarté, listé
-dans le compte rendu, et sa ligne du store est conservée.
+L'export Grist tourne **même si la sync a signalé des erreurs** : il publie ce
+que le store contient. La tâche sort en code non nul si l'une des deux étapes a
+échoué. Un enregistrement de `projects.json` dont la forme est cassée n'arrête
+rien : il est écarté, listé dans le compte rendu, compté comme erreur, et son
+projet est conservé tel quel dans le CMS.
+
+Compte rendu d'une sync sans changement amont (2026-10-02, base jetable) :
+
+```
+Programs complete: 0 created, 0 updated, 290 unchanged, 0 errors.
+Redirections : 1 dispositif(s) marqué(s) en place, 12 remplacé(s) cloné(s), 0 ignorée(s).
+Pass 1 complete: 0 created, 0 updated, 97 unchanged, 0 errors.
+Redirections : 0 projet(s) marqué(s) en place, 6 remplacé(s) cloné(s), 0 ignorée(s).
+Rapprochement CMS ↔ canonical : aucun écart restant.
+```
 
 Aucun commit de données : le store vit dans PostgreSQL (schéma `canonical`), plus
 dans un fichier du dépôt. L'ancien `.github/workflows/daily_data.yml` a été
@@ -239,5 +260,6 @@ l'instance n'est pas celle par défaut), `GRIST_DOC_ID`, `GRIST_TABLE_ID`,
 
 **Surveillance** : les logs partent dans ceux de l'application (`scalingo logs`),
 les tâches se listent avec `scalingo cron-tasks`. Scalingo ne notifie pas l'échec
-d'une tâche : un canal d'alerte peut être branché sur le port `CanonicalEventSink`
-(ADR 0008) si le besoin se confirme.
+d'une tâche : **aucune alerte n'est en place à ce jour**. C'est le prochain
+chantier (Sentry envisagé) ; le code de sortie non nul de `data:daily` et le
+compte rendu de la sync en sont les points d'accroche.
