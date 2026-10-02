@@ -10,7 +10,7 @@ type DescriptionInput = CanonicalProjectInput['description_longue']
  * Transforms a Payload `Project` into a raw `CanonicalProjectInput`, ready to be
  * validated by `CanonicalProjectValidator`. Like `ProgramCanonicalMapper`, it
  * only restructures and relabels data. Relations (`image`, `programs`,
- * `linkedProjects`) must be populated (`depth >= 1`): one left as an id, or
+ * `linkedProjects`, `replacedBy`) must be populated (`depth >= 1`): one left as an id, or
  * without a canonical id, is omitted rather than guessed. Optional blocks with
  * nothing to carry are omitted, never written empty.
  */
@@ -23,7 +23,7 @@ export class ProjectCanonicalMapper {
       slug: project.slug,
       source: 'INTERNE',
       date_mise_a_jour: project.updatedAt,
-      statut_projet: 'valide',
+      ...this.mapStatut(project),
       titre: project.title,
       nom_court: project.nameTag,
       description_courte: project.shortDescription,
@@ -40,6 +40,14 @@ export class ProjectCanonicalMapper {
       faq: this.mapFaq(project),
       seo: this.mapSeo(project),
     }
+  }
+
+  /** A replaced project carries the canonical id of its replacement; one left unpopulated fails validation loudly. */
+  private mapStatut(project: Project): Pick<CanonicalProjectInput, 'statut_projet' | 'remplace_par'> {
+    if (project.workflowStatus !== 'remplace') return { statut_projet: 'valide' }
+    const replacedBy = project.replacedBy
+    const remplacePar = replacedBy && typeof replacedBy === 'object' ? (replacedBy.canonicalId ?? undefined) : undefined
+    return { statut_projet: 'remplace', ...(remplacePar ? { remplace_par: remplacePar } : {}) }
   }
 
   private mapImage(project: Project): CanonicalProjectInput['image'] {

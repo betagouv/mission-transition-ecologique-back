@@ -2,13 +2,20 @@ import type { CollectionBeforeChangeHook } from 'payload'
 import { APIError } from 'payload'
 import {
   WorkflowTransitionPolicy,
+  type WorkflowCollection,
   type WorkflowStatus,
 } from '@/services/workflow/WorkflowTransitionPolicy'
 import { WorkflowAutomation } from '@/services/workflow/WorkflowAutomation'
 import { SystemWorkflowContext } from '@/services/workflow/SystemWorkflowContext'
 import type { UserRoleValue } from '@/utils/user/UserRole'
 
-export const beforeChangeWorkflow: CollectionBeforeChangeHook = ({
+/**
+ * Workflow of a collection (`Programs`, `Projects`): `workflowStatus` is the
+ * single status of a document and drives Payload's `_status`. Checks the
+ * transition against the collection's table, requires a replacement on
+ * `remplace` and appends each transition to `workflowHistory`.
+ */
+export const beforeChangeWorkflow = (collection: WorkflowCollection): CollectionBeforeChangeHook => ({
   data,
   req,
   operation,
@@ -42,7 +49,7 @@ export const beforeChangeWorkflow: CollectionBeforeChangeHook = ({
     const role = req.user?.role as UserRoleValue | undefined
     if (!role) throw new APIError('Utilisateur non authentifié', 401)
 
-    if (!WorkflowTransitionPolicy.canTransition(previousStatus, nextStatusInput, role)) {
+    if (!WorkflowTransitionPolicy.canTransition(previousStatus, nextStatusInput, role, collection)) {
       throw new APIError(
         `Transition non autorisée : ${previousStatus} → ${nextStatusInput} pour le rôle ${role}`,
         403,
@@ -55,7 +62,7 @@ export const beforeChangeWorkflow: CollectionBeforeChangeHook = ({
   if (replacedBy !== data.replacedBy) data.replacedBy = replacedBy
   if (WorkflowTransitionPolicy.requiresReplacement(nextStatusInput) && !replacedBy) {
     throw new APIError(
-      'Un programme remplaçant doit être renseigné (champ "Remplacé par") pour passer à l’état "Remplacé".',
+      'Un remplaçant doit être renseigné (champ "Remplacé par") pour passer à l’état "Remplacé".',
       400,
     )
   }
@@ -72,6 +79,11 @@ export const beforeChangeWorkflow: CollectionBeforeChangeHook = ({
 
   data.workflowStatus = resolvedStatus
   data._status = resolvedStatus === 'publie' ? 'published' : 'draft'
+
+  // AGIR reads the end date, not the status: an archived aid without one would look active.
+  // An end date cleared by this very write counts as missing.
+  const validityEnd = data.validityEnd === undefined ? originalDoc?.validityEnd : data.validityEnd
+  if (resolvedStatus === 'archive' && !validityEnd) data.validityEnd = new Date().toISOString()
 
   const historyEntry = {
     from: previousStatus,

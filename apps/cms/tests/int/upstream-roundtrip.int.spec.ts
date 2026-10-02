@@ -13,10 +13,11 @@ import {
   type TeeRecord,
 } from '@tee-backoffice/format-adapters'
 import { GeographicAreasSeed } from '@/scripts/seed/geographic-areas'
-import { ProgramsSeed } from '@/scripts/seed/programs'
+import { ProgramsSync } from '@/scripts/sync/programs/ProgramsSync'
 import { ProgramCanonicalMapper } from '@/services/canonical/ProgramCanonicalMapper'
 import { PayloadRichTextToMarkdown } from '@/services/canonical/rich-text/PayloadRichTextToMarkdown'
 import { PayloadProgramRelations } from '@/services/canonical/to-payload/PayloadProgramRelations'
+import { SystemWorkflowContext } from '@/services/workflow/SystemWorkflowContext'
 
 const ALL_NAF_SECTIONS = 21
 
@@ -77,6 +78,7 @@ function project(input: CanonicalProgramInput | undefined, side: 'upstream' | 'c
     },
     contact_question: input?.contact_question,
     effectif: e?.effectif?.structure ?? null,
+    administration_publique: e?.categorie_legale?.structure?.autorise?.includes('administration_publique') ?? false,
     secteur_activite: inclusions.length === ALL_NAF_SECTIONS ? [] : [...inclusions].sort(),
     national: codes.includes(COG_FRANCE),
     territoires: territories.sort(),
@@ -102,7 +104,18 @@ describe('upstream → CMS → canonical round-trip', () => {
       return input
     })
 
-    const result = await new ProgramsSeed(payload, records).run()
+    // Another test file may have left one of these programs changed as the system (archived,
+    // say), fingerprint untouched: the sync would leave it as it is. Without a fingerprint, it
+    // rewrites every program.
+    await payload.update({
+      collection: 'programs',
+      where: { slug: { in: expected.map((input) => input.slug) } },
+      data: { upstreamFingerprint: null },
+      draft: true,
+      context: SystemWorkflowContext.create(),
+    })
+
+    const result = await new ProgramsSync(payload, records).run()
     expect(result.errors).toBe(0)
     relations = await PayloadProgramRelations.fromPayload(payload, new Map())
 

@@ -169,4 +169,19 @@ describe('CanonicalProjectToPayloadMapper', () => {
     })
     expect(mapper.mapLinkedProjects(base)).toEqual({ linkedProjects: [], warnings: [] })
   })
+
+  it('publishes a live project, without replacement', () => {
+    expect(map().data).toMatchObject({ workflowStatus: 'publie', replacedBy: null, _status: 'published' })
+  })
+
+  it('keeps a redirected project replaced, pointing at its replacement', () => {
+    const { data } = map({ statut_projet: 'remplace', remplace_par: PROJECT_A })
+    expect(data).toMatchObject({ workflowStatus: 'remplace', replacedBy: 10, _status: 'draft' })
+  })
+
+  it('refuses a replaced project whose replacement the CMS does not have', () => {
+    expect(() => map({ statut_projet: 'remplace', remplace_par: PROJECT_UNKNOWN })).toThrow(
+      'projet remplaçant introuvable dans le CMS',
+    )
+  })
 })

@@ -1,11 +1,11 @@
 import { ValidationError } from 'payload'
 
 /**
- * Readable seed error: the field errors of a Payload `ValidationError`, or the
+ * Readable import error: the field errors of a Payload `ValidationError`, or the
  * message followed by its causes (a failed Drizzle query hides the Postgres
  * error, e.g. a deadlock or a constraint, in `cause`).
  */
-export class SeedErrorFormatter {
+export class SyncErrorFormatter {
   static format(err: unknown): string {
     if (err instanceof ValidationError) {
       return err.data.errors.map((error) => `${error.path} : ${error.message}`).join(', ')

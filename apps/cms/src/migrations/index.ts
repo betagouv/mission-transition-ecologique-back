@@ -4,6 +4,9 @@ import * as migration_20260925_131616_program_temporarily_unavailable from './20
 import * as migration_20260928_150255_operator_groups_and_media from './20260928_150255_operator_groups_and_media';
 import * as migration_20261001_082515_mixed_geographic_coverage from './20261001_082515_mixed_geographic_coverage';
 import * as migration_20261001_092812_canonical_projects from './20261001_092812_canonical_projects';
+import * as migration_20261002_102758_upstream_sync from './20261002_102758_upstream_sync';
+import * as migration_20261002_123839_program_linked_projects from './20261002_123839_program_linked_projects';
+import * as migration_20261002_131830_program_open_to_public_administration from './20261002_131830_program_open_to_public_administration';
 
 export const migrations = [
   {
@@ -34,6 +37,21 @@ export const migrations = [
   {
     up: migration_20261001_092812_canonical_projects.up,
     down: migration_20261001_092812_canonical_projects.down,
-    name: '20261001_092812_canonical_projects'
+    name: '20261001_092812_canonical_projects',
+  },
+  {
+    up: migration_20261002_102758_upstream_sync.up,
+    down: migration_20261002_102758_upstream_sync.down,
+    name: '20261002_102758_upstream_sync',
+  },
+  {
+    up: migration_20261002_123839_program_linked_projects.up,
+    down: migration_20261002_123839_program_linked_projects.down,
+    name: '20261002_123839_program_linked_projects',
+  },
+  {
+    up: migration_20261002_131830_program_open_to_public_administration.up,
+    down: migration_20261002_131830_program_open_to_public_administration.down,
+    name: '20261002_131830_program_open_to_public_administration'
   },
 ];

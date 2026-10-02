@@ -24,10 +24,13 @@
 
 ```sh
 pnpm seed               # = nx run @tee-backoffice/cms:seed
+pnpm data:sync:dev      # la partie amont du seed seule (ce que la tâche quotidienne lance)
 pnpm data:snapshot      # rafraîchit la copie locale de secours (à commiter)
 ```
 
-Le point d'entrée est `apps/cms/src/scripts/seed/run.ts`.
+Le point d'entrée est `apps/cms/src/scripts/seed/run.ts`. Ce dossier ne garde que ce qui est propre au seed (`run.ts`, `geographic-areas/`, `users/`) ; les importeurs décrits plus bas vivent dans `apps/cms/src/scripts/sync/` (`programs/`, `projects/`, `media/`), partagés avec la tâche quotidienne.
+
+**Seed et sync quotidienne sont la même commande** (depuis le 2026-10-02, feature 005 lot 4) : `run.ts` seede les zones géographiques, lance `UpstreamSync` (`apps/cms/src/scripts/sync/`), puis seede les utilisateurs de dev. `UpstreamSync` enchaîne les étapes décrites plus bas (opérateurs, dispositifs, projets), puis l'annulation des disparus et le rapprochement CMS ↔ canonical. Une base seedée et une base synchronisée contiennent donc la même chose, documents `remplace` compris.
 
 ---
 
@@ -66,7 +69,7 @@ Puis, depuis `operators.json` :
 
 ### Médias importés
 
-`UpstreamMediaImporter` (`apps/cms/src/scripts/seed/media/`) transforme un chemin amont en id de média : il cherche un média par `sourcePath` et ne télécharge que s'il n'en trouve pas (texte alternatif `Logo de <nom>`, ou titre du projet). Il pose le type (`category`) : `operator-logo` pour les logos d'opérateurs et de groupes, `project-image` pour les images de projets ; un média retrouvé dont le type diffère est réaligné (compteur « recatégorisés »), ce qu'exigent les sélecteurs filtrés par type. `sourcePath` n'est écrit que par le seed (Local API, `overrideAccess`) : il est masqué dans l'admin et ignoré s'il arrive par l'API. Appels séquentiels. Un fichier introuvable (404), un refus HTTP ou un chemin invalide est signalé en fin de seed, jamais fatal : le document est gardé sans image.
+`UpstreamMediaImporter` (`apps/cms/src/scripts/sync/media/`) transforme un chemin amont en id de média : il cherche un média par `sourcePath` et ne télécharge que s'il n'en trouve pas (texte alternatif `Logo de <nom>`, ou titre du projet). Il pose le type (`category`) : `operator-logo` pour les logos d'opérateurs et de groupes, `project-image` pour les images de projets ; un média retrouvé dont le type diffère est réaligné (compteur « recatégorisés »), ce qu'exigent les sélecteurs filtrés par type. `sourcePath` n'est écrit que par le seed (Local API, `overrideAccess`) : il est masqué dans l'admin et ignoré s'il arrive par l'API. Appels séquentiels. Un fichier introuvable (404), un refus HTTP ou un chemin invalide est signalé en fin de seed, jamais fatal : le document est gardé sans image.
 
 ### Étape 2 : dispositifs
 
@@ -78,9 +81,17 @@ Pour chaque dispositif, `CanonicalToPayloadMapper` :
 
 L'écriture est un **upsert par `slug`**, faite sous `SystemWorkflowContext` : le statut de la source s'impose au workflow éditorial.
 
+Chaque champ que l'amont peut porter est écrit à chaque sync, un champ absent étant remis à `null` ou `[]` (`additionalInfo`, `otherOperators`, dates de validité, les trois champs de contact, les sept champs de montant et de durée de tous les types d'aide, `variants`, `metaTitle`, `metaDescription`) : un `update` Payload part de la dernière version, brouillon en attente compris, et un champ laissé de côté publierait la valeur du brouillon. `Programs.linkedProjects` n'est pas écrit : c'est un champ `relationship` **virtuel** (sans colonne), éditable des deux côtés : la liaison n'est stockée que dans `Projects.programs` ; `readLinkedProjects` (afterRead du champ) le remplit avec les projets qui citent le dispositif, `syncLinkedProjects` (afterChange) reporte la sélection dans `Projects.programs` via `ProgramProjectLinks`. Une liaison modifiée dans le CMS, d'un côté ou de l'autre, efface l'empreinte du projet : la sync suivante le réécrit avec les dispositifs de l'amont.
+
+**Redirections** : `ProgramsSync` applique `program_redirects` (`RedirectTombstoneBuilder`). Un ancien slug encore présent en amont est marqué `remplace` ; un ancien slug absent devient un dispositif `remplace` cloné depuis sa cible, sous l'ancien slug gardé tel quel. Ces dispositifs sont importés après les autres, pour que `replacedBy` désigne un dispositif déjà en base, et sont enregistrés en version brouillon, comme l'action « Remplacer » de l'admin.
+
+Pour un ancien slug que l'amont ne publie plus, `RedirectedDocuments` regarde ce que le CMS détient déjà sous ce slug : rien, ou un clone d'une exécution précédente : le document `remplace` est cloné depuis sa cible ; un document **déjà publié** : il garde son contenu publié et reçoit seulement `workflowStatus: 'remplace'` et `replacedBy`, dans une version brouillon écrite à partir de la ligne publiée (un brouillon d'éditeur en attente est abandonné) ; un document **jamais publié** : il n'a jamais été dans le canonical, il n'y a rien à rediriger, il est laissé à l'annulation des disparus (`annule`). Un clone se reconnaît à son `replacedBy`, qu'il garde même annulé. Une base neuve (préprod, premier seed) clone donc toujours, alors qu'une base qui a connu le dispositif garde son ancien contenu : le contenu d'un document remplacé peut différer d'une base à l'autre, pas son statut ni son remplaçant.
+
+**Écriture sur différence** : `ProgramImporter` calcule l'empreinte des données Payload (`UpstreamFingerprint`) et la compare à `upstreamFingerprint` du document (dernière version). Identique, et dispositif présent dans le store canonical : rien n'est écrit, le dispositif est compté « unchanged ». Un dispositif que Payload refuse de publier est laissé en création **sans empreinte** : il est retenté et signalé à chaque exécution.
+
 ### Étape 3 : projets
 
-`ProjectsSeed` (`apps/cms/src/scripts/seed/projects/`) :
+`ProjectsSync` (`apps/cms/src/scripts/sync/projects/`) :
 
 1. **Lecture** : `TeeProjectImporter.importMany(projects, now)` produit les projets pivot. Les `linkedProjects` amont (des `id` numériques propres au fichier) sont traduits en slugs, puis en identifiants pivot ; `priority` devient `priorite` (`default` → `defaut`, autres clés → `par_secteur`), `highlightPriority` → `mise_en_avant` ; `faqs` et `titleFaq` → `faq`.
 2. **Passe 1** (`ProjectImporter`) : pour chaque projet, `CanonicalProjectToPayloadMapper.map` donne les données Payload (thèmes, sections NAF, FAQ et descriptions converties en Lexical, priorités, dispositifs résolus par identifiant pivot via `PayloadProjectRelations`). L'image est calculée à part, à partir de `image.chemin_source`, par `UpstreamMediaImporter` et `ImportedMediaPolicy` : même règle que les logos d'opérateurs (image posée à la main conservée, image importée remplacée ou retirée selon l'amont, téléchargement en échec sans effet). Un chemin d'image amont inexploitable (non enraciné, contenant `..`) ne donne pas d'image dans le pivot, mais il est quand même transmis à `UpstreamMediaImporter` (`TeeProjectImporter.unusableImagePaths`) : il compte comme un téléchargement en échec et l'image en place est conservée, au lieu d'être retirée comme si l'amont n'en avait plus. **Upsert par slug**, sous `SystemWorkflowContext` pour que `assignCanonicalId` prenne l'identifiant dérivé du slug, avec `_status: 'published'`. Un projet qui n'a plus de projet lié en amont voit ses `linkedProjects` vidés ; les autres gardent leur valeur publiée jusqu'à la passe 2. Les dispositifs sont retrouvés par leur `canonicalId` ou par l'identifiant dérivé de leur slug : un dispositif que le seed n'a pu réécrire qu'en brouillon (ligne principale à l'ancien identifiant) reste lié.
@@ -88,13 +99,26 @@ L'écriture est un **upsert par `slug`**, faite sous `SystemWorkflowContext` : l
 
 Chaque champ Payload est écrit à chaque seed, un champ absent en amont étant remis à `null` ou `[]` : un `update` Payload part de la dernière version, brouillon en attente compris, et un champ laissé de côté publierait la valeur du brouillon. La règle vaut aussi pour les deux champs que `ProjectImporter` calcule lui-même : `image` reçoit la valeur de la ligne principale quand la politique média répond « inchangé » (image posée à la main, téléchargement en échec, seed sans import de médias), et `linkedProjects` est écrit dès la passe 1.
 
-**Pivot** : les projets étant écrits publiés, le hook `syncProjectCanonicalOnChange` remplit `canonical.canonical_projects` pendant le seed, sans étape dédiée. La passe 1 écrit la ligne d'un projet avec ses projets liés déjà publiés (aucun au premier seed), la passe 2 la réécrit avec ceux de l'amont. Le seed ne crée pas les tombstones de redirection (`project_redirects`) : ils viennent du pipeline quotidien (`import:projects --remote`).
+**Pivot** : les projets étant écrits publiés, le hook `syncProjectCanonicalOnChange` remplit `canonical.canonical_projects` pendant le seed, sans étape dédiée. La passe 1 écrit la ligne d'un projet avec ses projets liés déjà publiés (aucun au premier seed), la passe 2 la réécrit avec ceux de l'amont.
+
+**Redirections** (depuis le 2026-10-02) : `ProjectsSync` applique `project_redirects` (`ProjectTombstoneBuilder`). Chaque ancien slug devient un projet `workflowStatus: 'remplace'`, cloné depuis sa cible et relié à elle par `replacedBy` ; il est importé après les autres projets et enregistré en version brouillon, comme un dispositif remplacé. Même règle que pour les dispositifs quand le CMS détient déjà un projet sous l'ancien slug (`RedirectedDocuments`) : publié, il garde son contenu ; jamais publié, il est annulé. Le hook l'écrit dans le pivot avec `statut_projet: 'remplace'` et `remplace_par`.
+
+**Écriture sur différence** : l'empreinte d'un projet couvre ses données Payload, son image et ses projets liés tels que le CMS les résout. Inchangée, et projet présent dans le store : ni la passe 1 ni la passe 2 n'écrivent. Un projet lié n'est à jour qu'après la passe 2, qui pose l'empreinte.
 
 **Avertissements** affichés en fin de seed (préfixés par le slug du projet), sans code de sortie non nul : thème secondaire inconnu, priorité de mise en avant non numérique, question de FAQ sans texte ou sans réponse, chemin d'image invalide, projet lié inconnu en amont ou introuvable dans le CMS, dispositif introuvable dans le CMS, secteur hors sections NAF. **Erreurs** (code de sortie 1) : enregistrement amont écarté pour sa forme, projet refusé par Payload, thème principal inconnu, échec d'une mise à jour de la passe 2.
 
+### Disparus de l'amont et rapprochement
+
+Après les imports, `UpstreamSync` :
+
+1. **annule** (`workflowStatus: 'annule'`, `GoneDocumentsCanceller`) les dispositifs et les projets importés qui ne figurent plus en amont et n'y sont pas redirigés. Un document est « importé » quand son `canonicalId` est celui dérivé de son slug : un document créé dans l'admin n'est jamais annulé. Au-delà de `max(5, 10 %)` des documents importés, rien n'est annulé et la commande sort en erreur ;
+2. **rapproche** le CMS et les deux stores canonical (`CanonicalReconciler`) : ligne attendue absente du store = erreur, ligne inattendue = retirée.
+
+Un document modifié dans le back-office perd son empreinte (`clearUpstreamFingerprint`) et est réécrit depuis l'amont à l'exécution suivante.
+
 ### Idempotence
 
-Ré-exécutable : une deuxième exécution met à jour au lieu de créer des doublons. Les projets sont rapprochés par slug (résultat du 2026-10-01 sur une base jetable : 91 créés au premier seed, 0 créé et 91 mis à jour au second). Les médias sont retrouvés par `sourcePath` : un second seed n'en crée aucun et n'écrit rien de nouveau dans le bucket (136 médias au 2026-09-28 : 45 logos d'opérateurs, 91 images de projets).
+Ré-exécutable : une deuxième exécution n'écrit rien si l'amont n'a pas changé, et ne crée aucune version Payload (résultat du 2026-10-02 sur une base jetable, sans téléchargement d'images : 290 dispositifs et 97 projets créés à la première exécution, 290 et 97 « unchanged » à la seconde, en 0,6 s contre 17 s). Les médias sont retrouvés par `sourcePath` : un second seed n'en crée aucun et n'écrit rien de nouveau dans le bucket (136 médias au 2026-09-28 : 45 logos d'opérateurs, 91 images de projets).
 
 ### Logs de sortie
 
@@ -104,16 +128,19 @@ Found 276 programs in source.
 Found 76 unique operators. Upserting...
 Found 12 operator groups. Upserting...
 Operator groups ready: 12 groups, 67 operators updated.
-Operators ready. Importing 276 programs...
-Seed complete: 276 created, 0 updated, 0 errors.
+Operators ready. Importing 288 programs...
+Programs complete: 288 created, 0 updated, 0 unchanged, 0 errors.
+Redirections : 1 dispositif(s) marqué(s) en place, 12 remplacé(s) cloné(s), 0 remplacé(s) avec leur contenu publié, 0 jamais publié(s) à annuler, 0 ignorée(s).
   ⚠ 47 × restriction de catégorie légale (micro-entreprises) sans champ Payload
   ...
 Found 91 projects in source.
-Pass 1: importing 91 projects...
-Pass 1 complete: 91 created, 0 updated, 0 errors.
+Pass 1: importing 97 projects...
+Pass 1 complete: 97 created, 0 updated, 0 unchanged, 0 errors.
+Redirections : 0 projet(s) marqué(s) en place, 6 remplacé(s) cloné(s), 0 remplacé(s) avec leur contenu publié, 0 jamais publié(s) à annuler, 0 ignorée(s).
 Pass 2: updating linked projects...
 Pass 2 complete: 74 updated, 0 errors.
 Médias : 136 créés, 0 réutilisés (dont 0 recatégorisés), 0 en échec.
+Rapprochement CMS ↔ canonical : aucun écart restant.
 ```
 
 ---

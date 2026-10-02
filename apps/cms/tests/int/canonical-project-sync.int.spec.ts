@@ -8,8 +8,8 @@ import { resolve } from 'path'
 import { fileURLToPath } from 'url'
 import { CanonicalProjectValidator, type CanonicalProjectRepository } from '@tee-backoffice/canonical'
 import { SlugCanonicalId } from '@tee-backoffice/format-adapters'
-import type { Program, Project } from '../../payload-types'
-import { ProgramsSeed } from '@/scripts/seed/programs'
+import type { Program, Project, User } from '../../payload-types'
+import { ProgramsSync } from '@/scripts/sync/programs/ProgramsSync'
 import { getCanonicalProjectRepository } from '@/services/canonical/canonicalProjectRepository'
 import { SystemWorkflowContext } from '@/services/workflow/SystemWorkflowContext'
 
@@ -19,6 +19,8 @@ const programsFixture = resolve(fixturesDir, 'programs.json')
 let payload: Payload
 let canonical: CanonicalProjectRepository
 let programs: Program[]
+// A status change is a workflow transition: it takes an admin.
+let admin: User
 
 const richText = (text: string): Project['longDescription'] => ({
   root: {
@@ -47,10 +49,13 @@ const createProject = (slug: string, overrides: Partial<Project> = {}) =>
   })
 
 const publishProject = (slug: string, overrides: Partial<Project> = {}) =>
-  createProject(slug, { _status: 'published', ...overrides })
+  createProject(slug, { workflowStatus: 'publie', ...overrides })
 
 const update = (id: number, data: Partial<Project>, draft = false) =>
-  payload.update({ collection: 'projects', id, data, draft })
+  payload.update({ collection: 'projects', id, data, draft, user: admin })
+
+/** Latest version: where a replaced or cancelled project says so. */
+const latest = (id: number) => payload.findByID({ collection: 'projects', id, depth: 0, draft: true })
 
 const mainRow = (id: number) => payload.findByID({ collection: 'projects', id, depth: 0, draft: false })
 
@@ -59,8 +64,12 @@ const storedKeys = async (slug: string) => (await canonical.listKeys()).filter((
 describe('canonical project sync hooks', () => {
   beforeAll(async () => {
     payload = await getPayload({ config: await config })
-    await ProgramsSeed.fromFile(payload, programsFixture).run()
+    await ProgramsSync.fromFile(payload, programsFixture).run()
     canonical = await getCanonicalProjectRepository(payload.logger)
+    admin = await payload.create({
+      collection: 'users',
+      data: { email: 'project-sync-admin@tee.test', password: 'project-sync-admin@tee.test', role: 'admin' },
+    })
 
     programs = (
       await payload.find({ collection: 'programs', where: { workflowStatus: { equals: 'publie' } }, limit: 2, depth: 0 })
@@ -71,7 +80,7 @@ describe('canonical project sync hooks', () => {
   it('keeps a project created as a draft out of the canonical', async () => {
     const project = await createProject('sync-brouillon')
 
-    expect(project._status).toBe('draft')
+    expect(project).toMatchObject({ workflowStatus: 'en-creation', _status: 'draft' })
     expect(project.canonicalId).toBeTruthy()
     expect(await canonical.findBySlug(project.slug)).toBeNull()
   })
@@ -86,7 +95,8 @@ describe('canonical project sync hooks', () => {
 
   it('mirrors a project into the canonical once it is published', async () => {
     const project = await createProject('sync-publie')
-    await update(project.id, { _status: 'published' })
+    const published = await update(project.id, { workflowStatus: 'publie' })
+    expect(published._status).toBe('published')
 
     const stored = await canonical.findBySlug(project.slug)
     expect(stored?.id).toBe(project.canonicalId)
@@ -103,22 +113,63 @@ describe('canonical project sync hooks', () => {
     const main = await mainRow(project.id)
     expect(main._status).toBe('published')
     expect(main.title).toBe(project.title)
+    expect((await latest(project.id)).workflowStatus).toBe('en-cours-modification')
     expect((await canonical.findBySlug(project.slug))?.toJSON().titre).toBe(project.title)
 
-    await update(project.id, { _status: 'published' })
+    await update(project.id, { workflowStatus: 'publie' })
 
     expect((await canonical.findBySlug(project.slug))?.toJSON().titre).toBe('Titre en cours de réécriture')
     expect(await storedKeys(project.slug)).toEqual([{ canonicalId: project.canonicalId, slug: project.slug }])
   })
 
-  it('withdraws an unpublished project', async () => {
-    const project = await publishProject('sync-depublie')
+  it('withdraws a cancelled project, keeping its record in the CMS', async () => {
+    const project = await publishProject('sync-annule')
     expect(await canonical.findBySlug(project.slug)).not.toBeNull()
 
-    await update(project.id, { _status: 'draft' })
+    await update(project.id, { workflowStatus: 'annule' }, true)
 
-    expect((await mainRow(project.id))._status).toBe('draft')
+    expect((await latest(project.id)).workflowStatus).toBe('annule')
     expect(await canonical.findBySlug(project.slug)).toBeNull()
+  })
+
+  it('pushes a replaced project with the canonical id of its replacement', async () => {
+    const replacement = await publishProject('sync-remplacant')
+    const project = await publishProject('sync-remplace')
+
+    await update(project.id, { workflowStatus: 'remplace', replacedBy: replacement.id }, true)
+
+    const stored = await canonical.findBySlug(project.slug)
+    expect(stored?.statutProjet).toBe('remplace')
+    expect(stored?.remplacePar).toBe(replacement.canonicalId)
+    expect((await canonical.findBySlug(replacement.slug))?.statutProjet).toBe('valide')
+  })
+
+  it('refuses to replace a project without a replacement', async () => {
+    const project = await publishProject('sync-remplace-sans-cible')
+
+    await expect(update(project.id, { workflowStatus: 'remplace' }, true)).rejects.toThrow('Un remplaçant doit être renseigné')
+    expect((await canonical.findBySlug(project.slug))?.statutProjet).toBe('valide')
+  })
+
+  it('records each transition, with its author', async () => {
+    const project = await createProject('sync-historique')
+    await update(project.id, { workflowStatus: 'publie' })
+    await update(project.id, { workflowStatus: 'annule' }, true)
+
+    const history = (await latest(project.id)).workflowHistory ?? []
+    expect(history.map(({ from, to, changedBy }) => ({ from, to, changedBy }))).toEqual([
+      { from: 'en-creation', to: 'publie', changedBy: admin.id },
+      { from: 'publie', to: 'annule', changedBy: admin.id },
+    ])
+  })
+
+  it('refuses a transition the project workflow does not allow, or made without an admin', async () => {
+    const project = await publishProject('sync-transition-refusee')
+
+    await expect(update(project.id, { workflowStatus: 'archive' as never })).rejects.toThrow()
+    await expect(
+      payload.update({ collection: 'projects', id: project.id, data: { workflowStatus: 'annule' }, draft: true }),
+    ).rejects.toThrow('Utilisateur non authentifié')
   })
 
   it('withdraws a deleted project', async () => {
@@ -186,7 +237,8 @@ describe('canonical project sync hooks', () => {
     await payload.update({
       collection: 'projects',
       id: project.id,
-      data: { canonicalId: createId() },
+      // What a rewrite in progress looks like: the status says so.
+      data: { canonicalId: createId(), workflowStatus: 'en-cours-modification', _status: 'draft' },
       draft: true,
       context: SystemWorkflowContext.create(),
     })
@@ -270,8 +322,8 @@ describe('canonical project sync hooks', () => {
         },
       })
 
-      await expect(update(draft.id, { _status: 'published' })).rejects.toThrow(/slug|Identifiant/)
-      await update(draft.id, { slug: 'sync-brouillon-corrige', _status: 'published' })
+      await expect(update(draft.id, { workflowStatus: 'publie' })).rejects.toThrow(/slug|Identifiant/)
+      await update(draft.id, { slug: 'sync-brouillon-corrige', workflowStatus: 'publie' })
       expect((await canonical.findBySlug('sync-brouillon-corrige'))?.id).toBe(draft.canonicalId)
     })
 

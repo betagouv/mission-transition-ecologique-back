@@ -5,6 +5,8 @@ import type { ProgramRelations } from '@/services/canonical/to-payload/ProgramRe
 import type { MarkdownToRichText } from '@/services/canonical/rich-text/MarkdownToRichText'
 import { richText } from './support/canonicalProgramFixtures'
 
+const REPLACEMENT = 'r1b2c3d4e5f6g7h8i9j0klmn'
+
 class StubMarkdownToRichText implements MarkdownToRichText {
   convert(markdown: string) {
     return richText(markdown)
@@ -14,6 +16,9 @@ class StubMarkdownToRichText implements MarkdownToRichText {
 class StubRelations implements ProgramRelations {
   operatorId(name: string) {
     return ({ ADEME: 1, Bpifrance: 2 } as Record<string, number>)[name]
+  }
+  programIdByCanonicalId(canonicalId: string) {
+    return ({ [REPLACEMENT]: 42 } as Record<string, number>)[canonicalId]
   }
   areaByCogCode(code: string) {
     const areas: Record<string, { id: number; name: string; parentId?: number }> = {
@@ -70,6 +75,32 @@ describe('CanonicalToPayloadMapper', () => {
     expect(data).toMatchObject({ contactMethod: 'url', workflowStatus: 'en-creation', _status: 'draft' })
   })
 
+  it('writes every optional field upstream does not carry as empty, never undefined', () => {
+    const { data } = map({ operateurs: { contact: { nom: 'ADEME' } } })
+
+    expect(data).toMatchObject({
+      additionalInfo: null,
+      otherOperators: [],
+      validityStart: null,
+      validityEnd: null,
+      contactMethod: null,
+      contactEmail: null,
+      contactPageUrl: null,
+      fundingAmount: null,
+      loanAmount: null,
+      taxBenefitAmount: null,
+      formationRemainingCost: null,
+      formationDuration: null,
+      studyRemainingCost: null,
+      studyDuration: null,
+      variants: [],
+      replacedBy: null,
+      metaTitle: null,
+      metaDescription: null,
+    })
+    expect(Object.entries(data).filter(([, value]) => value === undefined)).toEqual([])
+  })
+
   it('fails loudly on an unknown contact operator', () => {
     expect(() => map({ operateurs: { contact: { nom: 'Inconnu' } } })).toThrow('opérateur introuvable')
   })
@@ -83,11 +114,33 @@ describe('CanonicalToPayloadMapper', () => {
   })
 
   it.each([
-    ['advisor', { type: 'conseiller_entreprise' as const }, { contactMethod: 'advisor' }],
-    ['email', { type: 'email' as const, valeur: 'a@b.fr' }, { contactMethod: 'email', contactEmail: 'a@b.fr' }],
-    ['url', { type: 'url' as const, valeur: 'https://x.fr' }, { contactMethod: 'url', contactPageUrl: 'https://x.fr' }],
+    ['advisor', { type: 'conseiller_entreprise' as const }, { contactMethod: 'advisor', contactEmail: null, contactPageUrl: null }],
+    ['email', { type: 'email' as const, valeur: 'a@b.fr' }, { contactMethod: 'email', contactEmail: 'a@b.fr', contactPageUrl: null }],
+    ['url', { type: 'url' as const, valeur: 'https://x.fr' }, { contactMethod: 'url', contactEmail: null, contactPageUrl: 'https://x.fr' }],
   ])('maps a %s contact', (_label, contact_question, expected) => {
     expect(map({ contact_question }).data).toMatchObject(expected)
+  })
+
+  describe('legal category', () => {
+    it('opens the program to public administrations when the category is allowed', () => {
+      const { data, warnings } = map({
+        eligibilite: { categorie_legale: { structure: { autorise: ['administration_publique'] } } },
+      })
+      expect(data.openToPublicAdministration).toBe(true)
+      expect(warnings).toEqual([])
+    })
+
+    it('writes false when upstream does not carry the flag', () => {
+      expect(map().data.openToPublicAdministration).toBe(false)
+    })
+
+    it('still reports a micro-entreprise restriction, which has no field', () => {
+      const { data, warnings } = map({
+        eligibilite: { categorie_legale: { structure: { interdit: ['micro_entrepreneur'] } } },
+      })
+      expect(data.openToPublicAdministration).toBe(false)
+      expect(warnings).toEqual(['restriction de catégorie légale (micro-entreprises) sans champ Payload'])
+    })
   })
 
   describe('company size', () => {
@@ -194,12 +247,17 @@ describe('CanonicalToPayloadMapper', () => {
       expect(data.fundingAmount).toBe("Jusqu'à 10 000 €")
     })
 
+    it('empties the amount fields of the other aid types', () => {
+      const { data } = map({ types_aides: ['etude'], montant: { type: 'Coût restant à charge', valeur: '500 €' } })
+      expect(data).toMatchObject({ studyRemainingCost: '500 €', studyDuration: null, fundingAmount: null, loanAmount: null })
+    })
+
     it('reports an amount the aid type has no field for', () => {
       const { data, warnings } = map({
         types_aides: ['etude'],
         montant: { type: 'montant du financement', valeur: '50 %' },
       })
-      expect(data.studyRemainingCost).toBeUndefined()
+      expect(data.studyRemainingCost).toBeNull()
       expect(warnings).toEqual(['montant « montant du financement » sans champ pour le type diagnostic-etude'])
     })
 
@@ -241,5 +299,20 @@ describe('CanonicalToPayloadMapper', () => {
     ])
     expect(data.variants?.[0]?.modifications).toEqual([{ field: 'montant', newValue: '80 %' }])
     expect(warnings).toEqual(['zone COM-99999 inconnue du CMS (condition de variante ignorée)'])
+  })
+
+  it('leaves a live program without replacement', () => {
+    expect(map().data.replacedBy).toBeNull()
+  })
+
+  it('keeps a redirected program replaced, pointing at its replacement', () => {
+    const { data } = map({ statut_dispositif: 'remplace', remplace_par: REPLACEMENT })
+    expect(data).toMatchObject({ workflowStatus: 'remplace', _status: 'draft', replacedBy: 42 })
+  })
+
+  it('refuses a replaced program whose replacement the CMS does not have', () => {
+    expect(() => map({ statut_dispositif: 'remplace', remplace_par: 'x1b2c3d4e5f6g7h8i9j0klmn' })).toThrow(
+      'dispositif remplaçant introuvable dans le CMS',
+    )
   })
 })

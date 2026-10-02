@@ -9,15 +9,15 @@ import { fileURLToPath } from 'url'
 import { GeographicAreasSeed } from '@/scripts/seed/geographic-areas'
 import { DEPARTEMENTS, REGIONS } from '@/scripts/seed/geographic-areas/fixtures'
 import { SlugCanonicalId, TeeProjectImporter, teeProjectsSchema } from '@tee-backoffice/format-adapters'
-import { ProgramsSeed } from '@/scripts/seed/programs'
-import { ProjectsSeed } from '@/scripts/seed/projects'
-import { ProjectImporter, type ImportResult as ProjectsImportResult } from '@/scripts/seed/projects/ProjectImporter'
+import { ProgramsSync } from '@/scripts/sync/programs/ProgramsSync'
+import { ProjectsSync } from '@/scripts/sync/projects/ProjectsSync'
+import { ProjectImporter, type ImportResult as ProjectsImportResult } from '@/scripts/sync/projects/ProjectImporter'
 import { getCanonicalProjectRepository } from '@/services/canonical/canonicalProjectRepository'
 import { PayloadMarkdownToRichText } from '@/services/canonical/rich-text/PayloadMarkdownToRichText'
 import { CanonicalProjectToPayloadMapper } from '@/services/canonical/to-payload/CanonicalProjectToPayloadMapper'
 import { PayloadProgramRelations } from '@/services/canonical/to-payload/PayloadProgramRelations'
 import { PayloadProjectRelations } from '@/services/canonical/to-payload/PayloadProjectRelations'
-import type { Project } from '../../payload-types'
+import type { Project, User } from '../../payload-types'
 
 const fixturesDir = fileURLToPath(new URL('../fixtures', import.meta.url))
 const programsFixture = resolve(fixturesDir, 'programs.json')
@@ -41,12 +41,12 @@ const fixtureOperatorNames = [
   ...new Set(fixture.flatMap((program) => [program['opérateur de contact'], ...(program['autres opérateurs'] ?? [])])),
 ]
 
-describe('ProgramsSeed', () => {
+describe('ProgramsSync', () => {
   beforeAll(async () => {
     const payloadConfig = await config
     payload = await getPayload({ config: payloadConfig })
 
-    await ProgramsSeed.fromFile(payload, programsFixture).run()
+    await ProgramsSync.fromFile(payload, programsFixture).run()
   }, 60_000)
 
   it(`creates ${FIXTURE_OPERATORS} unique operators`, async () => {
@@ -131,7 +131,7 @@ describe('ProgramsSeed', () => {
     const [source] = JSON.parse(readFileSync(programsFixture, 'utf-8')) as Record<string, unknown>[]
     const record = { ...source, id: slug, 'contact question': 'mailto:pas un email' }
 
-    const seed = await new ProgramsSeed(payload, [record as never]).run()
+    const seed = await new ProgramsSync(payload, [record as never]).run()
 
     expect(seed.errors).toBe(0)
     expect([...seed.warnings.keys()].some((warning) => warning.includes(slug))).toBe(true)
@@ -153,7 +153,7 @@ describe('ProgramsSeed', () => {
     const before = await payload.find({ collection: 'programs', limit: 0 })
     const beforeOperators = await payload.find({ collection: 'operators', limit: 0 })
 
-    await ProgramsSeed.fromFile(payload, programsFixture).run()
+    await ProgramsSync.fromFile(payload, programsFixture).run()
 
     const after = await payload.find({ collection: 'programs', limit: 0 })
     const afterOperators = await payload.find({ collection: 'operators', limit: 0 })
@@ -163,7 +163,7 @@ describe('ProgramsSeed', () => {
   }, 60_000)
 })
 
-describe('ProjectsSeed', () => {
+describe('ProjectsSync', () => {
   const PLAN = 'fixture-projet-plan-energie'
   const AUDIT = 'fixture-projet-audit-energetique'
   const ECO_CONCEPTION = 'fixture-projet-eco-conception'
@@ -176,6 +176,8 @@ describe('ProjectsSeed', () => {
   let legacyCanonicalId: string
   let legacyKeys: { canonicalId: string; slug: string }[]
   let draftImage: number
+  // Saving a draft over a published project is a workflow transition: it takes an editor.
+  let editor: User
 
   const projectBySlug = async (slug: string, depth = 0): Promise<Project> => {
     const result = await payload.find({ collection: 'projects', where: { slug: { equals: slug } }, depth, limit: 1 })
@@ -191,10 +193,15 @@ describe('ProjectsSeed', () => {
 
   beforeAll(async () => {
     payload = await getPayload({ config: await config })
-    await ProgramsSeed.fromFile(payload, programsFixture).run()
+    await ProgramsSync.fromFile(payload, programsFixture).run()
     // Other test files seed the same fixture in the same database: start without it,
     // whatever the order of the files.
     await payload.delete({ collection: 'projects', where: fixtureProjects })
+
+    editor = await payload.create({
+      collection: 'users',
+      data: { email: 'seed-editor@tee.test', password: 'seed-editor@tee.test', role: 'admin' },
+    })
 
     const pixel = readFileSync(resolve(fixturesDir, 'pixel.webp'))
     draftImage = (
@@ -228,7 +235,7 @@ describe('ProjectsSeed', () => {
         },
         mainTheme: 'energy',
         highlightPriority: 0,
-        _status: 'published',
+        workflowStatus: 'publie',
       },
     })
     legacyCanonicalId = legacy.canonicalId ?? ''
@@ -244,13 +251,15 @@ describe('ProjectsSeed', () => {
         _status: 'draft',
       },
       draft: true,
+      user: editor,
     })
 
-    seed = await ProjectsSeed.fromFile(payload, projectsFixture).run()
+    seed = await ProjectsSync.fromFile(payload, projectsFixture).run()
   }, 120_000)
 
   afterAll(async () => {
     await payload.delete({ collection: 'media', id: draftImage })
+    await payload.delete({ collection: 'users', id: editor.id })
   })
 
   it('imports every project of the fixture, published', async () => {
@@ -358,14 +367,14 @@ describe('ProjectsSeed', () => {
     expect(keys.map((key) => key.slug)).toEqual([...SLUGS].sort())
   })
 
-  it('is idempotent: a second run creates no project and keeps the links', async () => {
+  it('is idempotent: a second run writes nothing and keeps the links', async () => {
     const before = await payload.find({ collection: 'projects', limit: 0 })
     const keysBefore = await storedKeys()
 
-    const second = await ProjectsSeed.fromFile(payload, projectsFixture).run()
+    const second = await ProjectsSync.fromFile(payload, projectsFixture).run()
 
     const after = await payload.find({ collection: 'projects', limit: 0 })
-    expect(second).toMatchObject({ created: 0, updated: SLUGS.length, errors: 0 })
+    expect(second).toMatchObject({ created: 0, updated: 0, unchanged: SLUGS.length, errors: 0 })
     expect(after.totalDocs).toBe(before.totalDocs)
     expect(await storedKeys()).toEqual(keysBefore)
     expect((await projectBySlug(PLAN)).linkedProjects).toEqual([(await projectBySlug(AUDIT)).id])
@@ -377,7 +386,7 @@ describe('ProjectsSeed', () => {
       .filter((project) => project.slug === AUDIT)
       .map((project) => ({ ...project, linkedProjects: [] }))
 
-    await new ProjectsSeed(payload, withoutLinks as never).run()
+    await new ProjectsSync(payload, withoutLinks as never).run()
 
     expect((await projectBySlug(AUDIT)).linkedProjects ?? []).toEqual([])
     const stored = (await (await canonical()).findBySlug(AUDIT))?.toJSON()
@@ -392,6 +401,7 @@ describe('ProjectsSeed', () => {
       id: plan.id,
       data: { image: draftImage, linkedProjects: [ecoConception.id], _status: 'draft' },
       draft: true,
+      user: editor,
     })
 
     // First pass alone, as when the second one fails for this project.

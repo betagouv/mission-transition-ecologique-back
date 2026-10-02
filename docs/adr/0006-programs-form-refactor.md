@@ -102,7 +102,7 @@ Chaque valeur active des champs de montant/durée spécifiques :
 | Composant | Rôle |
 |---|---|
 | `NumberedRowLabel` | Auto-numérote les lignes d'un `array` Payload (ex : "Étape 1", "Lien 2", "Autre critère d'éligibilité 3"). Le libellé singulier est passé en `clientProps.singular` côté field config — un seul composant pour les trois usages (`steps`, `steps.links`, `otherCriteria`). |
-| `LinkedProjectsCounter` | Champ `type: 'ui'` qui affiche en live le nombre de projets matchant les `themes` sélectionnés (avant que l'éditeur ne choisisse `linkedProjects`) |
+| `LinkedProjectsCounter` | Champ `type: 'ui'` qui affiche en live le nombre de projets matchant les `themes` sélectionnés (avant que l'éditeur ne choisisse `linkedProjects`). Depuis le 2026-10-02 : liste aussi ces projets en étiquettes cliquables (ajout ou retrait dans `linkedProjects`, projets déjà liés cochés) avec un bouton « Tout ajouter » ; le sélecteur natif de Payload ne permettant pas de marquer certaines options, la mise en avant se fait au-dessus de lui |
 | `SelectAllAreasButtons` | Champ `type: 'ui'` (réservé aux admins, aligné sur `ProgramFieldAccessPolicy.adminOnly`) affiché au-dessus de `geographicAreas` quand la couverture est `regional` / `departemental`. Boutons de sélection groupée : « métropole seule », « métropole + outre-mer », « vider ». Récupère les zones via `/api/geographic-areas` filtrées sur `coverageType` (+ `isOverseas` pour exclure l'outre-mer) et pousse les IDs dans le champ. |
 
 **Justification :** Sans `NumberedRowLabel`, les arrays Payload affichent des labels génériques ("Item 1") qui rendent la relecture pénible. La factorisation via `clientProps` évite la prolifération de composants thin-wrapper. `LinkedProjectsCounter` aide l'éditeur à anticiper la liste de projets à lier sans avoir à ouvrir un autre onglet. `SelectAllAreasButtons` évite de cocher 13 régions (ou 96 départements) une par une pour les dispositifs à large couverture, et gère explicitement le cas outre-mer.
@@ -158,7 +158,13 @@ Les outils one-shot d'export/restore depuis l'ancienne base (utilisés pendant l
 - **Étapes** : `steps[].description` passe de `text` à `richText` (saisie multiligne et enrichie). Le seed convertit la source via `convertMarkdownToLexical` (`ProgramMapper.toRichText`).
 - **Étapes, liens** : ordre des sous-champs inversé, `linkLabel` (Titre du lien) avant `url`.
 - **Validation des URL** : `UrlValidator.validate` (`src/utils/UrlValidator.ts`, basé sur zod) appliqué au lien principal `url` et aux liens d'étapes `steps[].links[].url`. Schémas autorisés : `http:`, `https:` et `mailto:` (les liens de contact des étapes sont des `mailto:`) ; les autres schémas (`ftp:`, `javascript:`…) sont rejetés. Pour `http(s)`, l'hôte doit être réel (`localhost` ou un domaine avec point), ce qui écarte les chemins `file:///` collés derrière `https://` (parsés avec l'hôte `file`). Valeur vide tolérée, espaces de bord ignorés via `trim`.
-- **Projets liés** (`linkedProjects`) : `admin.sortOptions: 'title'` (liste alphabétique de tous les projets, sans filtrage par thématique) et `admin.allowCreate: false` (le workflow projet reste séparé du workflow dispositif).
+- **Projets liés** (`linkedProjects`) : `admin.sortOptions: 'title'` (liste alphabétique de tous les projets, sans filtrage par thématique) et `admin.allowCreate: false` (le workflow projet reste séparé du workflow dispositif). **Révision du 2026-10-02** : la relation saisie à la main, que rien ne lisait et qui doublait `Projects.programs` dans l'autre sens, devient un champ `relationship` virtuel (`virtual: true`, sans colonne). La liaison n'est stockée que dans `Projects.programs` et se modifie des deux côtés :
+  - lecture : `readLinkedProjects` (afterRead du champ) renvoie les projets qui citent le dispositif, lus sur leur dernière version ; non calculé dans les listes (`findMany`), une requête par dispositif étant trop coûteuse ;
+  - écriture : `syncLinkedProjects` (afterChange de `Programs`) compare la sélection aux projets qui citent le dispositif et, via `ProgramProjectLinks` (`src/services/programs/`), ajoute ou retire le dispositif dans `Projects.programs` des seuls projets concernés. Un projet dont la dernière version est un brouillon (en cours de modification, remplacé, annulé) reçoit une nouvelle version brouillon : son contenu en attente n'est jamais publié par un changement de liaison ;
+  - la liaison s'applique **dès l'enregistrement du dispositif, brouillon compris** : un champ virtuel n'est porté par aucune version. Elle touche des projets publiés sans relecture, le champ n'est donc modifiable que par les admins (`access.create` / `access.update`) ; `admin.readOnly: false` est posé explicitement, Payload passant d'office un champ virtuel en lecture seule dans l'admin ; `disableDuplicate: true`, une copie ne reprend pas les projets de l'original ;
+  - **l'amont reste maître** : modifier la liaison, d'un côté ou de l'autre, efface `upstreamFingerprint` du projet, et la sync suivante le réécrit avec les dispositifs de l'amont ;
+  - écartés : un champ `join` (lecture seule côté dispositif) et deux relations stockées synchronisées par des hooks croisés (les deux côtés peuvent diverger) ;
+  - migration `20261002_123839_program_linked_projects` : colonnes `projects_id` de `programs_rels` et `_programs_v_rels` supprimées, les liaisons saisies à la main dans l'ancien champ sont perdues. Tests : `program-project-links.int.spec.ts`.
 - **SEO** (`metaTitle` / `metaDescription`) : réservé aux administrateurs sur deux niveaux complémentaires : `admin.condition` masque les champs en UI pour le rôle `creator`, et `access.create` / `access.update` (`UserRole.isAdmin`) verrouillent l'écriture côté API, la condition ne protégeant que l'affichage. Même pattern que `assignedContributors` et `_status`.
 - **Typographie richText** : règle CSS dans `dsfr-fields.scss` forçant Marianne (`--tee-font-family-sans`) sur l'éditeur Lexical, pour l'aligner sur les autres champs.
 
@@ -183,3 +189,16 @@ Les outils one-shot d'export/restore depuis l'ancienne base (utilisés pendant l
 - AGIR : `typeSecteur` = `Régional et départemental` pour ce mélange de niveaux.
 
 Plan : `docs/features/007-mixed-geographic-coverage.md`.
+
+## Addendum du 02/10/2026 : ouverture aux administrations publiques
+
+**Contexte :** l'amont porte `eligibilityData.company.openToPublicAdministration` sur une soixantaine de dispositifs. Aucun lecteur ne le lisait : la valeur était perdue sans avertissement, pour le seed comme pour la sync quotidienne.
+
+**Décision :**
+
+- `Programs.openToPublicAdministration` (case à cocher de la section Éligibilité, sous la taille d'entreprise, `false` par défaut).
+- Pivot : valeur `administration_publique` ajoutée au vocabulaire `CategorieLegale`, portée dans `eligibilite.categorie_legale.structure.autorise`. Aucun changement de forme du schéma.
+- `TeeImporter` lit le drapeau amont, `TeeExporter` le réémet, `CanonicalToPayloadMapper` et `ProgramCanonicalMapper` font le lien avec la case. Le mapper écrit toujours un booléen : un drapeau retiré en amont décoche la case à la sync suivante.
+- L'avertissement « restriction de catégorie légale (micro-entreprises) sans champ Payload » ne sort plus que pour une liste `interdit` : `excludeMicroentrepreneur` reste hors du CMS (décision PO ci-dessus).
+- Migration `20261002_131830_program_open_to_public_administration` : colonne booléenne sur `programs` et `_programs_v`.
+- Le champ entre dans l'empreinte `upstreamFingerprint` : la première sync après déploiement réécrit tous les dispositifs.

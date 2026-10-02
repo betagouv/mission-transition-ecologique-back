@@ -6,7 +6,7 @@ import { describe, it, beforeAll, expect } from 'vitest'
 import { resolve } from 'path'
 import { fileURLToPath } from 'url'
 import type { User } from '../../payload-types'
-import { ProgramsSeed } from '@/scripts/seed/programs'
+import { ProgramsSync } from '@/scripts/sync/programs/ProgramsSync'
 
 const fixturesDir = fileURLToPath(new URL('../fixtures', import.meta.url))
 const programsFixture = resolve(fixturesDir, 'programs.json')
@@ -21,7 +21,7 @@ describe('review-comments', () => {
     const payloadConfig = await config
     payload = await getPayload({ config: payloadConfig })
 
-    await ProgramsSeed.fromFile(payload, programsFixture).run()
+    await ProgramsSync.fromFile(payload, programsFixture).run()
     const programs = await payload.find({ collection: 'programs', limit: 1, depth: 0 })
     programId = programs.docs[0]!.id
 

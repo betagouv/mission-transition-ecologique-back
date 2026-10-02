@@ -15,9 +15,11 @@ reste du repo hormis `@tee-backoffice/canonical`) :
 - `static/input/programs-tests.json` — copie **figée et curée** (URLs malformées
   corrigées) servant de fixture au self-check round-trip (`__roundtrip__/`) et de
   référence au récap de `export:tee`. Disparaît avec la migration.
-- `static/input/programs.json` — entrée **vivante** de l'import quotidien, écrasée
-  par le `programs.json` amont via le workflow `grist-daily`. Absente du repo tant
-  que le workflow n'a pas tourné ; `import:tee` retombe alors sur la fixture.
+- `static/input/programs.json` : entrée locale facultative de `import:tee`, absente
+  du repo ; sans elle, `import:tee` retombe sur la fixture. Depuis le 2026-10-02,
+  `import:tee` et `import:projects` ne sont plus dans la tâche quotidienne (qui
+  synchronise le CMS, `pnpm data:sync`) : ce sont des outils de secours pour
+  reconstruire le store canonical sans Payload.
 - `static/exports/` — sorties produites par les scripts (ex. `tee-programs.json`).
 
 Périmètre courant : **TEE** (iso `docs/sources/programs.json`). Les formats

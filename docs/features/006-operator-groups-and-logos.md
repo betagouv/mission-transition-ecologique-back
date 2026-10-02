@@ -86,12 +86,12 @@ Constats (vérifiés le 2026-09-28 sur l'amont et sur `static/upstream/`) :
 | `apps/cms/src/constants/mediaCategoryOptions.ts` | Créé : `MEDIA_CATEGORY_OPTIONS` et type `MediaCategory` |
 | `apps/cms/payload.config.ts` | Modifié : `OperatorGroups` enregistrée ; plugin `s3Storage` **toujours enregistré** (`enabled: Boolean(objectStorage)`, `alwaysInsertFields: true`), `acl: 'public-read'`, `disablePayloadAccessControl: true` sur `media` |
 | `apps/cms/src/migrations/20260928_150255_operator_groups_and_media.{ts,json}`, `index.ts` | Créé / modifié (régénérée après la revue, jamais déployée avant) : type `enum_media_category` et `media.category` `NOT NULL` (médias existants passés en `project-image` avant la contrainte, retouche manuelle), `operator_groups`, `operators_rels`, `operators.logo_id`, `media.source_path`, `media.prefix`, `media._objectkey` (colonnes du plugin S3), `projects.image_id` à la place de `projects.image` (supprimée), `payload_locked_documents_rels.operator_groups_id`. `Projects` n'a pas de versions : pas de table `_v` |
-| `apps/cms/src/scripts/seed/media/UpstreamMediaImporter.ts` | Créé : `findOrCreate(sourcePath, alt, category)`, type posé à la création et réaligné sur un média existant, statistiques créés/réutilisés/recatégorisés/en échec, avertissements, jamais d'exception sur un téléchargement |
-| `apps/cms/src/scripts/seed/programs/OperatorGroupLogoDefaults.ts` | Créé : table groupe → chemin amont du logo générique (5 groupes) |
-| `apps/cms/src/scripts/seed/programs/OperatorGroupImporter.ts` | Créé : upsert des groupes par slug ou par nom, logo par défaut sans écraser un logo existant |
-| `apps/cms/src/scripts/seed/programs/OperatorProfileImporter.ts` | Créé : groupes et logo de chaque opérateur CMS, opérateurs amont sans correspondance signalés |
-| `apps/cms/src/scripts/seed/programs/index.ts` (`ProgramsSeed`) | Modifié : paramètre optionnel `OperatorProfilesInput` (`operators` + `media`), groupes et profils après `OperatorImporter` |
-| `apps/cms/src/scripts/seed/projects/ProjectMapper.ts`, `ProjectImporter.ts`, `index.ts` | Modifié : `map(project)` sans l'image, image calculée par `ProjectImporter` via `ImportedMediaPolicy` et `UpstreamMediaImporter` (optionnel dans `ProjectsSeed`). `types.ts` inchangé |
+| `apps/cms/src/scripts/sync/media/UpstreamMediaImporter.ts` | Créé : `findOrCreate(sourcePath, alt, category)`, type posé à la création et réaligné sur un média existant, statistiques créés/réutilisés/recatégorisés/en échec, avertissements, jamais d'exception sur un téléchargement |
+| `apps/cms/src/scripts/sync/programs/OperatorGroupLogoDefaults.ts` | Créé : table groupe → chemin amont du logo générique (5 groupes) |
+| `apps/cms/src/scripts/sync/programs/OperatorGroupImporter.ts` | Créé : upsert des groupes par slug ou par nom, logo par défaut sans écraser un logo existant |
+| `apps/cms/src/scripts/sync/programs/OperatorProfileImporter.ts` | Créé : groupes et logo de chaque opérateur CMS, opérateurs amont sans correspondance signalés |
+| `apps/cms/src/scripts/sync/programs/index.ts` (`ProgramsSync`) | Modifié : paramètre optionnel `OperatorProfilesInput` (`operators` + `media`), groupes et profils après `OperatorImporter` |
+| `apps/cms/src/scripts/sync/projects/ProjectMapper.ts`, `ProjectImporter.ts`, `index.ts` | Modifié : `map(project)` sans l'image, image calculée par `ProjectImporter` via `ImportedMediaPolicy` et `UpstreamMediaImporter` (optionnel dans `ProjectsSync`). `types.ts` inchangé |
 | `apps/cms/src/scripts/seed/run.ts` | Modifié : `UpstreamAssetSource`, lecture d'`operators.json`, `UpstreamMediaImporter` partagé, récapitulatif (dont recatégorisés) et avertissements médias en fin de seed |
 | `apps/cms/src/services/operators/OperatorLogoResolver.ts` | Créé : logo effectif (opérateur, sinon premier groupe qui en a un) avec son origine |
 | `apps/cms/vitest.config.mts` | Modifié : `S3_BUCKET: ''`, les tests n'écrivent jamais dans un bucket réel |
@@ -123,9 +123,9 @@ Constats (vérifiés le 2026-09-28 sur l'amont et sur `static/upstream/`) :
 
 ### Lot 3 : import
 1. `UpstreamMediaImporter` (recherche par `sourcePath`, téléchargement, création, avertissements), tests d'intégration avec un `fetch` factice et le stockage disque.
-2. `OperatorGroupImporter` (avec les logos de `OperatorGroupLogoDefaults`, sans écraser un logo posé à la main) puis `OperatorProfileImporter` dans `ProgramsSeed`.
+2. `OperatorGroupImporter` (avec les logos de `OperatorGroupLogoDefaults`, sans écraser un logo posé à la main) puis `OperatorProfileImporter` dans `ProgramsSync`.
 3. `OperatorLogoResolver` et ses tests (logo propre, secours par groupe, opérateur multi-groupe, aucun logo).
-4. Images des projets dans `ProjectsSeed`.
+4. Images des projets dans `ProjectsSync`.
 5. Avertissements en fin de seed (fichiers introuvables, opérateurs sans correspondance), sans code de sortie non nul.
 
 ### Lot 4 : documentation

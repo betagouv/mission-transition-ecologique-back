@@ -12,7 +12,7 @@ import {
   type CanonicalProjectRepository,
 } from '@tee-backoffice/canonical'
 import type { Program, Project, User } from '../../payload-types'
-import { ProgramsSeed } from '@/scripts/seed/programs'
+import { ProgramsSync } from '@/scripts/sync/programs/ProgramsSync'
 import { getCanonicalProjectRepository } from '@/services/canonical/canonicalProjectRepository'
 import { getCanonicalProgramRepository } from '@/services/canonical/canonicalRepository'
 import { SystemWorkflowContext } from '@/services/workflow/SystemWorkflowContext'
@@ -48,7 +48,7 @@ const publishProject = (slug: string) =>
       shortDescription: 'Description courte',
       longDescription: richText('Description longue'),
       mainTheme: 'energy',
-      _status: 'published',
+      workflowStatus: 'publie',
     },
   })
 
@@ -101,7 +101,7 @@ const expectNewDraftProgram = (copy: Program, source: Program, user: User) => {
 describe('duplicating a document', () => {
   beforeAll(async () => {
     payload = await getPayload({ config: await config })
-    await ProgramsSeed.fromFile(payload, programsFixture).run()
+    await ProgramsSync.fromFile(payload, programsFixture).run()
     programCanonical = await getCanonicalProgramRepository(payload.logger)
     projectCanonical = await getCanonicalProjectRepository(payload.logger)
 
@@ -153,7 +153,7 @@ describe('duplicating a document', () => {
       await payload.update({
         collection: 'projects',
         id: copy.id,
-        data: { _status: 'published' },
+        data: { workflowStatus: 'publie' },
         user: admin,
         overrideAccess: false,
       })

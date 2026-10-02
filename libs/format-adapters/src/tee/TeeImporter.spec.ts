@@ -78,6 +78,27 @@ describe('TeeImporter', () => {
     expect(input.date_cloture).toBe('2026-12-31')
   })
 
+  describe('catégorie légale', () => {
+    const withCompany = (company: Record<string, unknown>) =>
+      importer.import({ ...base, eligibilityData: { company } }).eligibilite?.categorie_legale
+
+    it('autorise les administrations publiques quand openToPublicAdministration est vrai', () => {
+      expect(withCompany({ openToPublicAdministration: true })).toEqual({
+        structure: { autorise: ['administration_publique'] },
+      })
+    })
+
+    it('cumule l’ouverture aux administrations et l’exclusion des micro-entrepreneurs', () => {
+      expect(withCompany({ openToPublicAdministration: true, excludeMicroentrepreneur: true })).toEqual({
+        structure: { autorise: ['administration_publique'], interdit: ['micro_entrepreneur'] },
+      })
+    })
+
+    it('n’émet rien sans drapeau', () => {
+      expect(withCompany({ allowedNafSections: ['C'] })).toBeUndefined()
+    })
+  })
+
   describe('secteur géographique', () => {
     const withGeo = (allowedRegion: string[] | undefined, texte: string[]) =>
       importer.import({

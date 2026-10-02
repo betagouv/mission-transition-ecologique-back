@@ -51,6 +51,13 @@
         "cwd": "{projectRoot}"
       }
     },
+    "sync": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "tsx src/scripts/sync/run.ts",
+        "cwd": "{projectRoot}"
+      }
+    },
     "test": {
       "executor": "nx:run-commands",
       "options": {

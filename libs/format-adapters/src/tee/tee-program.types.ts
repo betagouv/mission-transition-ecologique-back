@@ -55,6 +55,7 @@ export interface TeeEligibilityData {
     maxEmployees?: string
     allowedRegion?: string[]
     excludeMicroentrepreneur?: boolean
+    openToPublicAdministration?: boolean
   }
   /** Omitted entirely when the program carries no validity dates (iso programs.json). */
   validity?: {

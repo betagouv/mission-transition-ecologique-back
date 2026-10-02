@@ -48,5 +48,5 @@ export const contactQuestionTypeSchema = z.enum(['conseiller_entreprise', 'email
 export type ContactQuestionType = z.infer<typeof contactQuestionTypeSchema>
 
 /** Legal company category — closed vocabulary (V0). Used by `eligibilite.categorie_legale`. */
-export const categorieLegaleSchema = z.enum(['micro_entrepreneur'])
+export const categorieLegaleSchema = z.enum(['micro_entrepreneur', 'administration_publique'])
 export type CategorieLegale = z.infer<typeof categorieLegaleSchema>

@@ -7,8 +7,8 @@ import { resolve } from 'path'
 import { fileURLToPath } from 'url'
 import type { AgirProjetPivot, ListeProjet } from '@tee-backoffice/format-adapters'
 import { agirProjectEndpoints } from '@/endpoints/agir/agirProjectEndpoints'
-import { ProgramsSeed } from '@/scripts/seed/programs'
-import { ProjectsSeed } from '@/scripts/seed/projects'
+import { ProgramsSync } from '@/scripts/sync/programs/ProgramsSync'
+import { ProjectsSync } from '@/scripts/sync/projects/ProjectsSync'
 
 const fixturesDir = fileURLToPath(new URL('../fixtures', import.meta.url))
 
@@ -42,8 +42,8 @@ const pivot = (slug: string) => call('/agir/projects/:slug/pivot', { slug })
 describe('AGIR project endpoints', () => {
   beforeAll(async () => {
     payload = await getPayload({ config: await config })
-    await ProgramsSeed.fromFile(payload, resolve(fixturesDir, 'programs.json')).run()
-    await ProjectsSeed.fromFile(payload, resolve(fixturesDir, 'projects.json')).run()
+    await ProgramsSync.fromFile(payload, resolve(fixturesDir, 'programs.json')).run()
+    await ProjectsSync.fromFile(payload, resolve(fixturesDir, 'projects.json')).run()
 
     await payload.create({
       collection: 'projects',

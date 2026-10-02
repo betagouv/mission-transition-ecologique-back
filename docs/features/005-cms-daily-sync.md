@@ -3,6 +3,7 @@
 **ADR :** avenant à [0012-production-persistence-postgres](../adr/0012-production-persistence-postgres.md) (section « Qui écrit dans le canonical de production »)
 **Complète :** [ADR 0008](../adr/0008-canonical-persistence-ddd.md) (hook de sync), [ADR 0003](../adr/0003-projects-collection.md) (liaison projets ↔ dispositifs)
 **Prépare :** l'API propre des projets (feature suivante)
+**Révisé le 2026-10-02 :** le lot 4 couvre aussi les projets (statuts `remplace` / `annule` suivis dans le CMS), ce qui révise l'[ADR 0014](../adr/0014-canonical-projects.md) §« deux écrivains »
 
 ---
 
@@ -52,8 +53,23 @@ Constats (vérifiés sur la base de dev le 2026-09-25) :
 | Identité canonical | `canonicalId = SlugCanonicalId(slug)` à la création par la sync, pour aligner les deux écrivains |
 | Écritures | Idempotentes, uniquement sur différence (empreinte du contenu importé) : pas de version Payload ni d'écriture canonical si rien n'a changé |
 | Identité des scripts | Identité « système » reconnue par `beforeChangeWorkflow` (flag `req.context`), pour autoriser les transitions posées par la sync |
-| Liaison projets ↔ dispositifs | **Projets propriétaires** (`Projects.programs`) ; `Programs.linkedProjects` devient un champ `join` (virtuel, sans table) |
+| Liaison projets ↔ dispositifs | **Projets propriétaires** (`Projects.programs`) ; `Programs.linkedProjects` devient un champ virtuel sans colonne, éditable (prévu en `join` en lecture seule, voir ADR 0006, révision du 2026-10-02) |
 | Statut indisponible | Nouveau champ Payload (case à cocher) mappé vers `statut_dispositif: 'temporairement_indisponible'` |
+
+### Décisions du 2026-10-02 (lot 4, étendu aux projets)
+
+| Sujet | Décision |
+|---|---|
+| Périmètre du cron | Amont → **CMS** → canonical (hooks) → Grist. Grist ne reçoit que les dispositifs. `import:tee` et `import:projects` sortent du cron et restent des outils de secours |
+| Projets | Même flux que les dispositifs : le cron écrit les projets dans Payload, le hook `syncProjectCanonicalOnChange` alimente le canonical. Il n'y a plus deux écrivains du store des projets (ADR 0014 révisé) |
+| Cycle de vie d'un projet | **Même workflow que les dispositifs** : `Projects.workflowStatus` est le statut unique et pilote `_status` (`beforeChangeWorkflow('projects')`). Statuts `en-creation`, `publie`, `en-cours-modification`, `annule`, `remplace`, sans relecture ; `replacedBy` exigé pour `remplace` ; `workflowHistory` pour le suivi ; barre d'actions des dispositifs dans l'admin. Un projet `remplace` part dans le canonical avec `statut_projet: 'remplace'` + `remplace_par`, un projet `annule` en est retiré, sa fiche et son historique restent dans le CMS |
+| Redirections (`redirects.json`) | Elles deviennent des **documents du CMS**, pour les dispositifs comme pour les projets : un ancien slug encore présent est marqué `remplace` en place, un ancien slug absent devient un document `remplace` cloné depuis sa cible (même contenu que les tombstones de l'import direct), sauf si le CMS détient déjà un document sous ce slug : publié, il garde son contenu et passe `remplace` ; jamais publié, il est annulé (`RedirectedDocuments`, révision après revue de code). Le canonical les reçoit par les hooks. Le seed les produit aussi, puisqu'il passe par la même commande |
+| Disparus de l'amont | Document importé (son `canonicalId` est celui dérivé de son slug), absent du snapshot et sans redirection → `annule`. Un document créé dans le CMS (identifiant aléatoire) n'est jamais touché. Garde-fou : au-delà de `max(5, 10 %)` des documents importés, rien n'est annulé et le job sort en erreur (`--allow-mass-removal` lève le plafond) |
+| Écriture sur différence | Champ masqué `upstreamFingerprint` sur `Programs` et `Projects` : empreinte (SHA-256) des données Payload calculées depuis l'amont, relations résolues comprises. Empreinte identique et ligne présente dans le canonical → aucune écriture, aucune version. Un changement de mapper change l'empreinte, donc réécrit sans intervention |
+| Modifications du back-office | Toute écriture qui ne vient pas d'un script de confiance efface l'empreinte (`clearUpstreamFingerprint`) : la sync suivante réécrit le document depuis l'amont. Un brouillon laissé en attente par-dessus la version publiée est écrasé de la même façon, pour un projet comme pour un dispositif |
+| Vérification finale | Rapprochement CMS ↔ canonical en fin de job : une ligne attendue absente du canonical est une erreur (elle sera réécrite à la sync suivante) ; une ligne du canonical que le CMS n'attend pas est retirée, sous le même garde-fou |
+| Code de sortie | La sync sort en code non nul s'il reste des erreurs ; l'export Grist tourne quand même (il publie ce que le canonical contient), et `data:daily` sort en erreur si l'une des deux étapes a échoué |
+| Alerte en cas d'échec | Hors périmètre de ce lot, à traiter ensuite (Sentry envisagé) |
 
 ---
 
@@ -69,7 +85,7 @@ Constats (vérifiés sur la base de dev le 2026-09-25) :
 | `libs/canonical-store/src/DrizzleCanonicalProgramRepository.ts` | **Fait** : `delete` |
 | `apps/cms/src/hooks/programs/beforeChangeWorkflow.ts` | **Fait** : identité système (`SystemWorkflowContext`) dispensée du contrôle de rôle et des règles de transition |
 | `apps/cms/src/services/workflow/SystemWorkflowContext.ts` | **Fait** : marqueur `req.context` des écritures de scripts ; déjà posé par `ProgramImporter` (seed) |
-| `apps/cms/src/collections/Programs.ts` | **Fait (lot 3)** : champ `temporarilyUnavailable` (sidebar). Reste lot 5 : `linkedProjects` en `join` sur `projects.programs` |
+| `apps/cms/src/collections/Programs.ts` | **Fait (lot 3)** : champ `temporarilyUnavailable` (sidebar). **Fait (lot 5)** : `linkedProjects` en relation virtuelle sur `projects.programs`, hooks `readLinkedProjects` et `syncLinkedProjects`, service `ProgramProjectLinks` |
 | `apps/cms/src/services/canonical/ProgramCanonicalMapper.ts` | **Fait** : `temporarilyUnavailable` → `temporairement_indisponible` (dispositif en ligne seulement) |
 | `libs/format-adapters/src/tee/UpstreamJsonSource.ts` | **Fait** : `projects.json`, options objet, timeout réseau, repli local optionnel ; `fromSettings()` l'active seulement si `UpstreamFallbackSettings` le permet (opt-in, refusé sur Scalingo, pannes seulement) |
 | `libs/format-adapters/src/tee/LocalJsonSnapshot.ts`, `UpstreamFile.ts` | **Fait** : lecture/écriture de la copie versionnée |
@@ -78,12 +94,19 @@ Constats (vérifiés sur la base de dev le 2026-09-25) :
 | `libs/format-adapters/src/tee/TeeImporter.ts` (et `ThemeMapper`, `TypeAideMapper`, `RegionNameResolver`) | **Fait** : mentions « ONE-SHOT » retirées ; code permanent |
 | `apps/cms/src/services/canonical/to-payload/` | **Fait** : `CanonicalToPayloadMapper`, `CanonicalVariantToPayloadMapper`, port `ProgramRelations` + `PayloadProgramRelations`, `GeographicAreaResolver` (déplacé du seed, supprimé depuis : le CMS ne lit plus que les codes COG, voir `TerritoryNameResolver`) ; avertissements pour les données non portables |
 | `apps/cms/src/services/canonical/rich-text/` | **Fait** : port `MarkdownToRichText` + `PayloadMarkdownToRichText` |
-| `apps/cms/src/scripts/sync/` | Créer : commande de sync CMS (upsert sur différence, archivage des disparus, projets), partagée par le seed et le daily |
-| `apps/cms/src/scripts/seed/programs/` | **Fait** : `TeeImporter` → `CanonicalToPayloadMapper` ; `ProgramMapper`, `VariantMapper`, `types.ts` supprimés. Reste lot 4 : passer par la commande de sync |
-| `apps/cms/src/scripts/seed/projects/`, `run.ts` | **Fait** : source `UpstreamJsonSource.fromSettings(Config.upstreamFallback())` |
+| `apps/cms/src/scripts/sync/` | **Fait (lot 4)** : `UpstreamSync` (commande partagée par le seed et le cron : dispositifs, projets, disparus, rapprochement), `UpstreamSnapshot`, `GoneDocumentsCanceller` (les deux collections), `CanonicalReconciler`, `run.ts` (entrypoint `pnpm data:sync`) |
+| `apps/cms/src/services/upstream-sync/` | **Fait (lot 4)** : classes pures `UpstreamFingerprint` (empreinte stable), `UpstreamRemovalGuard` (plafond des annulations et des retraits), `CanonicalAlignment` (écart CMS ↔ canonical) |
+| `apps/cms/src/hooks/shared/clearUpstreamFingerprint.ts` | **Fait (lot 4)** : efface l'empreinte sur toute écriture hors script de confiance |
+| `apps/cms/src/collections/Projects.ts` | **Fait (lot 4)** : `workflowStatus`, `replacedBy`, `workflowHistory` (`collections/fields/workflowHistoryField.ts`, partagé avec `Programs`), `upstreamFingerprint` ; composants d'édition du workflow à la place des boutons natifs |
+| `apps/cms/src/services/workflow/`, `hooks/shared/beforeChangeWorkflow.ts`, `components/programs/useWorkflowSubmit.ts` | **Fait (lot 4)** : workflow paramétré par collection (`WorkflowCollection`, table de transitions des projets, `statusesOf`), hook déplacé de `hooks/programs/` et devenu une fabrique, actions calculées selon la collection |
+| `apps/cms/src/services/canonical/ProjectCanonicalMapper.ts`, `hooks/projects/syncProjectCanonicalOnChange.ts` | **Fait (lot 4)** : hook calqué sur celui des dispositifs (`CanonicalSyncPolicy`), `remplace` écrit avec `remplace_par`, `annule` retiré ; `ProjectCanonicalSyncPolicy` supprimée |
+| `apps/cms/src/services/canonical/to-payload/` | **Fait (lot 4)** : `remplace` amont → `workflowStatus: 'remplace'` + `replacedBy`, pour les dispositifs comme pour les projets ; port `ProgramRelations.programIdByCanonicalId` |
+| `apps/cms/src/scripts/sync/programs/`, `projects/` | **Fait (lot 4)** : redirections en entrée, écriture sur différence (`unchanged` au compte rendu), les remplacés importés après leurs cibles |
+| `apps/cms/src/scripts/sync/programs/` | **Fait** : `TeeImporter` → `CanonicalToPayloadMapper` ; `ProgramMapper`, `VariantMapper`, `types.ts` supprimés. Reste lot 4 : passer par la commande de sync |
+| `apps/cms/src/scripts/sync/projects/`, `run.ts` | **Fait** : source `UpstreamJsonSource.fromSettings(Config.upstreamFallback())` |
 | `apps/cms/tests/` | **Fait** : `unit/CanonicalToPayloadMapper.spec.ts`, `int/upstream-roundtrip.int.spec.ts` (aller-retour sur les 276 dispositifs, en intégration car il faut Payload pour Lexical et les relations) |
-| `apps/cms/src/migrations/` | **Fait (lot 3)** : `20260925_131616_program_temporarily_unavailable`. Reste lot 5 : suppression de `linkedProjects` dans `programs_rels` / `_programs_v_rels` |
-| `package.json`, `cron.json` | Modifier : `data:daily` = sync CMS → vérification CMS = canonical → `grist-setup` → `export:grist --push` ; script `data:snapshot` |
+| `apps/cms/src/migrations/` | **Fait (lot 3)** : `20260925_131616_program_temporarily_unavailable`. **Fait (lot 4)** : migration `20261002_102758_upstream_sync` (`upstream_fingerprint` sur les deux collections ; `workflow_status`, `replaced_by` et tables `workflow_history` sur `projects` ; remplissage écrit à la main : les projets déjà publiés passent à `publie`). **Fait (lot 5)** : migration `20261002_123839_program_linked_projects` (suppression de `projects_id` dans `programs_rels` / `_programs_v_rels`, lignes de l'ancienne relation retirées à la main) |
+| `package.json`, `apps/cms/project.json` | **Fait (lot 4)** : `data:sync` (sync CMS + rapprochement), `data:grist` (`grist-setup` puis `export:grist --push`), `data:daily` = les deux à la suite ; target nx `sync` pour `data:daily:dev`. `cron.json` inchangé (`pnpm data:daily`) |
 | `CLAUDE.md`, `docs/adr/0012-*.md`, `docs/adr/0003-*.md`, `docs/adr/0008-*.md` | Modifier : nouveau flux, avenant « amont → CMS → canonical », liaison `join` |
 
 ---
@@ -109,14 +132,18 @@ Constats (vérifiés sur la base de dev le 2026-09-25) :
 4. Pertes restantes, signalées en fin de seed : voir `docs/context/seed.md` (micro-entreprises, montant de financement d'une étude, liens conseiller, durée de prêt ; territoires mêlant départements et régions, limite du formulaire).
 5. Comparaison ponctuelle ancien `ProgramMapper` / nouveau chemin sur les 276 dispositifs (non commitée) : aucune donnée conservée par l'ancien lecteur n'est perdue. Elle a révélé que l'ancien seed classait 273 dispositifs en « 0 à 9 salariés » (mot-clé « micro-entreprise ») et contredisait l'amont sur les secteurs de 6 dispositifs, et un bug du nouveau mapper corrigé depuis : les collectivités d'outre-mer (stockées comme régions à code 3 chiffres) portent le niveau COG `OM`, dans les deux sens (`cogCodeOf`).
 
-### Lot 4 : sync quotidienne du CMS
-1. Commande de sync idempotente (écriture sur différence, `canonicalId` dérivé du slug, disparus traités selon `redirects.json` : `remplace` ou `annule`, projets).
-2. Archiver un dispositif dans le CMS pose sa date de fin (`validityEnd`) si elle est vide, pour que l'API AGIR ne le présente pas comme actif.
-3. Vérification CMS = canonical en fin de job (sortie non nulle sinon).
-4. Nouveau `data:daily` ; `import:tee` retiré du pipeline.
+### Lot 4 : sync quotidienne du CMS (dispositifs et projets) : **fait**
+1. Champs et migration : `upstreamFingerprint` (masqué, verrouillé par l'API, non dupliqué) sur `Programs` et `Projects` ; `workflowStatus`, `replacedBy` et `workflowHistory` sur `Projects`. Hook `clearUpstreamFingerprint` sur les deux collections.
+2. Projets alignés sur le workflow des dispositifs : `WorkflowTransitionPolicy` et `WorkflowActionPresenter` paramétrés par collection, `beforeChangeWorkflow(collection)` partagé, barre d'actions sur la fiche projet. Dans le canonical, `syncProjectCanonicalOnChange` applique `CanonicalSyncPolicy` : `remplace` écrit avec `remplace_par`, `annule` retiré.
+3. Redirections dans le CMS : `ProgramsSync` et `ProjectsSync` reçoivent les redirections, construisent les remplacés (`RedirectTombstoneBuilder`, `ProjectTombstoneBuilder`) et les importent **après** leurs cibles, pour que `replacedBy` soit résolu.
+4. Écriture sur différence : `ProgramImporter` et `ProjectImporter` comparent l'empreinte des données calculées à celle du document ; `LinkedProjectsUpdater` ne republie pas un projet inchangé. Un dispositif que Payload refuse de publier (laissé en création) ne garde pas d'empreinte : il est retenté et signalé à chaque sync.
+5. Disparus : `GoneDocumentsCanceller` (`workflowStatus: 'annule'`, pour les deux collections), sous `UpstreamRemovalGuard`. Un projet amont écarté pour sa forme n'est pas un disparu.
+6. Archiver un dispositif dans le CMS pose sa date de fin (`validityEnd`) si elle est vide, pour que l'API AGIR ne le présente pas comme actif (`beforeChangeWorkflow`).
+7. Rapprochement CMS ↔ canonical en fin de job (`CanonicalReconciler`), sortie non nulle s'il reste un écart.
+8. `UpstreamSync` partagé : `pnpm seed` (zones, sync, utilisateurs) et `pnpm data:sync` (sync seule). Nouveau `data:daily` ; `import:tee` et `import:projects` retirés du cron.
 
 ### Lot 5 : liaison projets ↔ dispositifs
-1. `Programs.linkedProjects` en `join` sur `projects.programs`, migration, `payload-types.ts`, import map.
+1. **Fait (2026-10-02)** : `Programs.linkedProjects` en relation virtuelle éditable sur `projects.programs` (et non en `join` : la liaison doit se modifier des deux côtés), migration, `payload-types.ts`. Import map inchangée (aucun composant custom). Tests : `program-project-links.int.spec.ts`.
 
 ### Lot 6 : documentation
 1. Avenant ADR 0012, mise à jour ADR 0003 / 0008, `CLAUDE.md`, suppression des mentions « ONE-SHOT ».
@@ -130,11 +157,12 @@ pnpm test:unit                    # dont test aller-retour et hook
 pnpm test                         # intégration (tee_test)
 pnpm nx affected -t lint typecheck
 pnpm seed                         # 276 dispositifs, thèmes remplis, liens visibles côté dispositif
-pnpm data:daily                   # hors --push Grist en local : CMS puis canonical à jour, vérification OK
+pnpm data:sync                    # CMS puis canonical à jour, rapprochement sans écart (pnpm data:daily:dev ajoute Grist)
 ```
 
 Contrôles attendus sur la base de dev :
 - `programs_themes` non vide, 276 dispositifs.
-- Un dispositif affiche ses projets liés (champ `join`).
-- Un second `data:daily` sans changement amont ne crée aucune version Payload.
-- Un dispositif retiré de la copie locale sans redirection passe en `annule` et sort du canonical ; avec redirection, il passe en `remplace`.
+- Un dispositif affiche ses projets liés et permet de les modifier (champ virtuel sur `Projects.programs`).
+- Un second `data:sync` sans changement amont ne crée aucune version Payload (compte rendu : tout en « inchangés »).
+- Un dispositif ou un projet retiré de l'amont sans redirection passe en `annule` et sort du canonical ; avec redirection, il passe en `remplace` et reste servi par AGIR avec ce statut.
+- Un document modifié dans le back-office est réécrit depuis l'amont à la sync suivante.

@@ -175,6 +175,18 @@ describe('ProgramCanonicalMapper', () => {
       })
     })
 
+    it('allows public administrations when the program is open to them', () => {
+      const data = mapAndValidate(buildProgram({ openToPublicAdministration: true }))
+      expect(data.eligibilite?.categorie_legale).toEqual({
+        structure: { autorise: ['administration_publique'] },
+      })
+    })
+
+    it('omits the legal category otherwise', () => {
+      const data = mapAndValidate(buildProgram({ openToPublicAdministration: false }))
+      expect(data.eligibilite?.categorie_legale).toBeUndefined()
+    })
+
     it('omits the sector when it is "all"', () => {
       const data = mapAndValidate(buildProgram({ activitySector: 'all' }))
       expect(data.eligibilite?.secteur_activite).toBeUndefined()

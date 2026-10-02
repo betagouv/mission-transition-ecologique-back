@@ -81,11 +81,21 @@ export class CanonicalProjectToPayloadMapper {
       descriptionLinkedProjects: input.projets_lies?.description ?? null,
       metaTitle: input.seo?.titre ?? null,
       metaDescription: input.seo?.description ?? null,
-      // Drafts are enabled on `Projects`: without it a created project would stay a draft.
-      _status: 'published',
+      ...this.mapStatus(input),
     }
 
     return { data, warnings }
+  }
+
+  /** A project upstream redirects points at its replacement, which must already be in the CMS. */
+  private mapStatus(
+    input: CanonicalProjectInput,
+  ): Pick<PayloadProjectData, 'workflowStatus' | 'replacedBy' | '_status'> {
+    if (input.statut_projet !== 'remplace') return { workflowStatus: 'publie', replacedBy: null, _status: 'published' }
+    const id = input.remplace_par ? this.relations.projectIdByCanonicalId(input.remplace_par) : undefined
+    if (id === undefined) throw new Error('projet remplaçant introuvable dans le CMS')
+    // Like a replaced program: kept out of the published documents, served by the pivot.
+    return { workflowStatus: 'remplace', replacedBy: id, _status: 'draft' }
   }
 
   /** Only resolvable once every project of the batch exists in Payload. */

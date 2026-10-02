@@ -125,8 +125,8 @@ Default à la création : 3 étapes (les 2 premières contiennent un lien vide).
 | Champ | Type | Notes |
 |-------|------|-------|
 | `themes` | select hasMany | `THEMES_OPTIONS` ; sert à filtrer les projets |
-| `linkedProjectsCounter` | `ui` field | Affiche "[x] projets possiblement liés" en live |
-| `linkedProjects` | relationship → projects[] | Liaison explicite |
+| `linkedProjectsCounter` | `ui` field | Affiche "[x] projets possiblement liés" en live, puis une étiquette cliquable par projet suggéré (ajout ou retrait dans `linkedProjects`, projets déjà liés cochés) et un bouton « Tout ajouter » |
+| `linkedProjects` | relationship → projects[], `virtual: true` | Même liaison que `Projects.programs`, seule à être stockée. Lu à l'ouverture du dispositif (pas dans les listes), écrit dans les projets à chaque enregistrement, brouillon compris. Modifiable par les admins seulement, non copié à la duplication |
 
 ### Éligibilité
 
@@ -134,6 +134,7 @@ Default à la création : 3 étapes (les 2 premières contiennent un lien vide).
 |-------|------|-------|
 | `companySizes` | select hasMany | Enums : `0-9`, `10-19`, `20-49`, `50-249`, `250-499`, `500-4999`, `5000+`, `other`. Default = toutes sauf `other`. |
 | `companySizeOther` | text | conditionnel : si `companySizes` ⊃ `other` |
+| `openToPublicAdministration` | checkbox | « Ouvert aux administrations publiques », `false` par défaut. Alimenté par `eligibilityData.company.openToPublicAdministration` de l'amont, porté dans le pivot par `eligibilite.categorie_legale.structure.autorise: ['administration_publique']` |
 | `geographicCoverage` | select | `national` (aucune zone), `regional`, `departemental`, `regional-departemental` (régions entières et départements d'autres régions) |
 | `geographicAreas` | relationship → geographic-areas[] | Sélection multiple, filtrée sur les niveaux de la couverture. Un département et sa région ne peuvent pas être choisis ensemble : avertissement en direct, refus à l'enregistrement hors brouillon |
 | `geographicAreaFeedback` | text | Pour signaler une zone manquante |

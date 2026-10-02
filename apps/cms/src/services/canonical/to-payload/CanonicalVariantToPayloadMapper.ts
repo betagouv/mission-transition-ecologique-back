@@ -17,11 +17,10 @@ type PayloadModification = NonNullable<PayloadVariant['modifications']>[number]
 export class CanonicalVariantToPayloadMapper {
   constructor(private readonly relations: ProgramRelations) {}
 
-  map(variantes: CanonicalProgramInput['variantes'], warnings: string[]): PayloadVariant[] | undefined {
-    const variants = (variantes ?? [])
+  map(variantes: CanonicalProgramInput['variantes'], warnings: string[]): PayloadVariant[] {
+    return (variantes ?? [])
       .map((variante) => this.mapVariant(variante, warnings))
       .filter((variant): variant is PayloadVariant => variant !== undefined)
-    return variants.length > 0 ? variants : undefined
   }
 
   private mapVariant(variante: VarianteInput, warnings: string[]): PayloadVariant | undefined {

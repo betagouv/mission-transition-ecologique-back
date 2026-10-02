@@ -24,6 +24,9 @@ export class EligibiliteTextBuilder {
     if (EligibiliteTextBuilder.excludesMicro(eligibilite)) {
       bullets.push('- Non éligible aux micro-entrepreneurs')
     }
+    if (EligibiliteTextBuilder.opensToPublicAdministration(eligibilite)) {
+      bullets.push('- Ouvert aux administrations publiques')
+    }
     add('Aires géographiques éligibles', EligibiliteTextBuilder.regions(eligibilite))
     add('Autres conditions', EligibiliteTextBuilder.texte(eligibilite?.autres_criteres?.texte))
 
@@ -53,6 +56,11 @@ export class EligibiliteTextBuilder {
   private static excludesMicro(eligibilite: Eligibilite): boolean {
     const interdit = eligibilite?.categorie_legale?.structure?.interdit ?? []
     return interdit.includes('micro_entrepreneur')
+  }
+
+  private static opensToPublicAdministration(eligibilite: Eligibilite): boolean {
+    const autorise = eligibilite?.categorie_legale?.structure?.autorise ?? []
+    return autorise.includes('administration_publique')
   }
 
   private static regions(eligibilite: Eligibilite): string | undefined {

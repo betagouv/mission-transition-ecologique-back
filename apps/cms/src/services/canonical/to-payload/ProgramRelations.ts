@@ -11,4 +11,6 @@ export interface ProgramRelations {
   operatorId(name: string): number | undefined
   /** Geographic area for a COG code (`REG-11`, `DEP-40`…). */
   areaByCogCode(code: string): ProgramArea | undefined
+  /** Program a replaced one points at, by canonical id. */
+  programIdByCanonicalId(canonicalId: string): number | undefined
 }

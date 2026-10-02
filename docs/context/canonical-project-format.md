@@ -100,6 +100,8 @@ Côté CMS, la collection `Projects` applique à la publication les règles du p
 
 ## Sources : ce qui diffère entre le CMS et l'amont
 
+> **Depuis le 2026-10-02**, le store n'a plus qu'un écrivain en fonctionnement normal : les hooks du CMS, que la sync quotidienne alimente depuis l'amont (ADR 0014, révision du 2026-10-02). La colonne « import amont direct » ne décrit plus que l'outil de secours `import:projects`. Côté CMS, `statut_projet` vaut `remplace` pour un projet `workflowStatus: 'remplace'`, avec `remplace_par` = identifiant pivot de son `replacedBy` ; un projet `annule` n'est pas stocké.
+
 Les deux écrivains produisent le même format, avec ces différences connues (ADR 0014 §7) :
 
 | Champ | Écrit par le hook CMS | Écrit par l'import amont direct |
@@ -108,7 +110,7 @@ Les deux écrivains produisent le même format, avec ces différences connues (A
 | `image.url` | URL du média (bucket, ou chemin enraciné en local) | URL du fichier dans le dépôt amont |
 | Markdown | repassé par Lexical | texte amont tel quel |
 | `secteurs` | sections NAF seulement (le champ Payload n'accepte que les sections) | tout code NAF publié par l'amont |
-| `statut_projet` | toujours `valide` | `valide`, ou `remplace` pour un tombstone |
+| `statut_projet` | `valide`, ou `remplace` pour un projet remplacé du CMS (depuis le 2026-10-02) | `valide`, ou `remplace` pour un tombstone |
 | `date_mise_a_jour` | `updatedAt` du projet | heure de l'import |
 
 Un projet que l'amont ne permet pas de mapper (thème principal inconnu) est laissé sans `theme_principal` : le validateur le refuse et il est signalé, jamais deviné.
@@ -198,7 +200,7 @@ Fixture `libs/canonical/tests/fixtures/project-valid-full.ts`.
 
 ### Tombstone de redirection
 
-Un ancien slug redirigé en amont (`project_redirects` de `redirects.json`) devient un projet `remplace` : le contenu du projet courant, sous l'ancien slug, avec `remplace_par`. Il n'est produit que par l'import amont direct (`import:projects`).
+Un ancien slug redirigé en amont (`project_redirects` de `redirects.json`) devient un projet `remplace` : le contenu du projet courant, sous l'ancien slug, avec `remplace_par`. Depuis le 2026-10-02, c'est un projet du CMS (`workflowStatus: 'remplace'`, `replacedBy`), créé par le seed et par la sync quotidienne, que le hook écrit dans le store ; l'import direct `import:projects` produit la même ligne.
 
 ```json
 {

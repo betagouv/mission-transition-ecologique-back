@@ -175,8 +175,10 @@ Deltas vs canonical :
 5. `remplace_par` : **conservé** quand `statut === 'remplace'`, résolu du cuid2
    canonical vers le **slug** du remplaçant (`RemplaceParResolver`, construit sur
    `repository.findAll()`) ; omis si le pointeur est introuvable. Les dispositifs
-   `remplace` proviennent des **tombstones de redirection** générés à l'import
-   depuis `redirects.json` (voir `docs/context/schema-grist-export.md` §Redirections).
+   `remplace` proviennent des **redirections amont** (`redirects.json`) : depuis
+   le 2026-10-02 ce sont des dispositifs du CMS (`workflowStatus: 'remplace'`,
+   `replacedBy`), écrits par le seed et la sync quotidienne, que le hook pousse
+   dans le store (voir `docs/context/schema-grist-export.md` §Pipeline quotidien).
 6. `montant` / `duree` : **objet `{ type, valeur }`** inchangé.
 7. `contact_question` : repris tel quel du canonical (aucune traduction de
    vocabulaire). Pas de type `formulaire` dans le canonical : la valeur
@@ -341,17 +343,18 @@ Aucune authentification, pas de pagination (91 projets et 6 tombstones au
 
 ### Règles
 
-- **Pas de filtre d'export** : le store ne contient que des projets publiés
-  (`ProjectCanonicalSyncPolicy`), donc tout projet stocké est servi, tombstones
+- **Pas de filtre d'export** : le store ne contient que des projets publiés ou
+  remplacés (`CanonicalSyncPolicy`), donc tout projet stocké est servi, tombstones
   de redirection compris (`etatProjet` / `statut` = `remplace`). Un brouillon du
   CMS est absent de l'index et répond `404` en pivot ; un brouillon enregistré
   par-dessus une version publiée laisse servie la version publiée.
 - **`404`** `{ "error": "Projet introuvable" }` si le slug n'est pas dans le
   store, `200` + corps JSON sinon.
-- **Les tombstones n'existent qu'après un passage de l'import amont direct**
-  (`import:projects`, pipeline quotidien) : le seed n'en produit pas. Juste
-  après une réinitialisation de la préprod, un ancien slug répond donc `404`
-  jusqu'à la tâche planifiée suivante.
+- **Les projets remplacés sont des projets du CMS** (depuis le 2026-10-02) :
+  le seed et la sync quotidienne les créent (`workflowStatus: 'remplace'`,
+  `replacedBy`). Un ancien slug est donc servi dès la fin d'un seed, y compris
+  juste après une réinitialisation de la préprod. Un projet `annule` (disparu de
+  l'amont sans redirection) n'est plus dans le store : il répond `404`.
 - **Slug encodé** dans `urlPivot` (`encodeURIComponent`) : un tombstone peut
   garder un ancien slug non kebab-case (`maintenance-préventive`).
 - **Aucun lien mort** (`AgirProjetReferences`) : le pivot interne référence
@@ -368,7 +371,7 @@ Aucune authentification, pas de pagination (91 projets et 6 tombstones au
   remplace, à sa publication, la ligne amont du store (un slug, une ligne ;
   voir `canonical-project-format.md`, « Règles du store »). Les projets qui
   référençaient l'identifiant amont perdent ce lien dans leur pivot exporté
-  jusqu'à l'import quotidien suivant, qui remet la ligne amont. L'`id` exporté
+  jusqu'à la sync quotidienne suivante, qui réécrit le projet depuis l'amont. L'`id` exporté
   étant le slug, AGIR ne voit aucun changement d'identifiant.
 - **Image** : `image.url` est rendue absolue (un chemin enraciné
   `/api/media/file/...` est préfixé par la base URL publique). L'image est

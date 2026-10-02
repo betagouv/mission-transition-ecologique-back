@@ -6,7 +6,7 @@ import { afterAll, describe, it, beforeAll, expect } from 'vitest'
 import { resolve } from 'path'
 import { fileURLToPath } from 'url'
 import type { Program, Project } from '../../payload-types'
-import { ProgramsSeed } from '@/scripts/seed/programs'
+import { ProgramsSync } from '@/scripts/sync/programs/ProgramsSync'
 import { getCanonicalProjectRepository } from '@/services/canonical/canonicalProjectRepository'
 import { SystemWorkflowContext } from '@/services/workflow/SystemWorkflowContext'
 
@@ -36,7 +36,7 @@ const project = (slug: string, overrides: Partial<Project>, draft = false) =>
       shortDescription: 'Description courte',
       longDescription: richText('Description longue'),
       mainTheme: 'energy',
-      _status: draft ? 'draft' : 'published',
+      workflowStatus: draft ? 'en-creation' : 'publie',
       ...overrides,
     },
   })
@@ -50,7 +50,7 @@ const invalidField = (label: string) => new RegExp(`${label}$`)
 describe('required texts made of whitespace', () => {
   beforeAll(async () => {
     payload = await getPayload({ config: await config })
-    await ProgramsSeed.fromFile(payload, programsFixture).run()
+    await ProgramsSync.fromFile(payload, programsFixture).run()
     const published = (
       await payload.find({ collection: 'programs', where: { workflowStatus: { equals: 'publie' } }, limit: 1, depth: 0 })
     ).docs[0]!
@@ -87,16 +87,19 @@ describe('required texts made of whitespace', () => {
     )
 
     it('lets a draft carry a blank title, then refuses to publish it', async () => {
+      // No user in this suite: the transition is made as the system.
+      const context = SystemWorkflowContext.create()
       const draft = await project('texte-vide-brouillon', { title: '   ' }, true)
       expect(draft._status).toBe('draft')
 
       await expect(
-        payload.update({ collection: 'projects', id: draft.id, data: { _status: 'published' } }),
+        payload.update({ collection: 'projects', id: draft.id, data: { workflowStatus: 'publie' }, context }),
       ).rejects.toThrow(invalidField('Titre'))
       const live = await payload.update({
         collection: 'projects',
         id: draft.id,
-        data: { title: 'Titre renseigné', _status: 'published' },
+        data: { title: 'Titre renseigné', workflowStatus: 'publie' },
+        context,
       })
       expect(live._status).toBe('published')
     })
