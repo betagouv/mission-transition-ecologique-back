@@ -99,6 +99,8 @@ Décision (2026-09-25) : **Scaleway Object Storage** (API S3, région `fr-par` p
 - **Sans bucket configuré, rien ne change** : Payload garde son stockage disque, ce qui convient au développement, à la CI et aux tests.
 - Les fichiers restent servis **par Payload** (contrôle d'accès natif conservé) : le bucket n'a pas besoin d'être public. Passer en accès direct (`disablePayloadAccessControl`) est possible plus tard si la bande passante le justifie.
 
+> **Révision 2026-09-28** ([ADR 0013](0013-operator-groups-and-media.md), feature 006) : le stockage objet est désormais **alimenté par le seed** (logos des opérateurs et des groupes, images des projets, téléchargés depuis le front amont et identifiés par `Media.sourcePath`). Les fichiers de `Media` sont **publics** : ACL `public-read` posée par objet à l'upload (bucket laissé privé, sans bucket policy) et `disablePayloadAccessControl: true`, l'URL pointant directement sur le bucket ; le point précédent (fichiers servis par Payload) ne vaut plus que comme repli. Le plugin `s3Storage` est **toujours enregistré** (`enabled: Boolean(objectStorage)`, `alwaysInsertFields: true`) : ses colonnes `media.prefix` et `media._objectkey` existent dans tous les environnements, et les migrations générées en local correspondent au schéma de préprod et de prod. Sans bucket, le plugin est désactivé et Payload garde son stockage disque, comme avant.
+
 ## Qui écrit dans le canonical de production (tranché le 2026-09-24)
 
 Deux chemins alimentent le store : le **hook `syncCanonicalOnPublish`** (publication dans le CMS) et le **pipeline quotidien** (alignement sur le `programs.json` amont : upserts + retrait des dispositifs disparus, sans jamais vider le store, lui-même issu d'une transformation de données Baserow).
@@ -120,7 +122,7 @@ Conséquences à connaître :
 - les logs partent dans les logs de l'application (`scalingo logs`), les tâches se listent avec `scalingo cron-tasks` ;
 - limites de la plateforme : 5 tâches par application, 10 minutes d'intervalle minimum, 12 heures d'exécution maximum, horaires en UTC, exécution non garantie (rares ratés) et décalage possible.
 
-Le pipeline lit désormais les fichiers amont **par HTTP** (`UpstreamJsonSource`, URLs surchargeables par `TEE_PROGRAMS_URL` / `TEE_REDIRECTS_URL`, et `TEE_PROJECTS_URL` pour les projets lus par le seed) au lieu de les écrire sur un disque éphémère, et **ne commite plus rien** : `daily_data.yml` est supprimé.
+Le pipeline lit désormais les fichiers amont **par HTTP** (`UpstreamJsonSource`, URLs surchargeables par `TEE_PROGRAMS_URL` / `TEE_REDIRECTS_URL`, `TEE_PROJECTS_URL` et `TEE_OPERATORS_URL` pour les projets et les opérateurs lus par le seed ; une variable vide retombe sur l'URL par défaut) au lieu de les écrire sur un disque éphémère, et **ne commite plus rien** : `daily_data.yml` est supprimé.
 
 Une copie versionnée des fichiers amont vit dans `libs/format-adapters/static/upstream/` (rafraîchie par `pnpm data:snapshot`). Elle ne sert que de repli en développement quand GitHub est en panne, sur demande explicite (`TEE_UPSTREAM_LOCAL_FALLBACK=1`, `UpstreamFallbackSettings`) : le repli est refusé avec une erreur sur Scalingo, et limité aux pannes (réseau, timeout, 5xx), jamais à un 404 ni à un JSON invalide.
 

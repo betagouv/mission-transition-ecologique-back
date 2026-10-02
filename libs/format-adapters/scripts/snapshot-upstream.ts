@@ -16,6 +16,7 @@ async function main(): Promise<void> {
     programs: () => source.programs<unknown[]>(),
     projects: () => source.projects<unknown[]>(),
     redirects: () => source.redirects<unknown>(),
+    operators: () => source.operators(),
   }
 
   for (const file of UPSTREAM_FILES) {

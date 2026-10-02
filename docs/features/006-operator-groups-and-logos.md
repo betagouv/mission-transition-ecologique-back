@@ -1,6 +1,7 @@
 # Feature 006 : Groupes d'opérateurs, logos et images des projets
 
-**ADR :** à créer, `0013-operator-groups-and-media.md` (groupes d'opérateurs, médias importés depuis l'amont)
+**Statut :** implémentée le 2026-09-28 (lots 1 à 4), branche `feat/operator-groups-and-logos`. Reste à faire à la main : `TEE_OPERATORS_URL` et `TEE_ASSETS_BASE_URL` (commentées) dans `apps/cms/.env.example`, que l'outillage ne peut pas modifier. Exposition AGIR : conçue, non implémentée (feature ultérieure).
+**ADR :** [`0013-operator-groups-and-media.md`](../adr/0013-operator-groups-and-media.md) (groupes d'opérateurs, médias importés depuis l'amont)
 **Complète :** [ADR 0012](../adr/0012-production-persistence-postgres.md) §7 (uploads `Media` sur Scaleway Object Storage), [ADR 0003](../adr/0003-projects-collection.md) (champ `image` des projets), [feature 005](005-cms-daily-sync.md) (source amont, seed)
 
 ---
@@ -52,7 +53,9 @@ Constats (vérifiés le 2026-09-28 sur l'amont et sur `static/upstream/`) :
 | Image des projets | `Projects.image` passe de `text` à `upload` vers `media` |
 | Source des opérateurs | `operators.json` amont, lu par `UpstreamJsonSource` comme les autres fichiers (URL surchargeable `TEE_OPERATORS_URL`, copie versionnée dans `static/upstream/`, rafraîchie par `pnpm data:snapshot`) |
 | Source des fichiers | Téléchargement HTTP depuis le dossier public du front amont (`raw.githubusercontent.com/.../main/apps/nuxt/src/public` + chemin amont), base surchargeable `TEE_ASSETS_BASE_URL`, même timeout réseau que les JSON |
-| Identité d'un média importé | Nouveau champ `sourcePath` sur `Media` (chemin amont, unique, lecture seule, vide pour un upload manuel). L'import retrouve un média par ce chemin avant tout téléchargement : relancer le seed ne crée ni doublon ni nouvel objet dans le bucket, même si Payload a renommé le fichier |
+| Identité d'un média importé | Nouveau champ `sourcePath` sur `Media` (chemin amont, unique, vide pour un upload manuel), masqué dans l'admin et verrouillé par l'API comme `canonicalId` (seul le seed, en Local API, le renseigne). L'import retrouve un média par ce chemin avant tout téléchargement : relancer le seed ne crée ni doublon ni nouvel objet dans le bucket, même si Payload a renommé le fichier |
+| Typologie des médias | Champ `category` (« Type », obligatoire) : `operator-logo` ou `project-image` (`mediaCategoryOptions.ts`). Les sélecteurs `Operators.logo` et `OperatorGroups.logo` ne proposent et n'acceptent que des logos d'opérateurs, `Projects.image` que des images de projets (`filterOptions`, vérifié aussi à l'enregistrement) |
+| Écriture des médias | Réservée aux admins et super-admins (`AuthAccessPolicy.isAdmin`), lecture publique |
 | Rapprochement opérateurs | Par nom exact (`operator` amont = `name` CMS, via le slug déjà utilisé par `OperatorImporter`) |
 | Opérateur amont absent du CMS | **Signalé**, pas créé : le CMS ne crée que les opérateurs cités par au moins un dispositif |
 | Texte alternatif | `Logo de <nom de l'opérateur>` ; pour un projet, son titre |
@@ -62,34 +65,47 @@ Constats (vérifiés le 2026-09-28 sur l'amont et sur `static/upstream/`) :
 
 ---
 
-## Fichiers à créer / modifier
+## Fichiers créés / modifiés
+
+État réel à l'implémentation (2026-09-28).
 
 | Fichier | Action |
 |---|---|
-| `apps/cms/src/collections/OperatorGroups.ts` | Créer : collection `operator-groups` (`name` unique, `slug` unique, `logo` upload optionnel), masquée hors admins comme `Operators`, écriture réservée au super-admin |
-| `apps/cms/src/collections/Operators.ts` | Modifier : champs `groups` (relation `hasMany` vers `operator-groups`) et `logo` (upload vers `media`) ; colonnes de liste |
-| `apps/cms/src/collections/Projects.ts` | Modifier : `image` en `upload` vers `media` |
-| `apps/cms/src/collections/Media.ts` | Modifier : champ `sourcePath` (texte, unique, lecture seule, sidebar) |
-| `apps/cms/src/services/access/OperatorGroupAccessPolicy.ts` | Créer si les règles diffèrent d'`OperatorAccessPolicy`, sinon réutiliser |
-| `apps/cms/payload.config.ts` | Modifier : enregistrer `OperatorGroups` ; plugin `s3Storage` avec `acl: 'public-read'` et `disablePayloadAccessControl: true` sur `media` (dès cette feature, pour que les fichiers importés par le seed soient publics d'emblée, sans ré-upload) |
-| `libs/format-adapters/src/tee/UpstreamJsonSource.ts` | Modifier : `operators()` (lecture + repli local), `TEE_OPERATORS_URL` |
-| `libs/format-adapters/src/tee/tee-operator.schema.ts` | Créer : schéma zod d'une entrée d'`operators.json` (`operator`, `filterCategories`, `imagePath?`, `color?`) |
-| `libs/format-adapters/src/tee/UpstreamAssetSource.ts` | Créer : téléchargement d'un fichier amont par chemin (`fetch` injectable, timeout, `UpstreamFetchError` avec statut HTTP) |
-| `libs/format-adapters/scripts/snapshot-upstream.ts`, `static/upstream/operators.json` | Modifier / créer : copie versionnée d'`operators.json` |
-| `apps/cms/src/scripts/seed/media/UpstreamMediaImporter.ts` | Créer : `findOrCreate(sourcePath, alt)` → id du média ; cherche par `sourcePath`, sinon télécharge et crée ; collecte les avertissements |
-| `apps/cms/src/scripts/seed/programs/OperatorGroupImporter.ts` | Créer : upsert des groupes par slug depuis `operators.json` → nom de groupe vers id |
-| `apps/cms/src/services/operators/OperatorLogoResolver.ts` | Créer : logo effectif (opérateur, sinon groupe), tests unitaires |
-| `apps/cms/src/scripts/seed/programs/OperatorGroupLogoDefaults.ts` | Créer : table groupe → chemin amont du logo générique |
-| `apps/cms/src/scripts/seed/programs/OperatorProfileImporter.ts` | Créer : pour chaque opérateur amont, rattache ses groupes et son logo à l'opérateur CMS correspondant ; signale les opérateurs sans correspondance |
-| `apps/cms/src/scripts/seed/programs/index.ts` (`ProgramsSeed`) | Modifier : groupes et profils des opérateurs après `OperatorImporter` |
-| `apps/cms/src/scripts/seed/projects/ProjectMapper.ts`, `types.ts`, `ProjectsSeed` | Modifier : `image` résolue en id de média via `UpstreamMediaImporter` |
-| `apps/cms/src/scripts/seed/run.ts` | Modifier : instancier `UpstreamAssetSource` depuis les réglages, afficher les avertissements médias |
-| `apps/cms/src/migrations/` | Créer : table `operator_groups`, `operators_rels` (groupes), `operators.logo_id`, `media.source_path`, `projects.image_id` à la place de `projects.image` (et tables `_v` des projets) |
-| `apps/cms/payload-types.ts`, `importMap.js` | Régénérer |
-| `apps/cms/.env.example` | Modifier : `TEE_OPERATORS_URL`, `TEE_ASSETS_BASE_URL` (commentées) |
-| `apps/cms/tests/` | Créer : tests unitaires et d'intégration (voir « Vérification ») |
-| `docs/adr/0013-operator-groups-and-media.md`, `docs/adr/0012-*.md` §7, `docs/adr/0003-*.md`, `docs/context/seed.md`, `CLAUDE.md` | Créer / modifier |
-| `docs/features/TASKS.md` | Modifier : ligne 006 |
+| `libs/format-adapters/src/tee/tee-operator.schema.ts` | Créé : `teeOperatorSchema` / `teeOperatorsSchema` / `TeeOperator` (`operator`, `filterCategories` par défaut `[]`, `imagePath?`, `color?`) |
+| `libs/format-adapters/src/tee/UpstreamFile.ts` | Modifié : `operators` ajouté à `UPSTREAM_FILES` |
+| `libs/format-adapters/src/tee/UpstreamJsonSource.ts` | Modifié : `operators()` (lecture validée par zod, même repli local), URL par défaut `apps/nuxt/src/public/json/operator/operators.json`, `TEE_OPERATORS_URL` ; une variable `TEE_*_URL` vide retombe désormais sur le défaut |
+| `libs/format-adapters/src/tee/UpstreamAsset.ts` | Créé : forme d'un fichier téléchargé (`data`, `mimetype`, `name`, `size`), celle du `file` de `payload.create` |
+| `libs/format-adapters/src/tee/UpstreamAssetSource.ts` | Créé : téléchargement par chemin amont (base `raw.githubusercontent.com/.../main/apps/nuxt/src/public`, `TEE_ASSETS_BASE_URL`, `fetch` injectable, timeout 30 s, `UpstreamFetchError`), type MIME par `content-type` `image/*` sinon par extension, garde sur les chemins (`..`, `\`, `%2e`, chemin non enraciné) |
+| `libs/format-adapters/src/index.ts` | Modifié : exports des trois fichiers ci-dessus |
+| `libs/format-adapters/src/tee/UpstreamAssetSource.spec.ts`, `UpstreamJsonSource.spec.ts` | Créé / modifié : tests (téléchargement, base par défaut, statut d'erreur, type MIME, chemins refusés ; `operators()`, 404, JSON invalide, repli) |
+| `libs/format-adapters/scripts/snapshot-upstream.ts`, `static/upstream/operators.json` | Modifié / créé : copie versionnée d'`operators.json` (67 entrées), produite par `pnpm data:snapshot` |
+| `apps/cms/src/collections/OperatorGroups.ts` | Créé : collection `operator-groups` (`name` et `slug` uniques, `logo` upload optionnel filtré sur `operator-logo`), lecture `OperatorAccessPolicy.read`, création, modification et suppression par les admins (`AuthAccessPolicy.isAdmin`), masquée hors admins. Pas de `OperatorGroupAccessPolicy` : les politiques existantes suffisent |
+| `apps/cms/src/collections/Operators.ts` | Modifié : `groups` (relation `hasMany` vers `operator-groups`), `logo` (upload vers `media`, filtré sur `operator-logo`), colonnes de liste `name`, `groups`, `logo` |
+| `apps/cms/src/collections/Projects.ts` | Modifié : `image` en `upload` vers `media`, filtré sur `project-image` |
+| `apps/cms/src/collections/Media.ts` | Modifié : `category` (« Type », `select` obligatoire), `sourcePath` (texte, unique, indexé, `admin.hidden`, accès de champ `create`/`update` refusé), écriture réservée aux admins, colonnes de liste `filename`, `alt`, `category`, `updatedAt`, recherche sur `filename` et `alt` |
+| `apps/cms/src/constants/mediaCategoryOptions.ts` | Créé : `MEDIA_CATEGORY_OPTIONS` et type `MediaCategory` |
+| `apps/cms/payload.config.ts` | Modifié : `OperatorGroups` enregistrée ; plugin `s3Storage` **toujours enregistré** (`enabled: Boolean(objectStorage)`, `alwaysInsertFields: true`), `acl: 'public-read'`, `disablePayloadAccessControl: true` sur `media` |
+| `apps/cms/src/migrations/20260928_150255_operator_groups_and_media.{ts,json}`, `index.ts` | Créé / modifié (régénérée après la revue, jamais déployée avant) : type `enum_media_category` et `media.category` `NOT NULL` (médias existants passés en `project-image` avant la contrainte, retouche manuelle), `operator_groups`, `operators_rels`, `operators.logo_id`, `media.source_path`, `media.prefix`, `media._objectkey` (colonnes du plugin S3), `projects.image_id` à la place de `projects.image` (supprimée), `payload_locked_documents_rels.operator_groups_id`. `Projects` n'a pas de versions : pas de table `_v` |
+| `apps/cms/src/scripts/seed/media/UpstreamMediaImporter.ts` | Créé : `findOrCreate(sourcePath, alt, category)`, type posé à la création et réaligné sur un média existant, statistiques créés/réutilisés/recatégorisés/en échec, avertissements, jamais d'exception sur un téléchargement |
+| `apps/cms/src/scripts/seed/programs/OperatorGroupLogoDefaults.ts` | Créé : table groupe → chemin amont du logo générique (5 groupes) |
+| `apps/cms/src/scripts/seed/programs/OperatorGroupImporter.ts` | Créé : upsert des groupes par slug ou par nom, logo par défaut sans écraser un logo existant |
+| `apps/cms/src/scripts/seed/programs/OperatorProfileImporter.ts` | Créé : groupes et logo de chaque opérateur CMS, opérateurs amont sans correspondance signalés |
+| `apps/cms/src/scripts/seed/programs/index.ts` (`ProgramsSeed`) | Modifié : paramètre optionnel `OperatorProfilesInput` (`operators` + `media`), groupes et profils après `OperatorImporter` |
+| `apps/cms/src/scripts/seed/projects/ProjectMapper.ts`, `ProjectImporter.ts`, `index.ts` | Modifié : `map(project)` sans l'image, image calculée par `ProjectImporter` via `ImportedMediaPolicy` et `UpstreamMediaImporter` (optionnel dans `ProjectsSeed`). `types.ts` inchangé |
+| `apps/cms/src/scripts/seed/run.ts` | Modifié : `UpstreamAssetSource`, lecture d'`operators.json`, `UpstreamMediaImporter` partagé, récapitulatif (dont recatégorisés) et avertissements médias en fin de seed |
+| `apps/cms/src/services/operators/OperatorLogoResolver.ts` | Créé : logo effectif (opérateur, sinon premier groupe qui en a un) avec son origine |
+| `apps/cms/vitest.config.mts` | Modifié : `S3_BUCKET: ''`, les tests n'écrivent jamais dans un bucket réel |
+| `apps/cms/tests/unit/OperatorLogoResolver.spec.ts` | Créé : logo propre, secours par groupe, ordre des groupes, aucun logo, références non peuplées |
+| `apps/cms/tests/int/media-rules.int.spec.ts` | Créé : upload et modification refusés à un créateur, `sourcePath` ignoré quand un admin l'envoie par l'API (création et modification), logo d'opérateur ou de groupe refusé s'il pointe sur une image de projet |
+| `apps/cms/tests/int/upstream-media.int.spec.ts` | Créé : création (type posé), réutilisation sans téléchargement, réalignement d'un type erroné, fichier manquant, chemin refusé |
+| `apps/cms/tests/int/operator-profiles.int.spec.ts` | Créé : groupes, multi-groupe, logos, logos de groupe et d'opérateur posés à la main conservés, avertissements, idempotence, règles d'écrasement au second import (chemin amont changé : logo remplacé ; plus d'`imagePath` : logo retiré ; 404 : logo importé gardé). Nettoyage limité à ce que la spec crée |
+| `apps/cms/tests/support/FakeAssetFetch.ts`, `tests/fixtures/operators.json`, `tests/fixtures/pixel.webp` | Créé : `fetch` factice et fixtures (`operators.json` : 8 entrées, dont 3 pour les règles d'écrasement des logos) |
+| `apps/cms/payload-types.ts` | Régénéré (non versionné) ; `importMap.js` inchangé (aucun composant custom) |
+| `apps/cms/.env.example` | **À faire à la main** : `TEE_OPERATORS_URL`, `TEE_ASSETS_BASE_URL` (commentées) ; l'outillage ne peut pas modifier les fichiers d'environnement |
+| `docs/adr/0013-operator-groups-and-media.md` | Créé |
+| `docs/adr/0012-*.md` §7, `docs/adr/0003-*.md` | Modifié : notes de révision datées |
+| `docs/context/seed.md`, `projects-model.md`, `programs-model.md`, `CLAUDE.md` | Modifié |
+| `docs/features/TASKS.md` | Modifié : ligne 006 |
 
 ---
 
@@ -101,7 +117,7 @@ Constats (vérifiés le 2026-09-28 sur l'amont et sur `static/upstream/`) :
 3. `operators.json` ajouté au snapshot (`pnpm data:snapshot`) et commité dans `static/upstream/`.
 
 ### Lot 2 : modèle Payload
-1. Collection `OperatorGroups`, champs `groups` et `logo` sur `Operators`, `sourcePath` sur `Media`, `image` en upload sur `Projects`.
+1. Collection `OperatorGroups`, champs `groups` et `logo` sur `Operators`, `sourcePath` et `category` sur `Media`, `image` en upload sur `Projects`, sélecteurs filtrés par type.
 2. Migration générée sur une base vierge (`pnpm migrate:create operator_groups_and_media`), `payload-types.ts`, import map.
 3. La base de dev doit être remise à zéro (`pnpm db:reset`, puis `pnpm seed`) : le changement de type de `Projects.image` casse les lignes existantes. En prod et préprod, la migration perd les chemins texte, que le seed suivant remplace par les médias.
 
@@ -150,9 +166,35 @@ Contrôles attendus :
 - 5 groupes avec un logo ; logo effectif présent pour 55 opérateurs (45 + 10 par secours de groupe).
 - 91 projets avec une image.
 - Environ 136 médias (45 logos + 91 images de projets) ; un second `pnpm seed` n'en crée aucun.
-- **Bucket en lecture seule publique** (si retenu) : contrôles de l'ADR 0013, point 4, sur chaque bucket.
+- **Bucket en lecture seule publique** (si retenu) : contrôles de l'ADR 0013, §6, sur chaque bucket.
 - **Test du stockage objet** : avec les variables `S3_*` du `.env` (bucket de dev ou de préprod), les fichiers apparaissent dans l'onglet « Fichiers » du bucket et s'affichent dans l'admin ; sans ces variables, ils vont sur le disque local.
 - Avec `TEE_UPSTREAM_LOCAL_FALLBACK=1` et GitHub injoignable : groupes rattachés, téléchargements signalés, seed terminé.
+
+### Résultats (2026-09-28)
+
+- Contrôles de code : lint, typecheck et build OK ; tests unitaires du CMS (120), d'intégration (62 après la revue) et de `format-adapters` (409) OK.
+- Seed complet lancé deux fois sur une base jetable : 12 groupes, « CCI ou CMA » dans CCI et CMA, 11 opérateurs dans OPCO, 45 opérateurs avec un logo propre, 55 avec un logo effectif, 5 groupes avec un logo, 91 projets sur 91 avec une image, 136 médias au premier passage et toujours 136 au second (0 créé, 136 réutilisés), code de sortie 0, aucun avertissement média, les 67 opérateurs amont rapprochés.
+- Non vérifié ici : le repli `TEE_UPSTREAM_LOCAL_FALLBACK=1` avec GitHub injoignable, et les contrôles d'ACL sur le bucket de prod (ADR 0013 §6).
+
+---
+
+## Écarts constatés à l'implémentation
+
+- **14 opérateurs sans groupe dans le CMS, et non 5.** Aux 5 opérateurs sans groupe en amont s'ajoutent 9 CMA régionales citées par des dispositifs mais **absentes d'`operators.json`** : CMA Bretagne, Centre-Val de Loire, Corse, Grand-Est, La Réunion, Normandie, Nouvelle-Aquitaine, Pays-de-la-Loire, Provence-Alpes-Côte-D'Azur. Elles n'ont ni groupe ni logo de secours CMA. Le constat n° 6 (67 = 67) ne vaut donc que pour la liste amont et les opérateurs de contact : `OperatorImporter` crée aussi les opérateurs cités comme autres opérateurs ou dans les variantes, qui peuvent manquer à `operators.json`. Piste : les signaler à l'amont (table Opérateurs de Baserow), ou les rattacher à la main, en sachant qu'un rattachement manuel reste en place tant que l'opérateur est absent d'`operators.json` (le seed ne touche que les opérateurs amont).
+- **Colonnes du plugin S3 absentes des migrations locales.** Le plugin `s3Storage` n'ajoute `media.prefix` et `media._objectKey` que s'il est enregistré ; il ne l'était qu'avec un bucket configuré, donc une migration générée en local ne correspondait pas au schéma de préprod et de prod. Correction : plugin toujours enregistré (`enabled: Boolean(objectStorage)`, `alwaysInsertFields: true`), et la migration de cette feature ajoute les deux colonnes. Voir ADR 0012 §7 (révision) et ADR 0013 §5.
+- **Règles d'écrasement précisées** (non prévues par le plan, voir ADR 0013 §4) : un logo d'opérateur uploadé à la main (média sans `sourcePath`) n'est jamais écrasé ; un logo importé suit l'amont et est retiré si l'amont n'a plus d'`imagePath` ; un téléchargement en échec garde le logo actuel ; les `groups` d'un opérateur sont remplacés par la liste amont à chaque seed (une modification manuelle est perdue).
+- **Remarques secondaires de la revue, traitées le 2026-09-28** : groupes rapprochés aussi par nom (un groupe créé dans l'admin avec un autre slug bloquait le seed) ; `imagePath` et `filterCategories` vides ou `null` traités comme absents (ils faisaient échouer tout le seed) ; image de projet soumise à la même règle que les logos d'opérateurs via `ImportedMediaPolicy` (elle n'était jamais retirée). Tests : `project-images.int.spec.ts`, groupe CMA à slug personnalisé dans `operator-profiles.int.spec.ts`, cellules vides dans `UpstreamJsonSource.spec.ts`.
+- **`OperatorLogoResolver` exige `depth >= 2`** : un groupe resté à l'état d'id est ignoré. À respecter par l'exposition AGIR.
+- **Variables `TEE_*_URL` vides** : une variable présente mais vide retombe désormais sur l'URL par défaut, au lieu de produire une URL vide.
+- **Pas d'`OperatorGroupAccessPolicy`** : `OperatorAccessPolicy.read` et `AuthAccessPolicy.isAdmin` suffisent. Les groupes étaient d'abord réservés en écriture au super-admin ; la revue a relevé l'incohérence avec `Operators` (un admin modifie déjà les groupes d'un opérateur) : création, modification et suppression ouvertes aux admins le 2026-09-28.
+- **Tests isolés du bucket** : `vitest.config.mts` force `S3_BUCKET: ''`, sinon les tests d'intégration auraient écrit dans le bucket configuré par le `.env`.
+- **Retours de revue (2026-09-28)** : `Media.sourcePath` masqué dans l'admin et verrouillé par l'API (il n'était qu'en lecture seule dans l'admin, donc modifiable par REST) ; écriture des médias réservée aux admins ; typologie `category` et sélecteurs filtrés par type ; tests des règles d'écrasement des logos d'opérateurs. La migration, jamais déployée, a été régénérée sous le nom `20260928_150255_operator_groups_and_media` plutôt que complétée par une seconde.
+- **Base de dev existante et `category` `NOT NULL`** : en mode `push`, une base qui contient déjà des médias fait proposer par Drizzle « Accept warnings and push schema to database? » avec un `TRUNCATE media CASCADE`, qui viderait presque toute la base (opérateurs, groupes, projets, dispositifs et leurs versions, utilisateurs, commentaires). **Répondre non** (le défaut, le serveur s'arrête), puis au choix : repartir d'une base vierge (`pnpm db:reset`, `pnpm db:up`, `pnpm dev` puis `pnpm seed`), ou garder les données en créant la colonne à la main avant `pnpm dev` :
+  ```sh
+  docker exec tee-poc-backoffice-postgres-1 psql -U tee -d tee -c "CREATE TYPE public.enum_media_category AS ENUM ('operator-logo', 'project-image'); ALTER TABLE media ADD COLUMN category public.enum_media_category; UPDATE media SET category = CASE WHEN source_path LIKE '/images/projet/%' THEN 'project-image'::public.enum_media_category ELSE 'operator-logo'::public.enum_media_category END; ALTER TABLE media ALTER COLUMN category SET NOT NULL;"
+  ```
+  `pnpm dev` démarre alors sans question (vérifié sur une base jetable), et un `pnpm seed` réaligne les types s'il le faut (compteur « recatégorisés »).
+- **`apps/cms/.env.example`** : `TEE_OPERATORS_URL` et `TEE_ASSETS_BASE_URL` (commentées) restent à ajouter à la main par le mainteneur, l'outillage ne pouvant pas modifier les fichiers d'environnement.
 
 ---
 

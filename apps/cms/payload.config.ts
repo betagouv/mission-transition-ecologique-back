@@ -8,6 +8,7 @@ import { fr } from '@payloadcms/translations/languages/fr'
 import { Users } from '@/collections/Users'
 import { Media } from '@/collections/Media'
 import { Operators } from '@/collections/Operators'
+import { OperatorGroups } from '@/collections/OperatorGroups'
 import { Programs } from '@/collections/Programs'
 import { Projects } from '@/collections/Projects'
 import { GeographicAreas } from '@/collections/GeographicAreas'
@@ -20,26 +21,31 @@ const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
 // Scalingo's filesystem is throwaway, so Media uploads go to object storage
-// (Scaleway, S3 API). Without a configured bucket (development), Payload keeps
-// its local disk storage. Registered as a plugin: this Payload version has no
-// top-level `storage` key yet.
+// (Scaleway, S3 API). Without a configured bucket (development), the plugin is
+// disabled and Payload keeps its local disk storage. Registered as a plugin:
+// this Payload version has no top-level `storage` key yet.
 const objectStorage = Config.objectStorage()
-const storagePlugins = objectStorage
-  ? [
-      s3Storage({
-        collections: { media: true },
-        bucket: objectStorage.bucket,
-        config: {
-          endpoint: objectStorage.endpoint,
-          region: objectStorage.region,
-          credentials: {
-            accessKeyId: objectStorage.accessKeyId,
-            secretAccessKey: objectStorage.secretAccessKey,
-          },
+const storagePlugin = s3Storage({
+  enabled: Boolean(objectStorage),
+  // The plugin adds its own columns to `media` (`prefix`, `_objectKey`): keep
+  // them in every environment so migrations generated locally match production.
+  alwaysInsertFields: true,
+  // Media files are public and their URL points straight to the bucket, which
+  // serves them through a per-object public-read ACL (ADR 0013).
+  acl: 'public-read',
+  collections: { media: { disablePayloadAccessControl: true } },
+  bucket: objectStorage?.bucket ?? '',
+  config: objectStorage
+    ? {
+        endpoint: objectStorage.endpoint,
+        region: objectStorage.region,
+        credentials: {
+          accessKeyId: objectStorage.accessKeyId,
+          secretAccessKey: objectStorage.secretAccessKey,
         },
-      }),
-    ]
-  : []
+      }
+    : {},
+})
 
 export default buildConfig({
   admin: {
@@ -66,6 +72,7 @@ export default buildConfig({
     Users,
     Media,
     Operators,
+    OperatorGroups,
     Programs,
     Projects,
     GeographicAreas,
@@ -102,5 +109,5 @@ export default buildConfig({
       },
     },
   },
-  plugins: storagePlugins,
+  plugins: [storagePlugin],
 })

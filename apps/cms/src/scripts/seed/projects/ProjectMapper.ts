@@ -14,6 +14,7 @@ export class ProjectMapper {
     private readonly programIdBySlug: Map<string, number>,
   ) {}
 
+  /** The image is resolved by `ProjectImporter` (media import), not here: mapping stays synchronous. */
   map(project: SourceProject) {
     if (!project.title || !project.nameTag || !project.shortDescription || !project.longDescription || !project.mainTheme) {
       process.stderr.write(
@@ -52,7 +53,6 @@ export class ProjectMapper {
       title: project.title,
       nameTag: project.nameTag,
       shortDescription: project.shortDescription,
-      image: project.image,
       titleLongDescription: project.titleLongDescription,
       longDescription,
       titleMoreDescription: project.titleMoreDescription,

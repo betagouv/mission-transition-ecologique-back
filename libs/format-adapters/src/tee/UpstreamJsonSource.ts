@@ -1,6 +1,8 @@
 import { ConsoleExportLogger } from '../shared/ConsoleExportLogger'
 import type { ExportLogger } from '../shared/ExportLogger'
 import { LocalJsonSnapshot } from './LocalJsonSnapshot'
+import { teeOperatorsSchema } from './tee-operator.schema'
+import type { TeeOperator } from './tee-operator.schema'
 import { UpstreamFetchError } from './UpstreamFetchError'
 import type { UpstreamFallbackSettings } from './UpstreamFallbackSettings'
 import type { UpstreamFile } from './UpstreamFile'
@@ -16,7 +18,7 @@ export interface UpstreamJsonSourceOptions {
 
 /**
  * Reads the upstream TEE data (`programs.json`, `projects.json`,
- * `redirects.json`) over HTTP, the upstream repository being the source of
+ * `redirects.json`, `operators.json`) over HTTP, the upstream repository being the source of
  * truth. Files are consumed in memory: the Scalingo one-off container running
  * the daily job has a throwaway filesystem. URLs are overridable to follow a
  * move of the upstream repository without a release.
@@ -25,10 +27,15 @@ export class UpstreamJsonSource {
   private static readonly BASE =
     'https://raw.githubusercontent.com/betagouv/mission-transition-ecologique/main/libs/data/static'
 
+  // Operators are only published by the front, not under `libs/data/static`.
+  private static readonly OPERATORS_URL =
+    'https://raw.githubusercontent.com/betagouv/mission-transition-ecologique/main/apps/nuxt/src/public/json/operator/operators.json'
+
   private static readonly URL_ENV: Record<UpstreamFile, string> = {
     programs: 'TEE_PROGRAMS_URL',
     projects: 'TEE_PROJECTS_URL',
     redirects: 'TEE_REDIRECTS_URL',
+    operators: 'TEE_OPERATORS_URL',
   }
 
   private readonly urls: Record<UpstreamFile, string>
@@ -42,6 +49,7 @@ export class UpstreamJsonSource {
       programs: options.urls?.programs ?? UpstreamJsonSource.defaultUrl('programs'),
       projects: options.urls?.projects ?? UpstreamJsonSource.defaultUrl('projects'),
       redirects: options.urls?.redirects ?? UpstreamJsonSource.defaultUrl('redirects'),
+      operators: options.urls?.operators ?? UpstreamJsonSource.defaultUrl('operators'),
     }
     this.fallback = options.fallback
     this.logger = options.logger ?? new ConsoleExportLogger()
@@ -59,7 +67,9 @@ export class UpstreamJsonSource {
   }
 
   private static defaultUrl(file: UpstreamFile): string {
-    return process.env[UpstreamJsonSource.URL_ENV[file]] ?? `${UpstreamJsonSource.BASE}/${file}.json`
+    const fromEnv = process.env[UpstreamJsonSource.URL_ENV[file]]
+    if (fromEnv) return fromEnv
+    return file === 'operators' ? UpstreamJsonSource.OPERATORS_URL : `${UpstreamJsonSource.BASE}/${file}.json`
   }
 
   programs<T>(): Promise<T> {
@@ -68,6 +78,11 @@ export class UpstreamJsonSource {
 
   projects<T>(): Promise<T> {
     return this.load<T>('projects')
+  }
+
+  /** Validated upstream operators: a broken shape throws instead of feeding the import. */
+  async operators(): Promise<TeeOperator[]> {
+    return teeOperatorsSchema.parse(await this.load<unknown>('operators'))
   }
 
   /**
@@ -85,7 +100,7 @@ export class UpstreamJsonSource {
   }
 
   describe(): string {
-    const urls = `${this.urls.programs} + ${this.urls.projects} + ${this.urls.redirects}`
+    const urls = [this.urls.programs, this.urls.projects, this.urls.redirects, this.urls.operators].join(' + ')
     return this.fallback ? `${urls} (copie locale en secours : ${this.fallback.directory})` : urls
   }
 
