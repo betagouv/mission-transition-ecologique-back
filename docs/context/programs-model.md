@@ -125,8 +125,8 @@ Default à la création : 3 étapes (les 2 premières contiennent un lien vide).
 | Champ | Type | Notes |
 |-------|------|-------|
 | `themes` | select hasMany | `THEMES_OPTIONS` ; sert à filtrer les projets |
-| `linkedProjectsCounter` | `ui` field | Affiche "[x] projets possiblement liés" en live |
-| `linkedProjects` | relationship → projects[] | Liaison explicite |
+| `linkedProjectsCounter` | `ui` field | Affiche "[x] projets possiblement liés" en live, puis une étiquette cliquable par projet suggéré (ajout ou retrait dans `linkedProjects`, projets déjà liés cochés) et un bouton « Tout ajouter » |
+| `linkedProjects` | relationship → projects[], `virtual: true` | Même liaison que `Projects.programs`, seule à être stockée. Lu à l'ouverture du dispositif (pas dans les listes), écrit dans les projets à chaque enregistrement, brouillon compris. Modifiable par les admins seulement, non copié à la duplication |
 
 ### Éligibilité
 

@@ -53,7 +53,7 @@ Constats (vérifiés sur la base de dev le 2026-09-25) :
 | Identité canonical | `canonicalId = SlugCanonicalId(slug)` à la création par la sync, pour aligner les deux écrivains |
 | Écritures | Idempotentes, uniquement sur différence (empreinte du contenu importé) : pas de version Payload ni d'écriture canonical si rien n'a changé |
 | Identité des scripts | Identité « système » reconnue par `beforeChangeWorkflow` (flag `req.context`), pour autoriser les transitions posées par la sync |
-| Liaison projets ↔ dispositifs | **Projets propriétaires** (`Projects.programs`) ; `Programs.linkedProjects` devient un champ `join` (virtuel, sans table) |
+| Liaison projets ↔ dispositifs | **Projets propriétaires** (`Projects.programs`) ; `Programs.linkedProjects` devient un champ virtuel sans colonne, éditable (prévu en `join` en lecture seule, voir ADR 0006, révision du 2026-10-02) |
 | Statut indisponible | Nouveau champ Payload (case à cocher) mappé vers `statut_dispositif: 'temporairement_indisponible'` |
 
 ### Décisions du 2026-10-02 (lot 4, étendu aux projets)
@@ -85,7 +85,7 @@ Constats (vérifiés sur la base de dev le 2026-09-25) :
 | `libs/canonical-store/src/DrizzleCanonicalProgramRepository.ts` | **Fait** : `delete` |
 | `apps/cms/src/hooks/programs/beforeChangeWorkflow.ts` | **Fait** : identité système (`SystemWorkflowContext`) dispensée du contrôle de rôle et des règles de transition |
 | `apps/cms/src/services/workflow/SystemWorkflowContext.ts` | **Fait** : marqueur `req.context` des écritures de scripts ; déjà posé par `ProgramImporter` (seed) |
-| `apps/cms/src/collections/Programs.ts` | **Fait (lot 3)** : champ `temporarilyUnavailable` (sidebar). Reste lot 5 : `linkedProjects` en `join` sur `projects.programs` |
+| `apps/cms/src/collections/Programs.ts` | **Fait (lot 3)** : champ `temporarilyUnavailable` (sidebar). **Fait (lot 5)** : `linkedProjects` en relation virtuelle sur `projects.programs`, hooks `readLinkedProjects` et `syncLinkedProjects`, service `ProgramProjectLinks` |
 | `apps/cms/src/services/canonical/ProgramCanonicalMapper.ts` | **Fait** : `temporarilyUnavailable` → `temporairement_indisponible` (dispositif en ligne seulement) |
 | `libs/format-adapters/src/tee/UpstreamJsonSource.ts` | **Fait** : `projects.json`, options objet, timeout réseau, repli local optionnel ; `fromSettings()` l'active seulement si `UpstreamFallbackSettings` le permet (opt-in, refusé sur Scalingo, pannes seulement) |
 | `libs/format-adapters/src/tee/LocalJsonSnapshot.ts`, `UpstreamFile.ts` | **Fait** : lecture/écriture de la copie versionnée |
@@ -105,7 +105,7 @@ Constats (vérifiés sur la base de dev le 2026-09-25) :
 | `apps/cms/src/scripts/sync/programs/` | **Fait** : `TeeImporter` → `CanonicalToPayloadMapper` ; `ProgramMapper`, `VariantMapper`, `types.ts` supprimés. Reste lot 4 : passer par la commande de sync |
 | `apps/cms/src/scripts/sync/projects/`, `run.ts` | **Fait** : source `UpstreamJsonSource.fromSettings(Config.upstreamFallback())` |
 | `apps/cms/tests/` | **Fait** : `unit/CanonicalToPayloadMapper.spec.ts`, `int/upstream-roundtrip.int.spec.ts` (aller-retour sur les 276 dispositifs, en intégration car il faut Payload pour Lexical et les relations) |
-| `apps/cms/src/migrations/` | **Fait (lot 3)** : `20260925_131616_program_temporarily_unavailable`. **Fait (lot 4)** : migration `20261002_102758_upstream_sync` (`upstream_fingerprint` sur les deux collections ; `workflow_status`, `replaced_by` et tables `workflow_history` sur `projects` ; remplissage écrit à la main : les projets déjà publiés passent à `publie`). Reste lot 5 : suppression de `linkedProjects` dans `programs_rels` / `_programs_v_rels` |
+| `apps/cms/src/migrations/` | **Fait (lot 3)** : `20260925_131616_program_temporarily_unavailable`. **Fait (lot 4)** : migration `20261002_102758_upstream_sync` (`upstream_fingerprint` sur les deux collections ; `workflow_status`, `replaced_by` et tables `workflow_history` sur `projects` ; remplissage écrit à la main : les projets déjà publiés passent à `publie`). **Fait (lot 5)** : migration `20261002_123839_program_linked_projects` (suppression de `projects_id` dans `programs_rels` / `_programs_v_rels`, lignes de l'ancienne relation retirées à la main) |
 | `package.json`, `apps/cms/project.json` | **Fait (lot 4)** : `data:sync` (sync CMS + rapprochement), `data:grist` (`grist-setup` puis `export:grist --push`), `data:daily` = les deux à la suite ; target nx `sync` pour `data:daily:dev`. `cron.json` inchangé (`pnpm data:daily`) |
 | `CLAUDE.md`, `docs/adr/0012-*.md`, `docs/adr/0003-*.md`, `docs/adr/0008-*.md` | Modifier : nouveau flux, avenant « amont → CMS → canonical », liaison `join` |
 
@@ -143,7 +143,7 @@ Constats (vérifiés sur la base de dev le 2026-09-25) :
 8. `UpstreamSync` partagé : `pnpm seed` (zones, sync, utilisateurs) et `pnpm data:sync` (sync seule). Nouveau `data:daily` ; `import:tee` et `import:projects` retirés du cron.
 
 ### Lot 5 : liaison projets ↔ dispositifs
-1. `Programs.linkedProjects` en `join` sur `projects.programs`, migration, `payload-types.ts`, import map.
+1. **Fait (2026-10-02)** : `Programs.linkedProjects` en relation virtuelle éditable sur `projects.programs` (et non en `join` : la liaison doit se modifier des deux côtés), migration, `payload-types.ts`. Import map inchangée (aucun composant custom). Tests : `program-project-links.int.spec.ts`.
 
 ### Lot 6 : documentation
 1. Avenant ADR 0012, mise à jour ADR 0003 / 0008, `CLAUDE.md`, suppression des mentions « ONE-SHOT ».
@@ -162,7 +162,7 @@ pnpm data:sync                    # CMS puis canonical à jour, rapprochement sa
 
 Contrôles attendus sur la base de dev :
 - `programs_themes` non vide, 276 dispositifs.
-- Un dispositif affiche ses projets liés (champ `join`).
+- Un dispositif affiche ses projets liés et permet de les modifier (champ virtuel sur `Projects.programs`).
 - Un second `data:sync` sans changement amont ne crée aucune version Payload (compte rendu : tout en « inchangés »).
 - Un dispositif ou un projet retiré de l'amont sans redirection passe en `annule` et sort du canonical ; avec redirection, il passe en `remplace` et reste servi par AGIR avec ce statut.
 - Un document modifié dans le back-office est réécrit depuis l'amont à la sync suivante.
