@@ -16,6 +16,10 @@ import { GristTableManager } from '../src/grist/GristTableManager'
 async function main(): Promise<void> {
   const config = GristConfig.fromEnv()
   if (!config) {
+    if (GristConfig.skipsWhenUnconfigured()) {
+      process.stdout.write('Grist non configuré (GRIST_DOC_ID/GRIST_TABLE_ID/GRIST_API_KEY) : préparation de la table ignorée.\n')
+      return
+    }
     process.stderr.write('Grist non configuré (GRIST_DOC_ID/GRIST_TABLE_ID/GRIST_API_KEY).\n')
     process.exit(1)
   }
