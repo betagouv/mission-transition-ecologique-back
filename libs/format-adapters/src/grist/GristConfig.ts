@@ -22,6 +22,15 @@ export class GristConfig {
     return new GristConfig(apiUrl, docId, tableId, apiKey)
   }
 
+  /**
+   * Whether a missing Grist configuration should skip the step instead of failing:
+   * `--if-configured` (CLI) or `GRIST_IF_CONFIGURED=1` (robust to nx arg forwarding).
+   * Used by the daily pipeline, so an app without Grist doesn't fail every night.
+   */
+  static skipsWhenUnconfigured(argv: readonly string[] = process.argv, env: NodeJS.ProcessEnv = process.env): boolean {
+    return argv.includes('--if-configured') || env['GRIST_IF_CONFIGURED'] === '1'
+  }
+
   /** REST base for this document: `{baseUrl}/api/docs/{docId}`. */
   apiBase(): string {
     return `${this.apiUrl}/api/docs/${this.docId}`

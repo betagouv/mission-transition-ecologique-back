@@ -12,6 +12,13 @@ describe('GristConfig', () => {
     expect(config?.apiKey).toBe('k')
   })
 
+  it('ignore l\'étape Grist non configurée seulement sur demande explicite', () => {
+    expect(GristConfig.skipsWhenUnconfigured([], {})).toBe(false)
+    expect(GristConfig.skipsWhenUnconfigured(['--if-configured'], {})).toBe(true)
+    expect(GristConfig.skipsWhenUnconfigured([], { GRIST_IF_CONFIGURED: '1' })).toBe(true)
+    expect(GristConfig.skipsWhenUnconfigured([], { GRIST_IF_CONFIGURED: '0' })).toBe(false)
+  })
+
   it('respecte une instance custom et supprime le slash final', () => {
     const config = GristConfig.fromEnv({
       GRIST_BASE_URL: 'https://grist.example.org/',

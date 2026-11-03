@@ -28,9 +28,9 @@
     "import:projects": "nx run @tee-backoffice/format-adapters:import:projects",
     "data:sync": "cd apps/cms && tsx src/scripts/sync/run.ts",
     "data:grist": "tsx libs/format-adapters/scripts/grist-setup.ts && tsx libs/format-adapters/scripts/export-grist.ts --push",
-    "data:daily": "pnpm data:sync; sync=$?; pnpm data:grist; grist=$?; [ $sync -eq 0 ] && [ $grist -eq 0 ]",
+    "data:daily": "pnpm data:sync; sync=$?; GRIST_IF_CONFIGURED=1 pnpm data:grist; grist=$?; [ $sync -eq 0 ] && [ $grist -eq 0 ]",
     "data:sync:dev": "nx run @tee-backoffice/cms:sync",
-    "data:daily:dev": "nx run @tee-backoffice/cms:sync; sync=$?; nx run @tee-backoffice/format-adapters:setup:grist && nx run @tee-backoffice/format-adapters:export:grist --push; grist=$?; [ $sync -eq 0 ] && [ $grist -eq 0 ]",
+    "data:daily:dev": "nx run @tee-backoffice/cms:sync; sync=$?; export GRIST_IF_CONFIGURED=1; nx run @tee-backoffice/format-adapters:setup:grist && nx run @tee-backoffice/format-adapters:export:grist --push; grist=$?; [ $sync -eq 0 ] && [ $grist -eq 0 ]",
     "test": "nx run @tee-backoffice/cms:test",
     "test:unit": "nx run @tee-backoffice/cms:test:unit",
     "test:libs": "nx run-many -t test -p @tee-backoffice/canonical @tee-backoffice/canonical-store @tee-backoffice/format-adapters"
