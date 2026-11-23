@@ -15,7 +15,7 @@
    CANONICAL_DATABASE_URI=postgres://tee:tee@localhost:5432/tee
    PAYLOAD_SECRET=<une-chaine-secrete>
    ```
-3. Optionnel : `TEE_PROGRAMS_URL` / `TEE_PROJECTS_URL` / `TEE_OPERATORS_URL` pour lire une autre source que le dépôt amont, `TEE_ASSETS_BASE_URL` pour télécharger les fichiers (logos, images) ailleurs que dans le dossier public du front amont. Une variable vide retombe sur la valeur par défaut.
+3. Optionnel : `TEE_PROGRAMS_URL` / `TEE_PROJECTS_URL` / `TEE_OPERATORS_URL` / `TEE_ADEME_THEMES_URL` pour lire une autre source que le dépôt amont, `TEE_ASSETS_BASE_URL` pour télécharger les fichiers (logos, images) ailleurs que dans le dossier public du front amont. Une variable vide retombe sur la valeur par défaut.
 4. Optionnel : `S3_*` pour envoyer les médias dans le stockage objet (ADR 0012 §7) ; sans bucket, ils vont sur le disque local (`apps/cms/media/`). Piège : même avec un bucket, Payload vérifie les noms de fichiers contre ce dossier local, et des fichiers laissés par un seed ou des tests sur disque font importer les médias dans le bucket avec un suffixe `-N` (`biodiversite-des-cours-d-eau-1.webp`) : vider `apps/cms/media/` avant de seeder vers un bucket.
 
 ---

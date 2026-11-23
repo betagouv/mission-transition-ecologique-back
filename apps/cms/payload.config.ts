@@ -11,6 +11,7 @@ import { Operators } from '@/collections/Operators'
 import { OperatorGroups } from '@/collections/OperatorGroups'
 import { Programs } from '@/collections/Programs'
 import { Projects } from '@/collections/Projects'
+import { AdemeThemes } from '@/collections/AdemeThemes'
 import { GeographicAreas } from '@/collections/GeographicAreas'
 import { ReviewComments } from '@/collections/ReviewComments'
 import { agirProgramEndpoints } from '@/endpoints/agir/agirProgramEndpoints'
@@ -77,6 +78,7 @@ export default buildConfig({
     Programs,
     Projects,
     GeographicAreas,
+    AdemeThemes,
     ReviewComments,
   ],
   endpoints: [...agirProgramEndpoints, ...agirProjectEndpoints],

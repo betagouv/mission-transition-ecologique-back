@@ -146,6 +146,26 @@ describe('ProgramCanonicalMapper', () => {
     })
   })
 
+  describe('ADEME themes', () => {
+    const theme = (id: number, code: string) => ({
+      id,
+      code,
+      label: code,
+      updatedAt: TIMESTAMP,
+      createdAt: TIMESTAMP,
+    })
+
+    it('maps the populated themes to their codes', () => {
+      const data = mapAndValidate(buildProgram({ ademeThemes: [theme(1, '19'), theme(2, '19_03')] }))
+      expect(data.thematiques_ademe).toEqual(['19', '19_03'])
+    })
+
+    it('omits the field without theme, or when relations are not populated', () => {
+      expect(mapAndValidate(buildProgram({ ademeThemes: [] })).thematiques_ademe).toBeUndefined()
+      expect(mapAndValidate(buildProgram({ ademeThemes: [1, 2] })).thematiques_ademe).toBeUndefined()
+    })
+  })
+
   describe('eligibility', () => {
     it('omits the effectif when the size is "all" (no constraint)', () => {
       const data = mapAndValidate(buildProgram({ companySize: 'all' }))

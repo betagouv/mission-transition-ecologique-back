@@ -3,6 +3,7 @@ import {
   UpstreamAssetSource,
   UpstreamJsonSource,
   type RejectedTeeProject,
+  type TeeAdemeTheme,
   type TeeOperator,
   type TeeProject,
   type TeeRecord,
@@ -24,6 +25,8 @@ export class UpstreamSnapshot {
     readonly operators?: TeeOperator[],
     /** Source of the logos and project images; without it, no media is imported. */
     readonly assets?: UpstreamAssetSource,
+    /** ADEME theme referential; without it, the `ademe-themes` collection is left as it is. */
+    readonly ademeThemes?: TeeAdemeTheme[],
   ) {}
 
   /**
@@ -37,14 +40,15 @@ export class UpstreamSnapshot {
     const assets = new UpstreamAssetSource()
     process.stdout.write(`Source : ${source.describe()}\n`)
     process.stdout.write(`Fichiers : ${assets.describe()}\n`)
-    const [programs, projects, operators, redirects] = await Promise.all([
+    const [programs, projects, operators, redirects, ademeThemes] = await Promise.all([
       source.programs<TeeRecord[]>(),
       source.projects(),
       source.operators(),
       source.redirects<unknown>(),
+      source.ademeThemes(),
     ])
     if (redirects === null) process.stdout.write('Redirections : fichier amont absent, étape ignorée.\n')
-    return new UpstreamSnapshot(programs, projects, source.rejectedProjects, redirects, operators, assets)
+    return new UpstreamSnapshot(programs, projects, source.rejectedProjects, redirects, operators, assets, ademeThemes)
   }
 
   describeRejectedProjects(): string[] {

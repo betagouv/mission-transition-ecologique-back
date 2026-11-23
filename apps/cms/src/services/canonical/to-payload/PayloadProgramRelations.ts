@@ -3,12 +3,13 @@ import { SlugCanonicalId } from '@tee-backoffice/format-adapters'
 import { cogCodeOf } from '../canonicalMappings'
 import type { ProgramArea, ProgramRelations } from './ProgramRelations'
 
-/** `ProgramRelations` backed by the operators, geographic areas and programs stored in Payload. */
+/** `ProgramRelations` backed by the operators, geographic areas, ADEME themes and programs stored in Payload. */
 export class PayloadProgramRelations implements ProgramRelations {
   private constructor(
     private readonly payload: Payload,
     private readonly operatorIdByName: Map<string, number>,
     private readonly areaByCode: Map<string, ProgramArea>,
+    private readonly ademeThemeIds: Map<string, number>,
     private programIds: Map<string, number>,
   ) {}
 
@@ -26,8 +27,15 @@ export class PayloadProgramRelations implements ProgramRelations {
       const parentId = typeof parent === 'object' ? parent?.id : parent
       areaByCode.set(code, { id: area.id, name: area.name, ...(parentId != null ? { parentId } : {}) })
     }
+    const ademeThemes = await payload.find({
+      collection: 'ademe-themes',
+      limit: 0,
+      depth: 0,
+      select: { code: true },
+    })
+    const ademeThemeIds = new Map(ademeThemes.docs.map((theme) => [theme.code, theme.id]))
     const programIds = await PayloadProgramRelations.loadProgramIds(payload)
-    return new PayloadProgramRelations(payload, operatorIdByName, areaByCode, programIds)
+    return new PayloadProgramRelations(payload, operatorIdByName, areaByCode, ademeThemeIds, programIds)
   }
 
   /** Programs created since the relations were loaded become resolvable: replaced ones are imported after their target. */
@@ -41,6 +49,10 @@ export class PayloadProgramRelations implements ProgramRelations {
 
   areaByCogCode(code: string): ProgramArea | undefined {
     return this.areaByCode.get(code)
+  }
+
+  ademeThemeIdByCode(code: string): number | undefined {
+    return this.ademeThemeIds.get(code)
   }
 
   programIdByCanonicalId(canonicalId: string): number | undefined {
