@@ -199,6 +199,43 @@ describe('UpstreamJsonSource', () => {
     })
   })
 
+  describe('thématiques ADEME', () => {
+    const referential = [
+      { code: '19', parentCode: null, label: 'Société et politiques publiques' },
+      { code: '19_03', parentCode: '19', label: 'Eau' },
+    ]
+
+    it('lit ademe_themes.json dans le dossier des données amont', async () => {
+      const requested: string[] = []
+      const source = new UpstreamJsonSource({
+        fetchImpl: (input) => {
+          requested.push(String(input))
+          return ok(referential)
+        },
+      })
+
+      expect(await source.ademeThemes()).toEqual(referential)
+      expect(requested).toEqual([
+        'https://raw.githubusercontent.com/betagouv/mission-transition-ecologique/main/libs/data/static/ademe_themes.json',
+      ])
+      expect(source.describe()).toContain('ademe_themes.json')
+    })
+
+    it('refuse un code mal formé', async () => {
+      const source = new UpstreamJsonSource({ fetchImpl: () => ok([{ code: '19-03', parentCode: null, label: 'Eau' }]) })
+      await expect(source.ademeThemes()).rejects.toMatchObject({ name: 'ZodError' })
+    })
+
+    it('bascule sur la copie locale sur une erreur serveur', async () => {
+      const source = new UpstreamJsonSource({
+        fetchImpl: () => Promise.resolve(new Response('', { status: 503 })),
+        fallback: snapshotWith({ ademe_themes: referential }),
+        logger: new RecordingLogger(),
+      })
+      expect(await source.ademeThemes()).toEqual(referential)
+    })
+  })
+
   describe('projets', () => {
     it('garde les clés inconnues et un highlightPriority null', async () => {
       const upstream = { ...project, highlightPriority: null, faqs: [{ id: 146, question: 'Q ?', answer: 'R.' }], futur: 1 }

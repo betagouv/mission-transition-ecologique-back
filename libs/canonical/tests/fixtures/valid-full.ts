@@ -73,6 +73,7 @@ export const validFull: unknown = {
     autres_criteres: { texte: ['Être à jour de ses cotisations sociales'] },
   },
   themes: ['energie', 'batiment'],
+  thematiques_ademe: ['08', '19_03'],
 
   // 5. Variants
   variantes: [

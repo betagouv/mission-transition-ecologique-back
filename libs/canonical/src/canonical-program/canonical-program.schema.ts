@@ -7,6 +7,7 @@ import { themeSchema } from './enums'
 import { varianteSchema } from './variants/variante.schema'
 import { additionalDataSchema } from './additional-data/additional-data.schema'
 import { refineKebabCaseSlug } from '../shared/primitives'
+import { ademeThemeCodeSchema } from '../shared/schema/ademe-theme'
 
 /**
  * Root zod schema for the canonical (pivot) program — the single source of truth
@@ -21,6 +22,8 @@ const baseCanonicalProgramSchema = identiteSchema
     z.object({
       eligibilite: eligibiliteSchema.optional(),
       themes: z.array(themeSchema).min(1).optional(),
+      // ADEME referential codes, kept alongside the TEE themes (exposed to AGIR as `themes`).
+      thematiques_ademe: z.array(ademeThemeCodeSchema).min(1).optional(),
       variantes: z.array(varianteSchema).optional(),
       autres_donnees: additionalDataSchema.optional(),
     }),

@@ -66,6 +66,7 @@ const fullInput = {
     autres_criteres: { texte: ['Être à jour de ses cotisations sociales'] },
   },
   themes: ['energie', 'batiment'],
+  thematiques_ademe: ['08', '19_03'],
   variantes: [
     {
       conditions: { effectif: { min: 0, max: 49 }, regions: ['REG-53'] },

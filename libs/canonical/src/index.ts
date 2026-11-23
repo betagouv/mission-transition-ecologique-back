@@ -8,6 +8,7 @@ export * from './shared/primitives'
 export * from './shared/cog'
 export * from './shared/schema/cog'
 export * from './shared/schema/operator'
+export * from './shared/schema/ademe-theme'
 
 // Enums (closed vocabularies)
 export * from './canonical-program/enums'

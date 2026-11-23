@@ -22,6 +22,18 @@ describe('TeeImporter', () => {
     expect(input.operateurs).toEqual({ contact: { nom: 'ADEME' } })
   })
 
+  describe('thématiques ADEME', () => {
+    it('reprend les codes ademeThemes tels que publiés, sans doublon', () => {
+      const input = importer.import({ ...base, ademeThemes: ['19', '19_03', '08', '19'] })
+      expect(input.thematiques_ademe).toEqual(['19', '19_03', '08'])
+    })
+
+    it('n’émet rien sans ademeThemes, ni pour une liste vide', () => {
+      expect(importer.import(base)).not.toHaveProperty('thematiques_ademe')
+      expect(importer.import({ ...base, ademeThemes: [] })).not.toHaveProperty('thematiques_ademe')
+    })
+  })
+
   describe('contact question', () => {
     it('mailto: → email', () => {
       expect(importer.import({ ...base, 'contact question': 'mailto:a@b.fr' }).contact_question).toEqual({

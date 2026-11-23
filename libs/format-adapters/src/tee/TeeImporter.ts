@@ -127,6 +127,9 @@ export class TeeImporter {
     const themes = this.themes(record)
     if (themes) input.themes = themes
 
+    const ademeThemes = this.ademeThemes(record)
+    if (ademeThemes) input.thematiques_ademe = ademeThemes
+
     const variantes = this.variantes(record)
     if (variantes) input.variantes = variantes
 
@@ -374,6 +377,12 @@ export class TeeImporter {
   private url(value: unknown): string | undefined {
     const url = this.str(value)?.trim()
     return url?.replace(/^<(.+)>$/, '$1') || undefined
+  }
+
+  /** Codes kept as published: the CMS checks them against the referential. */
+  private ademeThemes(record: TeeRecord): CanonicalProgramInput['thematiques_ademe'] {
+    const codes = [...new Set(this.strArray(record['ademeThemes']))]
+    return codes.length > 0 ? codes : undefined
   }
 
   private strArray(value: unknown): string[] {

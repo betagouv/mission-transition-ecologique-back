@@ -19,6 +19,7 @@ async function main(): Promise<void> {
     projects: () => source.raw('projects'),
     redirects: () => source.redirects<unknown>(),
     operators: () => source.operators(),
+    ademe_themes: () => source.ademeThemes(),
   }
 
   for (const file of UPSTREAM_FILES) {

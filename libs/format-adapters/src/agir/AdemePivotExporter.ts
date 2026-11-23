@@ -1,7 +1,6 @@
 import type { CanonicalProgram } from '@tee-backoffice/canonical'
 import { AgirEtatMapper } from './AgirEtatMapper'
 import { AgirSourceMapper } from './AgirSourceMapper'
-import { AgirThemeMapper } from './AgirThemeMapper'
 import type { RemplaceParResolver } from './RemplaceParResolver'
 import { ademePivotSchema } from './ademe-pivot.schema'
 import type { AdemePivot } from './ademe-pivot.types'
@@ -9,7 +8,7 @@ import type { AdemePivot } from './ademe-pivot.types'
 /**
  * Projects a canonical program to the ADEME pivot (proposition 2): the canonical
  * wire with the ADEME deltas (id = slug, single AGIR `statut`, lowercased
- * `source`, wire `themes`, `ademe_id_dsp` surfaced from
+ * `source`, `themes` = ADEME referential codes, `ademe_id_dsp` surfaced from
  * `autres_donnees`, `remplace_par` resolved to a slug). Built field by field as
  * an explicit whitelist, then re-parsed by `ademePivotSchema` (`.strict()`) so no
  * internal field can leak. The caller must have filtered exportable programs.
@@ -52,7 +51,8 @@ export class AdemePivotExporter {
     if (d.url_source !== undefined) out.url_source = d.url_source
     if (d.etapes_activation !== undefined) out.etapes_activation = d.etapes_activation
     if (d.eligibilite !== undefined) out.eligibilite = d.eligibilite
-    if (d.themes !== undefined) out.themes = AgirThemeMapper.toAgir(d.themes)
+    // AGIR reads the ADEME referential codes, not the TEE themes.
+    if (d.thematiques_ademe !== undefined) out.themes = [...d.thematiques_ademe]
     if (d.variantes !== undefined) out.variantes = d.variantes
 
     return ademePivotSchema.parse(out)
