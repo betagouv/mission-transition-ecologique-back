@@ -1,9 +1,14 @@
 import { GristConfig } from './GristConfig'
 
 describe('GristConfig', () => {
-  it('retourne null si une valeur obligatoire manque', () => {
-    expect(GristConfig.fromEnv({ GRIST_DOC_ID: 'doc' })).toBeNull()
+  it('retourne null sans clé API : Grist désactivé', () => {
+    expect(GristConfig.fromEnv({ GRIST_DOC_ID: 'doc', GRIST_TABLE_ID: 't' })).toBeNull()
     expect(GristConfig.fromEnv({})).toBeNull()
+  })
+
+  it('échoue si la clé API est là mais que le document ou la table manque', () => {
+    expect(() => GristConfig.fromEnv({ GRIST_API_KEY: 'k', GRIST_TABLE_ID: 't' })).toThrow(/GRIST_DOC_ID/)
+    expect(() => GristConfig.fromEnv({ GRIST_API_KEY: 'k', GRIST_DOC_ID: 'd' })).toThrow(/GRIST_TABLE_ID/)
   })
 
   it('construit l\'URL des records, instance par défaut', () => {

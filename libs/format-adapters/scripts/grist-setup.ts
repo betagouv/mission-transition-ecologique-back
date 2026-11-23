@@ -8,16 +8,16 @@
 //   nx run @tee-backoffice/format-adapters:setup:grist
 //   nx run @tee-backoffice/format-adapters:setup:grist -- --prune
 //
-// Requires GRIST_DOC_ID, GRIST_TABLE_ID, GRIST_API_KEY (and optionally
-// GRIST_BASE_URL) in the environment / .env.
+// Skipped when GRIST_API_KEY is absent (Grist disabled); otherwise requires
+// GRIST_DOC_ID and GRIST_TABLE_ID (and optionally GRIST_BASE_URL) in the environment / .env.
 import { GristConfig } from '../src/grist/GristConfig'
 import { GristTableManager } from '../src/grist/GristTableManager'
 
 async function main(): Promise<void> {
   const config = GristConfig.fromEnv()
   if (!config) {
-    process.stderr.write('Grist non configuré (GRIST_DOC_ID/GRIST_TABLE_ID/GRIST_API_KEY).\n')
-    process.exit(1)
+    process.stdout.write('Grist désactivé (GRIST_API_KEY absente) : préparation de la table ignorée.\n')
+    return
   }
 
   const manager = new GristTableManager(config)

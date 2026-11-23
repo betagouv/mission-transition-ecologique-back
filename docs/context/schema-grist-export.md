@@ -136,9 +136,13 @@ clé `slug`. Variables d'environnement (jamais commitées, lues depuis `.env`) :
 | Variable | Rôle | Défaut |
 |---|---|---|
 | `GRIST_BASE_URL` | instance Grist | `https://grist.numerique.gouv.fr` |
-| `GRIST_DOC_ID` | document cible | — (requis) |
-| `GRIST_TABLE_ID` | table cible | — (requis) |
-| `GRIST_API_KEY` | clé API | — (requis) |
+| `GRIST_API_KEY` | clé API ; **active Grist** | absente = Grist désactivé |
+| `GRIST_DOC_ID` | document cible | — (requis si clé API) |
+| `GRIST_TABLE_ID` | table cible | — (requis si clé API) |
+
+Sans `GRIST_API_KEY`, `setup:grist` et `export:grist --push` ignorent leur étape
+sans erreur (le pipeline quotidien passe ainsi sur une app sans Grist) ; avec la
+clé, un `GRIST_DOC_ID` ou `GRIST_TABLE_ID` manquant fait échouer le script.
 
 La table Grist porte les colonnes du schéma **entreprise** (l'`id` Etalab sous
 `rnasp_id`) + `slug` + `technical`.

@@ -6,8 +6,8 @@
 //
 // Run from the repo root: `nx run @tee-backoffice/format-adapters:export:grist`.
 // By default it is a DRY RUN (build + snapshot + recap, no write). Add `--push`
-// to upsert into Grist; that also needs GRIST_DOC_ID, GRIST_TABLE_ID,
-// GRIST_API_KEY (and optionally GRIST_BASE_URL) to be set.
+// to upsert into Grist; without GRIST_API_KEY the push is skipped (Grist disabled),
+// with it GRIST_DOC_ID and GRIST_TABLE_ID are required (GRIST_BASE_URL optional).
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -45,8 +45,8 @@ async function pushToGrist(records: Parameters<GristClient['upsertMany']>[0]): P
   }
   const config = GristConfig.fromEnv()
   if (!config) {
-    process.stderr.write('\n--push demandé mais Grist non configuré (GRIST_DOC_ID/GRIST_TABLE_ID/GRIST_API_KEY).\n')
-    process.exit(1)
+    process.stdout.write('\nGrist désactivé (GRIST_API_KEY absente) : envoi vers Grist ignoré.\n')
+    return
   }
   await new GristClient(config).upsertMany(records)
   process.stdout.write(`\n✓ ${records.length.toString()} dispositifs poussés vers Grist (${config.recordsUrl()})\n`)
