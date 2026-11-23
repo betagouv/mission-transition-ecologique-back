@@ -70,7 +70,7 @@ describe('AgirDetailExporter', () => {
         descriptionLongue: 'Détail complet du dispositif et des conditions.',
         partenaires: ['Région Bretagne'],
         montantAide: 'Jusqu’à 70 % des dépenses',
-        thematique: ['energie', 'batiment'],
+        thematique: ['08', '19_03'],
         mailContact: 'contact@ademe.fr',
       })
     })

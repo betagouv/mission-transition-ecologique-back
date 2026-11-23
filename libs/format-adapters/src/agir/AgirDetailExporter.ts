@@ -117,7 +117,8 @@ export class AgirDetailExporter {
     if (d.description_longue !== undefined) out.descriptionLongue = d.description_longue
     if (d.operateurs.autres?.length) out.partenaires = d.operateurs.autres.map((o) => o.nom)
     if (d.montant) out.montantAide = d.montant.valeur
-    if (d.themes?.length) out.thematique = [...d.themes]
+    // AGIR reads the ADEME referential codes, not the TEE themes.
+    if (d.thematiques_ademe?.length) out.thematique = [...d.thematiques_ademe]
     // GAP: R2DA only has mailContact, so only the email channel survives. The url /
     // ADEME / conseiller_entreprise channels are dropped — propose a contact field
     // to AGIR (see docs/context/agir-export-format.md §Lacunes).

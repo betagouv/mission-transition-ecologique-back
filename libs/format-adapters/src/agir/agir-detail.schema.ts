@@ -1,3 +1,4 @@
+import { ademeThemeCodeSchema } from '@tee-backoffice/canonical'
 import { z } from 'zod'
 
 /**
@@ -55,7 +56,7 @@ const descriptionSchema = z
     descriptionLongue: z.string().optional(),
     partenaires: z.array(z.string()).min(1).optional(),
     montantAide: z.string().optional(),
-    thematique: z.array(z.string()).min(1).optional(),
+    thematique: z.array(ademeThemeCodeSchema).min(1).optional(),
     mailContact: z.string().optional(),
   })
   .strict()

@@ -104,10 +104,12 @@ Centralisé dans `AgirVocabulary` (un seul fichier pour ajuster). Valeurs
   ADEME** (`thematiques_ademe` du canonical, par exemple `["19", "19_03"]`),
   repris tels que l'amont les publie (`ademeThemes` de `programs.json`), sans
   libellé ni ajout du parent ; absent si le dispositif n'en a pas. Les thèmes
-  TEE ne sont plus exposés dans le pivot (décision du 2026-11-23). Le référentiel
-  (code, libellé, parent) est `ademe_themes.json` du dépôt amont. Le détail R2DA
-  (`thematique`) et le pivot des projets gardent le vocabulaire wire à 7 valeurs
-  (`AgirThemeMapper`, famille environnement repliée sur `environnement`).
+  TEE ne sont plus exposés à AGIR (décision du 2026-11-23). Le référentiel
+  (code, libellé, parent) est `ademe_themes.json` du dépôt amont.
+- `thematique` (détail R2DA) : mêmes codes ADEME que `themes` du pivot, à la
+  place des thèmes TEE ; absent sans thématique ADEME. Le pivot des projets
+  garde le vocabulaire wire à 7 valeurs (`AgirThemeMapper`, famille
+  environnement repliée sur `environnement`).
 - `contact_question` (pivot) : aucun delta, la forme canonical est reprise telle
   quelle (`conseiller_entreprise`/`email`/`url`).
 - `typeDispositif` (détail) : libellés d'affichage des `types_aides` joints par
@@ -153,7 +155,7 @@ parasites). Garde-fou de sortie `agir-detail.schema.ts` (`.strict()`).
 | `description.descriptionCourte` / `.descriptionLongue` | `description` / `description_longue` |
 | `description.partenaires` | `operateurs.autres[].nom` |
 | `description.montantAide` | `montant.valeur` |
-| `description.thematique` | `themes` (français) |
+| `description.thematique` | `thematiques_ademe` (codes ADEME) |
 | `description.mailContact` | `contact_question.valeur` si `type === 'email'` |
 | `etapeDepot[]` | `etapes_activation[]` → `{ ordreEtape: i+1, libelleEtape: description, lienEtape: 1er lien url }` |
 
@@ -228,8 +230,8 @@ Légende : ✅ exporté fidèlement · ⚠️ exporté mais dégradé/partiel ·
 | `secteur_activite.exclusions` | ❌ | ✅ | perdues en P1 |
 | `secteur_geographique.inclusions` | ✅ `listeRegion` | ✅ | codes COG **bruts** : `PAYS-99100` pour un dispositif national, `REG-`/`OM-`/`DEP-` sinon (noms non utilisés) |
 | `secteur_geographique.exclusions` | ❌ | ✅ | perdues en P1 |
-| `themes` | ✅ `thematique` (FR) | ❌ | thèmes TEE : détail seulement |
-| `thematiques_ademe` | ❌ | ✅ `themes` (codes) | référentiel ADEME, libellés dans `ademe_themes.json` amont |
+| `themes` | ❌ | ❌ | thèmes TEE, plus transmis à AGIR |
+| `thematiques_ademe` | ✅ `thematique` (codes) | ✅ `themes` (codes) | référentiel ADEME, libellés dans `ademe_themes.json` amont |
 | `variantes` | ❌ | ✅ | **lacune P1** |
 | `statut_dispositif = remplace` | ⚠️ `etatDispositif` (état seul) | ✅ `statut` + `remplace_par` (slug) | cible de redirection portée par le pivot |
 | `autres_donnees.ademe_id_dsp` | ❌ (idDispositif = slug) | ✅ (racine) | `idDispositif`/`idFonctionnel` = `slug` |

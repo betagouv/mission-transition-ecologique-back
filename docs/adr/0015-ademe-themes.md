@@ -34,13 +34,13 @@ Le canonical des dispositifs gagne `thematiques_ademe` : liste facultative (au m
 
 Option écartée : un `select` statique généré depuis le référentiel. Plus simple, mais une nouvelle thématique saisie dans Baserow aurait demandé une release, et le référentiel amont n'aurait servi qu'à valider les codes.
 
-### 3. AGIR : `themes` du pivot porte les codes ADEME
+### 3. AGIR : les codes ADEME remplacent les thèmes TEE
 
-Dans le pivot ADEME (`GET /api/agir/programs/:slug/pivot`), `themes` vaut désormais `thematiques_ademe` (codes seuls, par exemple `["19", "19_03"]`) au lieu des thèmes TEE traduits par `AgirThemeMapper`. Absent si le dispositif n'a pas de thématique ADEME. Le détail R2DA (`thematique`), l'index et le pivot des projets ne changent pas.
+Dans le pivot ADEME (`GET /api/agir/programs/:slug/pivot`), `themes` vaut désormais `thematiques_ademe` (codes seuls, par exemple `["19", "19_03"]`) au lieu des thèmes TEE traduits par `AgirThemeMapper`. Le détail R2DA (`GET /api/agir/programs/:slug/detail`) fait de même : `description.thematique` porte les mêmes codes au lieu des thèmes TEE. Les deux champs sont absents si le dispositif n'a pas de thématique ADEME. L'index et le pivot des projets ne changent pas.
 
 ## Conséquences
 
-- **Continuité** : tant que `programs.json` ne porte pas `ademeThemes`, les dispositifs restent valides et le pivot AGIR n'expose **aucun** `themes`. Il réapparaît, en codes ADEME, à la première sync qui suit la PR automatique amont.
+- **Continuité** : tant que `programs.json` ne porte pas `ademeThemes`, les dispositifs restent valides, et ni le pivot (`themes`) ni le détail (`thematique`) n'exposent de thèmes. Ils réapparaissent, en codes ADEME, à la première sync qui suit la PR automatique amont.
 - La première sync après déploiement réécrit tous les dispositifs une fois : l'empreinte amont (`upstreamFingerprint`) couvre le nouveau champ.
 - Migration `20261123_140528_ademe_themes` : table `ademe_themes` et colonnes de relation sur `programs_rels` et `_programs_v_rels`.
 - AGIR résout les libellés depuis `ademe_themes.json`. S'il les veut dans le pivot, il faudra les ajouter depuis la collection `ademe-themes`, le canonical n'en portant pas.
