@@ -188,6 +188,17 @@ Deltas vs canonical :
    environnement repliée sur `environnement`).
 9. `eligibilite`, `variantes`, `operateurs`, `etapes_activation`, contenu
    éditorial : forme canonical inchangée.
+10. Exception au point 9, `eligibilite.secteur_geographique.structure` : un
+    dispositif national (`inclusions: ["PAYS-99100"]` dans le canonical) est
+    transmis avec **`inclusions: []`**. Règle de gestion AGIR (demande du
+    2026-11-24) : **liste `inclusions` vide = France entière**. `structure` garde
+    toujours la forme objet `{ inclusions, exclusions? }`. Seule la liste valant
+    exactement `["PAYS-99100"]` est vidée (`AgirSecteurGeographiqueMapper`) : les
+    `exclusions` (par exemple `["REG-94"]`, France hors Corse) et le `texte` sont
+    gardés, une liste régionale, départementale ou mêlant `PAYS-99100` à d'autres
+    codes reste inchangée. `PAYS-99100` reste la valeur canonique du national
+    (CMS, store, Grist, détail R2DA) : la conversion n'a lieu qu'à la sortie du
+    pivot.
 
 ## Couverture du canonical par les deux formats
 
@@ -221,7 +232,7 @@ Légende : ✅ exporté fidèlement · ⚠️ exporté mais dégradé/partiel ·
 | `eligibilite.categorie_legale` | ⚠️ texte seul | ✅ | exclusion micro-entrepreneur non structurée en P1 |
 | `secteur_activite.inclusions` | ✅ `listeSecteurActivite` | ✅ | codes NAF **bruts** (pas de libellés) |
 | `secteur_activite.exclusions` | ❌ | ✅ | perdues en P1 |
-| `secteur_geographique.inclusions` | ✅ `listeRegion` | ✅ | codes COG **bruts** : `PAYS-99100` pour un dispositif national, `REG-`/`OM-`/`DEP-` sinon (noms non utilisés) |
+| `secteur_geographique.inclusions` | ✅ `listeRegion` | ✅ | codes COG **bruts** : `PAYS-99100` pour un dispositif national (liste **vide** dans le pivot, = France entière pour AGIR), `REG-`/`OM-`/`DEP-` sinon (noms non utilisés) |
 | `secteur_geographique.exclusions` | ❌ | ✅ | perdues en P1 |
 | `themes` | ✅ `thematique` (FR) | ✅ (FR) | taxonomie non mappée vers une réf. AGIR/ADEME |
 | `variantes` | ❌ | ✅ | **lacune P1** |
