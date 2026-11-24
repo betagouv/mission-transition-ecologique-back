@@ -16,6 +16,7 @@ import { UpstreamSnapshot } from '@/scripts/sync/UpstreamSnapshot'
 import { UpstreamSync, type UpstreamSyncReport } from '@/scripts/sync/UpstreamSync'
 import { getCanonicalProjectRepository } from '@/services/canonical/canonicalProjectRepository'
 import { getCanonicalProgramRepository } from '@/services/canonical/canonicalRepository'
+import { ProgramExpiry } from '@/services/upstream-sync/ProgramExpiry'
 import { UpstreamRemovalGuard } from '@/services/upstream-sync/UpstreamRemovalGuard'
 import { SystemWorkflowContext } from '@/services/workflow/SystemWorkflowContext'
 
@@ -72,7 +73,13 @@ const redirects = {
 
 let payload: Payload
 
-const sync = (snapshot: Partial<{ programs: TeeRecord[]; projects: TeeProject[]; redirects: unknown }> = {}) =>
+// A day before every fixture end date: a program only expires where a test says so.
+const BEFORE_END_DATES = new ProgramExpiry('2026-01-01')
+
+const sync = (
+  snapshot: Partial<{ programs: TeeRecord[]; projects: TeeProject[]; redirects: unknown }> = {},
+  expiry: ProgramExpiry = BEFORE_END_DATES,
+) =>
   new UpstreamSync(
     payload,
     new UpstreamSnapshot(
@@ -82,7 +89,7 @@ const sync = (snapshot: Partial<{ programs: TeeRecord[]; projects: TeeProject[];
       'redirects' in snapshot ? snapshot.redirects : redirects,
     ),
     // The reconciliation looks at the whole database: it is tested on its own below.
-    { scope, reconcile: false },
+    { scope, reconcile: false, expiry },
   ).run()
 
 /** Latest version: where an archived, replaced or cancelled document says so. */
@@ -568,5 +575,35 @@ describe('CanonicalReconciler', () => {
     expect(report.projects.removed.map((key) => key.slug)).toContain(ORPHAN)
     expect(await storedProject(ORPHAN)).toBeUndefined()
     expect(await storedProject(PROJECT_B)).toMatchObject({ slug: PROJECT_B })
+  })
+})
+
+describe('UpstreamSync, a program past its end date', () => {
+  const PROGRAM_EXPIRED = 'sync-prog-expire'
+  // `baisse-les-watts` ends on 01/05/2026.
+  const withExpired = { programs: [...programs, program('baisse-les-watts', PROGRAM_EXPIRED)] }
+
+  beforeAll(async () => {
+    payload = await getPayload({ config: await config })
+    await payload.delete({ collection: 'programs', where: { slug: { equals: PROGRAM_EXPIRED } } })
+  })
+
+  it('archives it, as a draft version, and keeps it in the canonical with its end date', async () => {
+    const report = await sync(withExpired, new ProgramExpiry('2026-06-01'))
+
+    expect(report.errors).toBe(0)
+    expect(await latestProgram(PROGRAM_EXPIRED)).toMatchObject({ workflowStatus: 'archive', _status: 'draft' })
+    expect(await storedProgram(PROGRAM_EXPIRED)).toMatchObject({
+      statut_dispositif: 'archive',
+      statut_edition: 'pret_prod',
+      date_cloture: '2026-05-01',
+    })
+  })
+
+  it('publishes it again once upstream extends it', async () => {
+    await sync(withExpired)
+
+    expect(await latestProgram(PROGRAM_EXPIRED)).toMatchObject({ workflowStatus: 'publie', _status: 'published' })
+    expect(await storedProgram(PROGRAM_EXPIRED)).toMatchObject({ statut_dispositif: 'valide' })
   })
 })

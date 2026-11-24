@@ -10,6 +10,7 @@ import { GeographicAreasSeed } from '@/scripts/seed/geographic-areas'
 import { DEPARTEMENTS, REGIONS } from '@/scripts/seed/geographic-areas/fixtures'
 import { SlugCanonicalId, TeeProjectImporter, teeProjectsSchema } from '@tee-backoffice/format-adapters'
 import { ProgramsSync } from '@/scripts/sync/programs/ProgramsSync'
+import { ProgramExpiry } from '@/services/upstream-sync/ProgramExpiry'
 import { ProjectsSync } from '@/scripts/sync/projects/ProjectsSync'
 import { ProjectImporter, type ImportResult as ProjectsImportResult } from '@/scripts/sync/projects/ProjectImporter'
 import { getCanonicalProjectRepository } from '@/services/canonical/canonicalProjectRepository'
@@ -131,7 +132,10 @@ describe('ProgramsSync', () => {
     const [source] = JSON.parse(readFileSync(programsFixture, 'utf-8')) as Record<string, unknown>[]
     const record = { ...source, id: slug, 'contact question': 'mailto:pas un email' }
 
-    const seed = await new ProgramsSync(payload, [record as never]).run()
+    // The fixture has ended: an archived program is saved as a draft, without validation.
+    const seed = await new ProgramsSync(payload, [record as never], undefined, {
+      expiry: new ProgramExpiry('2000-01-01'),
+    }).run()
 
     expect(seed.errors).toBe(0)
     expect([...seed.warnings.keys()].some((warning) => warning.includes(slug))).toBe(true)

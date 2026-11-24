@@ -13,6 +13,7 @@ import {
 import { PayloadMarkdownToRichText } from '@/services/canonical/rich-text/PayloadMarkdownToRichText'
 import { CanonicalToPayloadMapper } from '@/services/canonical/to-payload/CanonicalToPayloadMapper'
 import { PayloadProgramRelations } from '@/services/canonical/to-payload/PayloadProgramRelations'
+import type { ProgramExpiry } from '@/services/upstream-sync/ProgramExpiry'
 import type { UpstreamMediaImporter } from '../media/UpstreamMediaImporter'
 import { OperatorGroupImporter } from './OperatorGroupImporter'
 import { OperatorImporter } from './OperatorImporter'
@@ -32,6 +33,8 @@ export interface ProgramsSyncOptions {
   redirects?: ProgramRedirects
   /** Canonical ids the store holds (see `ProgramImporter`). */
   storedCanonicalIds?: ReadonlySet<string>
+  /** Decides which programs are over; today by default (tests pin the day). */
+  expiry?: ProgramExpiry
 }
 
 export interface ProgramsSyncResult extends ImportResult {
@@ -90,7 +93,11 @@ export class ProgramsSync {
     const operatorIdByName = await new OperatorImporter(this.payload).import(programs)
     await this.importOperatorProfiles()
     const relations = await PayloadProgramRelations.fromPayload(this.payload, operatorIdByName)
-    const mapper = new CanonicalToPayloadMapper(await PayloadMarkdownToRichText.create(this.payload.config), relations)
+    const mapper = new CanonicalToPayloadMapper(
+      await PayloadMarkdownToRichText.create(this.payload.config),
+      relations,
+      this.options.expiry,
+    )
     const programImporter = new ProgramImporter(this.payload, mapper, this.options.storedCanonicalIds)
 
     process.stdout.write(`Operators ready. Importing ${programs.length.toString()} programs...\n`)

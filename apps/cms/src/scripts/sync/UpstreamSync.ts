@@ -3,6 +3,7 @@ import { ProgramRedirects, ProjectRedirects } from '@tee-backoffice/format-adapt
 import { getCanonicalProjectRepository } from '@/services/canonical/canonicalProjectRepository'
 import { getCanonicalProgramRepository } from '@/services/canonical/canonicalRepository'
 import { UpstreamRemovalGuard } from '@/services/upstream-sync/UpstreamRemovalGuard'
+import type { ProgramExpiry } from '@/services/upstream-sync/ProgramExpiry'
 import { UpstreamMediaImporter } from './media/UpstreamMediaImporter'
 import { ProgramsSync } from './programs/ProgramsSync'
 import { ProjectsSync } from './projects/ProjectsSync'
@@ -18,6 +19,8 @@ export interface UpstreamSyncOptions {
   scope?: { programs?: Where; projects?: Where }
   /** False skips the final CMS ↔ canonical check (same reason). */
   reconcile?: boolean
+  /** Decides which programs are over; today by default (tests pin the day). */
+  expiry?: ProgramExpiry
 }
 
 export interface UpstreamSyncReport {
@@ -50,7 +53,11 @@ export class UpstreamSync {
       payload,
       snapshot.programs,
       snapshot.operators && media ? { operators: snapshot.operators, media } : undefined,
-      { redirects: new ProgramRedirects(snapshot.redirects), storedCanonicalIds: stored.programs },
+      {
+        redirects: new ProgramRedirects(snapshot.redirects),
+        storedCanonicalIds: stored.programs,
+        expiry: this.options.expiry,
+      },
     ).run()
     const projects = await new ProjectsSync(payload, snapshot.projects, media, {
       redirects: new ProjectRedirects(snapshot.redirects),

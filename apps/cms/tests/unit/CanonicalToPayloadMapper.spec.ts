@@ -3,6 +3,7 @@ import type { CanonicalProgramInput } from '@tee-backoffice/canonical'
 import { CanonicalToPayloadMapper } from '@/services/canonical/to-payload/CanonicalToPayloadMapper'
 import type { ProgramRelations } from '@/services/canonical/to-payload/ProgramRelations'
 import type { MarkdownToRichText } from '@/services/canonical/rich-text/MarkdownToRichText'
+import { ProgramExpiry } from '@/services/upstream-sync/ProgramExpiry'
 import { richText } from './support/canonicalProgramFixtures'
 
 const REPLACEMENT = 'r1b2c3d4e5f6g7h8i9j0klmn'
@@ -314,5 +315,42 @@ describe('CanonicalToPayloadMapper', () => {
     expect(() => map({ statut_dispositif: 'remplace', remplace_par: 'x1b2c3d4e5f6g7h8i9j0klmn' })).toThrow(
       'dispositif remplaçant introuvable dans le CMS',
     )
+  })
+
+  describe('end date', () => {
+    const mapOn = (today: string, overrides: Partial<CanonicalProgramInput>) =>
+      new CanonicalToPayloadMapper(new StubMarkdownToRichText(), new StubRelations(), new ProgramExpiry(today)).map({
+        ...base,
+        ...overrides,
+      })
+
+    it('archives a program whose end date is past, as a draft version', () => {
+      const { data } = mapOn('2026-11-24', { date_cloture: '2024-12-31' })
+      expect(data).toMatchObject({ workflowStatus: 'archive', _status: 'draft', validityEnd: '2024-12-31' })
+    })
+
+    it('keeps a program published up to its last valid day', () => {
+      expect(mapOn('2026-11-24', { date_cloture: '2026-11-24' }).data).toMatchObject({
+        workflowStatus: 'publie',
+        _status: 'published',
+      })
+      expect(mapOn('2026-11-24', { date_cloture: '2027-01-01' }).data.workflowStatus).toBe('publie')
+    })
+
+    it('leaves an expired program with invalid links in creation', () => {
+      expect(mapOn('2026-11-24', { date_cloture: '2025-06-30', url_source: undefined }).data).toMatchObject({
+        workflowStatus: 'en-creation',
+        _status: 'draft',
+      })
+    })
+
+    it('keeps a redirected program replaced, whatever its end date', () => {
+      const { data } = mapOn('2026-11-24', {
+        date_cloture: '2024-12-31',
+        statut_dispositif: 'remplace',
+        remplace_par: REPLACEMENT,
+      })
+      expect(data.workflowStatus).toBe('remplace')
+    })
   })
 })
