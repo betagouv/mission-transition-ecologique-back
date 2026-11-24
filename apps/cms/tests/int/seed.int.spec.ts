@@ -127,19 +127,27 @@ describe('ProgramsSync', () => {
     expect(program?.workflowStatus).toBe('en-creation')
   })
 
-  it('validates a published program on create, keeping one Payload refuses in creation', async () => {
+  it.each([
+    { label: 'live', expiry: new ProgramExpiry('2000-01-01') },
+    // An expired program is published before being archived: Payload validates it too.
+    { label: 'past its end date', expiry: new ProgramExpiry('2026-06-01') },
+  ])('keeps in creation a $label program Payload refuses to publish', async ({ expiry }) => {
     const slug = 'fixture-invalid-contact-email'
     const [source] = JSON.parse(readFileSync(programsFixture, 'utf-8')) as Record<string, unknown>[]
-    const record = { ...source, id: slug, 'contact question': 'mailto:pas un email' }
+    const record = {
+      ...source,
+      id: slug,
+      'contact question': 'mailto:pas un email',
+      'aide temporairement indisponible': 'non',
+      'fin de validité': '31/12/2025',
+    }
+    await payload.delete({ collection: 'programs', where: { slug: { equals: slug } } })
 
-    // The fixture has ended: an archived program is saved as a draft, without validation.
-    const seed = await new ProgramsSync(payload, [record as never], undefined, {
-      expiry: new ProgramExpiry('2000-01-01'),
-    }).run()
+    const seed = await new ProgramsSync(payload, [record as never], undefined, { expiry }).run()
 
     expect(seed.errors).toBe(0)
     expect([...seed.warnings.keys()].some((warning) => warning.includes(slug))).toBe(true)
-    const result = await payload.find({ collection: 'programs', where: { slug: { equals: slug } }, limit: 1 })
+    const result = await payload.find({ collection: 'programs', where: { slug: { equals: slug } }, draft: true, limit: 1 })
     expect(result.docs[0]).toMatchObject({ _status: 'draft', workflowStatus: 'en-creation' })
   })
 

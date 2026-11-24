@@ -25,4 +25,9 @@ describe('ProgramExpiry', () => {
     expect(ProgramExpiry.at(new Date('2026-11-24T23:30:00Z')).isExpired('2026-11-24')).toBe(true)
     expect(ProgramExpiry.at(new Date('2026-11-24T12:00:00Z')).isExpired('2026-11-24')).toBe(false)
   })
+
+  it('never expires a program on an unreadable end date', () => {
+    expect(expiry.isExpired('24-12-31')).toBe(false)
+    expect(expiry.isExpired('RAS')).toBe(false)
+  })
 })

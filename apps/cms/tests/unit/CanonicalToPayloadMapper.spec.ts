@@ -344,6 +344,11 @@ describe('CanonicalToPayloadMapper', () => {
       })
     })
 
+    it('keeps an expired program published when it is temporarily unavailable', () => {
+      const { data } = mapOn('2026-11-24', { date_cloture: '2024-12-31', statut_dispositif: 'temporairement_indisponible' })
+      expect(data).toMatchObject({ workflowStatus: 'publie', _status: 'published', temporarilyUnavailable: true })
+    })
+
     it('keeps a redirected program replaced, whatever its end date', () => {
       const { data } = mapOn('2026-11-24', {
         date_cloture: '2024-12-31',

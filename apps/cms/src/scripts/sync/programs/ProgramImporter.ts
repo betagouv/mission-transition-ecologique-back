@@ -23,6 +23,8 @@ export interface ImportResult {
 interface ExistingProgram {
   id: number
   fingerprint: string | null | undefined
+  /** Whether the main row is published (the latest version may be a draft). */
+  published: boolean
 }
 
 export class ProgramImporter {
@@ -54,15 +56,15 @@ export class ProgramImporter {
         }
 
         try {
-          await this.write({ ...data, upstreamFingerprint: fingerprint }, existing?.id)
+          await this.write({ ...data, upstreamFingerprint: fingerprint }, existing)
         } catch (err) {
           // Upstream is master: a program Payload refuses to publish stays in
           // creation, visible to editors, instead of being left out. Without a
           // fingerprint, so every run tries again and reports it.
-          if (!(err instanceof ValidationError) || data._status !== 'published') throw err
+          if (!(err instanceof ValidationError) || !this.isValidated(data)) throw err
           await this.write(
             { ...data, workflowStatus: 'en-creation', _status: 'draft', upstreamFingerprint: null },
-            existing?.id,
+            existing,
           )
           const warning = `« ${program.slug} » : publication refusée par Payload (${SyncErrorFormatter.format(err)}), dispositif laissé en création`
           result.warnings.set(warning, (result.warnings.get(warning) ?? 0) + 1)
@@ -88,19 +90,38 @@ export class ProgramImporter {
     return Boolean(data.canonicalId) && this.storedCanonicalIds.has(data.canonicalId as string)
   }
 
-  private async write(data: PayloadProgramData, existingId: number | undefined): Promise<void> {
+  /** Whether Payload validates the write: a publication, or an archive that publishes first. */
+  private isValidated(data: PayloadProgramData): boolean {
+    return data._status === 'published' || data.workflowStatus === 'archive'
+  }
+
+  private async write(data: PayloadProgramData, existing: ExistingProgram | undefined): Promise<void> {
+    if (data.workflowStatus === 'archive' && !existing?.published) {
+      // Archived the way an editor would: published first, so Payload validates
+      // it and redirects later see a served program, then archived as a draft.
+      const id = await this.save(
+        { ...data, workflowStatus: 'publie', _status: 'published', upstreamFingerprint: null },
+        existing?.id,
+      )
+      await this.save(data, id)
+      return
+    }
+    await this.save(data, existing?.id)
+  }
+
+  private async save(data: PayloadProgramData, existingId: number | undefined): Promise<number> {
     // The source status wins over the editorial workflow (e.g. re-publishing
     // an archived program), so the import writes as the system.
     const context = SystemWorkflowContext.create()
     // `draft: true` makes Payload skip field validation on create, and
     // `beforeChangeWorkflow` would then still publish the document: only a
-    // program that is not published (in creation, replaced) is saved as a draft.
+    // program that is not published (in creation, archived, replaced) is saved as a draft.
     const draft = data._status !== 'published'
-    if (existingId !== undefined) {
-      await this.payload.update({ collection: 'programs', id: existingId, data, draft, context })
-    } else {
-      await this.payload.create({ collection: 'programs', data, draft, context })
-    }
+    const doc =
+      existingId !== undefined
+        ? await this.payload.update({ collection: 'programs', id: existingId, data, draft, context })
+        : await this.payload.create({ collection: 'programs', data, draft, context })
+    return doc.id
   }
 
   /** Latest versions: the status and the fingerprint of a program saved as a draft only live there. */
@@ -112,6 +133,19 @@ export class ProgramImporter {
       depth: 0,
       draft: true,
     })
-    return new Map(result.docs.map((doc) => [doc.slug, { id: doc.id, fingerprint: doc.upstreamFingerprint }]))
+    const published = await this.payload.find({
+      collection: 'programs',
+      where: { slug: { in: slugs }, _status: { equals: 'published' } },
+      limit: slugs.length,
+      depth: 0,
+      select: { slug: true },
+    })
+    const publishedIds = new Set(published.docs.map((doc) => doc.id))
+    return new Map(
+      result.docs.map((doc) => [
+        doc.slug,
+        { id: doc.id, fingerprint: doc.upstreamFingerprint, published: publishedIds.has(doc.id) },
+      ]),
+    )
   }
 }

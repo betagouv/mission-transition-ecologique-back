@@ -49,8 +49,8 @@ const AMOUNT_FIELDS = [...Object.values(MONTANT_BY_AID_TYPE), ...Object.values(D
  * link are valid; otherwise it stays `en-creation` so editors can spot and fix it.
  * A program upstream redirects (`remplace`) keeps that status and points at its
  * replacement, which must already be in the CMS. A publishable program whose
- * end date is past is archived (upstream has no such status): like an archive
- * made in the admin, it is saved as a draft version.
+ * end date is past is archived (upstream has no such status), unless it is
+ * temporarily unavailable: AGIR keeps receiving that status.
  *
  * Every field upstream can carry is written, an absent one as `null` or `[]`: a
  * Payload `update` starts from the latest version, a pending editor draft
@@ -91,7 +91,7 @@ export class CanonicalToPayloadMapper {
       ? 'remplace'
       : !canPublish
         ? 'en-creation'
-        : this.expiry.isExpired(input.date_cloture)
+        : this.expiry.isExpired(input.date_cloture) && input.statut_dispositif !== 'temporairement_indisponible'
           ? 'archive'
           : 'publie'
 

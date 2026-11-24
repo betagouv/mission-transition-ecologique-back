@@ -20,10 +20,12 @@ export class ProgramExpiry {
     return new ProgramExpiry(ProgramExpiry.calendarDay(now))
   }
 
+  /** An unreadable end date never expires a program: the rest of the sync reports it. */
   isExpired(endDate: string | undefined): boolean {
     if (!endDate) return false
-    const day = /^\d{4}-\d{2}-\d{2}$/.test(endDate) ? endDate : ProgramExpiry.calendarDay(new Date(endDate))
-    return day < this.today
+    if (/^\d{4}-\d{2}-\d{2}$/.test(endDate)) return endDate < this.today
+    const date = new Date(endDate)
+    return !Number.isNaN(date.getTime()) && ProgramExpiry.calendarDay(date) < this.today
   }
 
   private static calendarDay(date: Date): string {

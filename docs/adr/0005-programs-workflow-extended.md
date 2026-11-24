@@ -171,13 +171,15 @@ Conserver la trace de l'ADR 0004 est utile pour comprendre l'historique des choi
 
 ---
 
----
-
 ### 9. Archivage des dispositifs expirés par la sync amont (révision du 2026-11-24)
 
-**Décision :** la sync amont (`CanonicalToPayloadMapper`, règle `ProgramExpiry`) écrit en `archive` tout dispositif publiable dont la date de fin est passée, au lieu de `publie`. Elle le republie si l'amont prolonge la date. Un dispositif aux liens invalides reste en `en-creation`.
+**Décision :** la sync amont (`CanonicalToPayloadMapper`, règle `ProgramExpiry`) écrit en `archive` tout dispositif publiable dont la date de fin est passée, au lieu de `publie`, sauf s'il est « temporairement indisponible » : il reste alors `publie` avec ce marqueur. Elle le republie si l'amont prolonge la date. Un dispositif aux liens invalides reste en `en-creation`. Un dispositif qui n'a pas encore de version publiée est d'abord publié (validation Payload complète), puis archivé en version brouillon : un dispositif que Payload refuse de publier reste en `en-creation`, et un dispositif archivé a toujours une version publiée, comme après un archivage dans l'admin.
 
-**Justification :** l'amont n'a pas de statut « archivé », seulement la date de fin. Le back-office affichait donc « Publié » des dispositifs terminés, que la base R2DA montre comme archivés (70 sur 290 en local le 2026-11-24). Un archivage manuel ne tenait pas : il efface l'empreinte amont, et la sync suivante, en tant que système, remettait le dispositif en `publie`. AGIR ne change pas : un dispositif archivé y était déjà transmis en `en_prod` avec sa `date_cloture`. L'export Grist, qui exclut les archivés, perd les dispositifs expirés. Seule exception côté AGIR : un dispositif expiré et « temporairement indisponible » passe de `temporairement_indisponible` à `en_prod` (un seul en amont à cette date, `accelerateur-decarbonation`).
+**Justification :** l'amont n'a pas de statut « archivé », seulement la date de fin. Le back-office affichait donc « Publié » des dispositifs terminés, que la base Baserow de TEE montre comme archivés. Un archivage manuel ne tenait pas : il efface l'empreinte amont, et la sync suivante, en tant que système, remettait le dispositif en `publie`. AGIR ne change pas : un dispositif archivé y était déjà transmis en `en_prod` avec sa `date_cloture`, et un dispositif indisponible garde `temporairement_indisponible`. L'export Grist, qui exclut les archivés, perd les dispositifs expirés. Passer par une version publiée garde deux comportements : un dispositif refusé par Payload n'entre ni dans le store ni chez AGIR, et un dispositif expiré puis redirigé par l'amont passe en `remplace` au lieu d'être annulé. Baserow n'archive pas selon la date : sur les 283 dispositifs de `programs.json` au 2026-11-24, 53 dispositifs expirés y restent « En prod » et sont archivés ici.
+
+---
+
+## Conséquences
 
 - Le schéma de la table `programs` change (nouvelles valeurs d'enum sur `workflowStatus`, nouveau champ `replacedBy`). La DB doit être reset (`rm apps/cms/data/payload.db` puis `pnpm seed`).
 - `payload-types.ts` doit être régénéré : `pnpm nx run @tee-backoffice/cms:generate:types`.
