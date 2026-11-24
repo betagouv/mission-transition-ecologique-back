@@ -92,6 +92,7 @@ describe('CanonicalToPayloadMapper', () => {
       contactPageUrl: null,
       fundingAmount: null,
       loanAmount: null,
+      loanDuration: null,
       taxBenefitAmount: null,
       formationRemainingCost: null,
       formationDuration: null,
@@ -289,6 +290,24 @@ describe('CanonicalToPayloadMapper', () => {
 
       const cms = map({ types_aides: ['etude'], montant: { type: 'Coût restant à charge', valeur: '500 €' } })
       expect(cms.data.studyRemainingCost).toBe('500 €')
+    })
+
+    it('accepts the upstream and the CMS labels of a loan duration', () => {
+      const upstream = map({
+        types_aides: ['pret'],
+        montant: { type: 'montant du prêt', valeur: 'De 10 000 € à 100 000 €' },
+        duree: { type: 'durée du prêt', valeur: 'De 3 à 7 ans' },
+      })
+      expect(upstream.data).toMatchObject({ loanAmount: 'De 10 000 € à 100 000 €', loanDuration: 'De 3 à 7 ans' })
+      expect(upstream.warnings).toEqual([])
+
+      const cms = map({ types_aides: ['pret'], duree: { type: 'Durée du prêt', valeur: '5 ans' } })
+      expect(cms.data.loanDuration).toBe('5 ans')
+    })
+
+    it('empties the loan duration of another aid type', () => {
+      const { data } = map({ types_aides: ['etude'], duree: { type: "durée de l'accompagnement", valeur: '3 jours' } })
+      expect(data).toMatchObject({ studyDuration: '3 jours', loanDuration: null })
     })
   })
 

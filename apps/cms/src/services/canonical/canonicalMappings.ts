@@ -103,6 +103,7 @@ export const MONTANT_BY_AID_TYPE: Record<AidType, { label: string; field: keyof 
 
 /** Self-described duration — only the aid types that carry one in Payload. */
 export const DUREE_BY_AID_TYPE: Partial<Record<AidType, { label: string; field: keyof Program }>> = {
+  pret: { label: 'Durée du prêt', field: 'loanDuration' },
   formation: { label: 'Durée de la formation', field: 'formationDuration' },
   'diagnostic-etude': { label: "Durée du diagnostic ou de l'étude", field: 'studyDuration' },
 }

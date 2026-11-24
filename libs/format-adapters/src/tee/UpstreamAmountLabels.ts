@@ -17,6 +17,7 @@ export class UpstreamAmountLabels {
   }
 
   private static readonly DUREE: Partial<Record<TypeAide, readonly string[]>> = {
+    pret: ['durée du prêt'],
     formation: ["durée de l'accompagnement"],
     etude: ["durée de l'accompagnement"],
   }

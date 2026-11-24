@@ -60,12 +60,14 @@ Chaque valeur active des champs de montant/durée spécifiques :
 | `aidType` | Champs visibles |
 |---|---|
 | `financement` | `fundingAmount` |
-| `pret` | `loanAmount` |
+| `pret` | `loanAmount`, `loanDuration` (ajouté le 2026-11-24) |
 | `avantage-fiscal` | `taxBenefitAmount` |
 | `formation` | `formationRemainingCost`, `formationDuration` |
 | `diagnostic-etude` | `studyRemainingCost`, `studyDuration` |
 
 **Justification :** Le terme `étude` seul est ambigu (audit, diagnostic, étude technique). `diagnostic-etude` correspond à l'intitulé produit. Les champs `accompanyingCost` / `accompanyingDuration` / `loanDuration` de l'ancien schéma sont supprimés au profit de paires explicites par type d'aide.
+
+**Révision du 2026-11-24 :** `loanDuration` (« Durée du prêt ») revient comme champ propre au type `pret`. L'amont porte une durée pour 12 prêts (clé `durée du prêt`) ; sans champ, la sync la perdait et elle n'arrivait plus dans le pivot AGIR.
 
 ---
 

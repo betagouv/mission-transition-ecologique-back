@@ -8,6 +8,7 @@ import * as migration_20261002_102758_upstream_sync from './20261002_102758_upst
 import * as migration_20261002_123839_program_linked_projects from './20261002_123839_program_linked_projects';
 import * as migration_20261002_131830_program_open_to_public_administration from './20261002_131830_program_open_to_public_administration';
 import * as migration_20261123_140528_ademe_themes from './20261123_140528_ademe_themes';
+import * as migration_20261124_133458_loan_duration from './20261124_133458_loan_duration';
 
 export const migrations = [
   {
@@ -58,6 +59,11 @@ export const migrations = [
   {
     up: migration_20261123_140528_ademe_themes.up,
     down: migration_20261123_140528_ademe_themes.down,
-    name: '20261123_140528_ademe_themes'
+    name: '20261123_140528_ademe_themes',
+  },
+  {
+    up: migration_20261124_133458_loan_duration.up,
+    down: migration_20261124_133458_loan_duration.down,
+    name: '20261124_133458_loan_duration'
   },
 ];

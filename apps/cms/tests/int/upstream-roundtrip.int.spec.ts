@@ -72,6 +72,8 @@ function project(input: CanonicalProgramInput | undefined, side: 'upstream' | 'c
     date_ouverture: input?.date_ouverture,
     date_cloture: input?.date_cloture,
     types_aides: input?.types_aides,
+    // The label differs on purpose: upstream key on one side, CMS field label on the other.
+    duree: trim(input?.duree?.valeur),
     themes: [...(input?.themes ?? [])].sort(),
     operateurs: {
       contact: input?.operateurs.contact.nom,
@@ -148,6 +150,13 @@ describe('upstream → CMS → canonical round-trip', () => {
     for (const input of unavailable) {
       expect(actual.get(input.slug)?.statut_dispositif).toBe('temporairement_indisponible')
     }
+  })
+
+  it('keeps the duration of a loan', () => {
+    expect(actual.get('pret-action-climat')?.duree).toEqual({
+      type: 'Durée du prêt',
+      valeur: expect.stringMatching(/^modulable de 3, à 5 ou 7 ans/),
+    })
   })
 
   it('carries every mapped field unchanged', () => {

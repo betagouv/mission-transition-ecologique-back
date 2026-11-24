@@ -86,7 +86,7 @@ versions: { drafts: true }
 | `aidType` | Champs visibles |
 |---|---|
 | `financement` | `fundingAmount` |
-| `pret` | `loanAmount` |
+| `pret` | `loanAmount`, `loanDuration` |
 | `avantage-fiscal` | `taxBenefitAmount` |
 | `formation` | `formationRemainingCost`, `formationDuration` |
 | `diagnostic-etude` | `studyRemainingCost`, `studyDuration` |
