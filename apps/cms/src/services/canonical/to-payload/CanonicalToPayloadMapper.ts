@@ -6,6 +6,7 @@ import type { NafSection } from '@/constants/nafSectionsOptions'
 import { NAF_SECTIONS_OPTIONS } from '@/constants/nafSectionsOptions'
 import type { CompanySizeBucket } from '@/constants/companySizeOptions'
 import { UrlValidator } from '@/utils/UrlValidator'
+import { ProgramExpiry } from '@/services/upstream-sync/ProgramExpiry'
 import type { MarkdownToRichText } from '../rich-text/MarkdownToRichText'
 import {
   AID_TYPE_TO_CANONICAL,
@@ -47,7 +48,9 @@ const AMOUNT_FIELDS = [...Object.values(MONTANT_BY_AID_TYPE), ...Object.values(D
  * A program is published only when its url, contact page url and every step
  * link are valid; otherwise it stays `en-creation` so editors can spot and fix it.
  * A program upstream redirects (`remplace`) keeps that status and points at its
- * replacement, which must already be in the CMS.
+ * replacement, which must already be in the CMS. A publishable program whose
+ * end date is past is archived (upstream has no such status), unless it is
+ * temporarily unavailable: AGIR keeps receiving that status.
  *
  * Every field upstream can carry is written, an absent one as `null` or `[]`: a
  * Payload `update` starts from the latest version, a pending editor draft
@@ -59,6 +62,7 @@ export class CanonicalToPayloadMapper {
   constructor(
     private readonly richText: MarkdownToRichText,
     private readonly relations: ProgramRelations,
+    private readonly expiry: ProgramExpiry = ProgramExpiry.at(),
   ) {
     this.variants = new CanonicalVariantToPayloadMapper(relations)
   }
@@ -83,7 +87,13 @@ export class CanonicalToPayloadMapper {
       steps.every((step) => (step.links ?? []).every((link) => UrlValidator.isValid(link.url)))
 
     const replaced = input.statut_dispositif === 'remplace'
-    const workflowStatus = replaced ? 'remplace' : canPublish ? 'publie' : 'en-creation'
+    const workflowStatus = replaced
+      ? 'remplace'
+      : !canPublish
+        ? 'en-creation'
+        : this.expiry.isExpired(input.date_cloture) && input.statut_dispositif !== 'temporairement_indisponible'
+          ? 'archive'
+          : 'publie'
 
     const data: PayloadProgramData = {
       canonicalId: input.id,

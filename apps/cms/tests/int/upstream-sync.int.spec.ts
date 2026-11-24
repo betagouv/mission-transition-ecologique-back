@@ -16,6 +16,7 @@ import { UpstreamSnapshot } from '@/scripts/sync/UpstreamSnapshot'
 import { UpstreamSync, type UpstreamSyncReport } from '@/scripts/sync/UpstreamSync'
 import { getCanonicalProjectRepository } from '@/services/canonical/canonicalProjectRepository'
 import { getCanonicalProgramRepository } from '@/services/canonical/canonicalRepository'
+import { ProgramExpiry } from '@/services/upstream-sync/ProgramExpiry'
 import { UpstreamRemovalGuard } from '@/services/upstream-sync/UpstreamRemovalGuard'
 import { SystemWorkflowContext } from '@/services/workflow/SystemWorkflowContext'
 
@@ -72,7 +73,13 @@ const redirects = {
 
 let payload: Payload
 
-const sync = (snapshot: Partial<{ programs: TeeRecord[]; projects: TeeProject[]; redirects: unknown }> = {}) =>
+// A day before every fixture end date: a program only expires where a test says so.
+const BEFORE_END_DATES = new ProgramExpiry('2026-01-01')
+
+const sync = (
+  snapshot: Partial<{ programs: TeeRecord[]; projects: TeeProject[]; redirects: unknown }> = {},
+  expiry: ProgramExpiry = BEFORE_END_DATES,
+) =>
   new UpstreamSync(
     payload,
     new UpstreamSnapshot(
@@ -82,7 +89,7 @@ const sync = (snapshot: Partial<{ programs: TeeRecord[]; projects: TeeProject[];
       'redirects' in snapshot ? snapshot.redirects : redirects,
     ),
     // The reconciliation looks at the whole database: it is tested on its own below.
-    { scope, reconcile: false },
+    { scope, reconcile: false, expiry },
   ).run()
 
 /** Latest version: where an archived, replaced or cancelled document says so. */
@@ -568,5 +575,90 @@ describe('CanonicalReconciler', () => {
     expect(report.projects.removed.map((key) => key.slug)).toContain(ORPHAN)
     expect(await storedProject(ORPHAN)).toBeUndefined()
     expect(await storedProject(PROJECT_B)).toMatchObject({ slug: PROJECT_B })
+  })
+})
+
+describe('UpstreamSync, a program past its end date', () => {
+  const PROGRAM_EXPIRED = 'sync-prog-expire'
+  const PROGRAM_EXPIRED_NEW = 'sync-prog-expire-neuf'
+  const PROGRAM_UNAVAILABLE = 'sync-prog-expire-indispo'
+  // `baisse-les-watts` ends on 01/05/2026.
+  const AFTER_END = new ProgramExpiry('2026-06-01')
+  const expired = (slug: string) => program('baisse-les-watts', slug)
+  const withExpired = { programs: [...programs, expired(PROGRAM_EXPIRED)] }
+
+  /** Main row: what stays published while the latest version is an archive draft. */
+  const mainRow = async (slug: string) => {
+    const result = await payload.find({ collection: 'programs', where: { slug: { equals: slug } }, depth: 0, limit: 1 })
+    return result.docs[0]
+  }
+
+  beforeAll(async () => {
+    payload = await getPayload({ config: await config })
+    const slugs = [PROGRAM_EXPIRED, PROGRAM_EXPIRED_NEW, PROGRAM_UNAVAILABLE]
+    await payload.delete({ collection: 'programs', where: { slug: { in: slugs } } })
+    await sync(withExpired)
+  }, 120_000)
+
+  it('archives a published program the day after its end date, as a draft version', async () => {
+    expect(await latestProgram(PROGRAM_EXPIRED)).toMatchObject({ workflowStatus: 'publie', _status: 'published' })
+
+    const report = await sync(withExpired, AFTER_END)
+
+    expect(report.errors).toBe(0)
+    expect(await latestProgram(PROGRAM_EXPIRED)).toMatchObject({ workflowStatus: 'archive', _status: 'draft' })
+    expect(await mainRow(PROGRAM_EXPIRED)).toMatchObject({ _status: 'published' })
+    expect(await storedProgram(PROGRAM_EXPIRED)).toMatchObject({
+      statut_dispositif: 'archive',
+      statut_edition: 'pret_prod',
+      date_cloture: '2026-05-01',
+    })
+  })
+
+  it('leaves an archived program alone on the next run', async () => {
+    const { id } = await latestProgram(PROGRAM_EXPIRED)
+    const versions = await versionCount('programs', id)
+
+    await sync(withExpired, AFTER_END)
+
+    expect(await versionCount('programs', id)).toBe(versions)
+  })
+
+  it('publishes it again once upstream extends it', async () => {
+    await sync(withExpired)
+
+    expect(await latestProgram(PROGRAM_EXPIRED)).toMatchObject({ workflowStatus: 'publie', _status: 'published' })
+    expect(await storedProgram(PROGRAM_EXPIRED)).toMatchObject({ statut_dispositif: 'valide' })
+  })
+
+  it('publishes a new expired program before archiving it', async () => {
+    await sync({ programs: [...programs, expired(PROGRAM_EXPIRED_NEW)] }, AFTER_END)
+
+    expect(await latestProgram(PROGRAM_EXPIRED_NEW)).toMatchObject({ workflowStatus: 'archive', _status: 'draft' })
+    expect(await mainRow(PROGRAM_EXPIRED_NEW)).toMatchObject({ _status: 'published' })
+    expect(await storedProgram(PROGRAM_EXPIRED_NEW)).toMatchObject({ statut_dispositif: 'archive' })
+  })
+
+  it('replaces an archived program upstream redirects, instead of cancelling it', async () => {
+    await sync(
+      { programs, redirects: { ...redirects, program_redirects: { ...redirects.program_redirects, [PROGRAM_EXPIRED_NEW]: PROGRAM_A } } },
+      AFTER_END,
+    )
+
+    expect(await latestProgram(PROGRAM_EXPIRED_NEW)).toMatchObject({ workflowStatus: 'remplace' })
+    expect(await storedProgram(PROGRAM_EXPIRED_NEW)).toMatchObject({ statut_dispositif: 'remplace' })
+  })
+
+  it('keeps a temporarily unavailable program published, flagged as such', async () => {
+    const unavailable = { ...expired(PROGRAM_UNAVAILABLE), 'aide temporairement indisponible': 'oui' }
+
+    await sync({ programs: [...programs, unavailable] }, AFTER_END)
+
+    expect(await latestProgram(PROGRAM_UNAVAILABLE)).toMatchObject({
+      workflowStatus: 'publie',
+      _status: 'published',
+      temporarilyUnavailable: true,
+    })
+    expect(await storedProgram(PROGRAM_UNAVAILABLE)).toMatchObject({ statut_dispositif: 'temporairement_indisponible' })
   })
 })

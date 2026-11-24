@@ -36,6 +36,8 @@ describe('canonical sync hooks', () => {
       where: { workflowStatus: { equals: 'publie' } },
       limit: 8,
       depth: 0,
+      // Latest versions: an expired fixture is archived in a draft over its published row.
+      draft: true,
     })
     published = result.docs
     expect(published).toHaveLength(8)

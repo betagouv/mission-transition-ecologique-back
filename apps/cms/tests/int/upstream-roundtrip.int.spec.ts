@@ -14,6 +14,7 @@ import {
 } from '@tee-backoffice/format-adapters'
 import { GeographicAreasSeed } from '@/scripts/seed/geographic-areas'
 import { ProgramsSync } from '@/scripts/sync/programs/ProgramsSync'
+import { ProgramExpiry } from '@/services/upstream-sync/ProgramExpiry'
 import { ProgramCanonicalMapper } from '@/services/canonical/ProgramCanonicalMapper'
 import { PayloadRichTextToMarkdown } from '@/services/canonical/rich-text/PayloadRichTextToMarkdown'
 import { PayloadProgramRelations } from '@/services/canonical/to-payload/PayloadProgramRelations'
@@ -115,7 +116,8 @@ describe('upstream → CMS → canonical round-trip', () => {
       context: SystemWorkflowContext.create(),
     })
 
-    const result = await new ProgramsSync(payload, records).run()
+    // The round-trip checks the data, not the archiving of programs past their end date.
+    const result = await new ProgramsSync(payload, records, undefined, { expiry: new ProgramExpiry('2000-01-01') }).run()
     expect(result.errors).toBe(0)
     relations = await PayloadProgramRelations.fromPayload(payload, new Map())
 

@@ -106,7 +106,14 @@ describe('duplicating a document', () => {
     projectCanonical = await getCanonicalProjectRepository(payload.logger)
 
     published = (
-      await payload.find({ collection: 'programs', where: { workflowStatus: { equals: 'publie' } }, limit: 5, depth: 0 })
+      // Latest versions: an expired fixture is archived in a draft over its published row.
+      await payload.find({
+        collection: 'programs',
+        where: { workflowStatus: { equals: 'publie' } },
+        limit: 5,
+        depth: 0,
+        draft: true,
+      })
     ).docs
     expect(published).toHaveLength(5)
 
