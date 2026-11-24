@@ -147,6 +147,8 @@ export class TeeExporter {
     const champs = this.champsConditionnels(d.variantes)
     if (champs) out['champs conditionnels'] = champs
 
+    if (d.thematiques_ademe) out.ademeThemes = [...d.thematiques_ademe]
+
     return out
   }
 

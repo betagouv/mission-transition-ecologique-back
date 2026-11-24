@@ -20,6 +20,9 @@ class StubRelations implements ProgramRelations {
   programIdByCanonicalId(canonicalId: string) {
     return ({ [REPLACEMENT]: 42 } as Record<string, number>)[canonicalId]
   }
+  ademeThemeIdByCode(code: string) {
+    return ({ '19': 30, '19_03': 31 } as Record<string, number>)[code]
+  }
   areaByCogCode(code: string) {
     const areas: Record<string, { id: number; name: string; parentId?: number }> = {
       'REG-53': { id: 10, name: 'Bretagne' },
@@ -94,6 +97,7 @@ describe('CanonicalToPayloadMapper', () => {
       studyRemainingCost: null,
       studyDuration: null,
       variants: [],
+      ademeThemes: [],
       replacedBy: null,
       metaTitle: null,
       metaDescription: null,
@@ -103,6 +107,18 @@ describe('CanonicalToPayloadMapper', () => {
 
   it('fails loudly on an unknown contact operator', () => {
     expect(() => map({ operateurs: { contact: { nom: 'Inconnu' } } })).toThrow('opérateur introuvable')
+  })
+
+  it('resolves the ADEME theme codes to the referential ids', () => {
+    const { data, warnings } = map({ thematiques_ademe: ['19', '19_03'] })
+    expect(data.ademeThemes).toEqual([30, 31])
+    expect(warnings).toEqual([])
+  })
+
+  it('reports an ADEME theme code missing from the referential and keeps the others', () => {
+    const { data, warnings } = map({ thematiques_ademe: ['19_03', '99_99'] })
+    expect(data.ademeThemes).toEqual([31])
+    expect(warnings).toEqual(['thématique ADEME inconnue du référentiel : 99_99'])
   })
 
   it('translates the themes back to the Payload vocabulary', () => {

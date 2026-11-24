@@ -403,6 +403,17 @@ export const Programs: CollectionConfig = {
           },
         },
         {
+          name: 'ademeThemes',
+          type: 'relationship',
+          label: 'Thématiques ADEME',
+          relationTo: 'ademe-themes',
+          hasMany: true,
+          admin: {
+            description:
+              "Référentiel des thématiques ADEME, transmis à AGIR. Repris de l'amont à chaque synchronisation.",
+          },
+        },
+        {
           name: 'linkedProjectsCounter',
           type: 'ui',
           label: '',

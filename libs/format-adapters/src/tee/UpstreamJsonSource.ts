@@ -1,6 +1,8 @@
 import { ConsoleExportLogger } from '../shared/ConsoleExportLogger'
 import type { ExportLogger } from '../shared/ExportLogger'
 import { LocalJsonSnapshot } from './LocalJsonSnapshot'
+import { teeAdemeThemesSchema } from './tee-ademe-theme.schema'
+import type { TeeAdemeTheme } from './tee-ademe-theme.schema'
 import { teeOperatorsSchema } from './tee-operator.schema'
 import type { TeeOperator } from './tee-operator.schema'
 import type { TeeProject } from './tee-project.schema'
@@ -21,7 +23,7 @@ export interface UpstreamJsonSourceOptions {
 
 /**
  * Reads the upstream TEE data (`programs.json`, `projects.json`,
- * `redirects.json`, `operators.json`) over HTTP, the upstream repository being the source of
+ * `redirects.json`, `operators.json`, `ademe_themes.json`) over HTTP, the upstream repository being the source of
  * truth. Files are consumed in memory: the Scalingo one-off container running
  * the daily job has a throwaway filesystem. URLs are overridable to follow a
  * move of the upstream repository without a release.
@@ -39,6 +41,7 @@ export class UpstreamJsonSource {
     projects: 'TEE_PROJECTS_URL',
     redirects: 'TEE_REDIRECTS_URL',
     operators: 'TEE_OPERATORS_URL',
+    ademe_themes: 'TEE_ADEME_THEMES_URL',
   }
 
   private readonly urls: Record<UpstreamFile, string>
@@ -54,6 +57,7 @@ export class UpstreamJsonSource {
       projects: options.urls?.projects ?? UpstreamJsonSource.defaultUrl('projects'),
       redirects: options.urls?.redirects ?? UpstreamJsonSource.defaultUrl('redirects'),
       operators: options.urls?.operators ?? UpstreamJsonSource.defaultUrl('operators'),
+      ademe_themes: options.urls?.ademe_themes ?? UpstreamJsonSource.defaultUrl('ademe_themes'),
     }
     this.fallback = options.fallback
     this.logger = options.logger ?? new ConsoleExportLogger()
@@ -108,6 +112,11 @@ export class UpstreamJsonSource {
     return teeOperatorsSchema.parse(await this.load<unknown>('operators'))
   }
 
+  /** Validated ADEME theme referential: a broken shape throws instead of feeding the import. */
+  async ademeThemes(): Promise<TeeAdemeTheme[]> {
+    return teeAdemeThemesSchema.parse(await this.load<unknown>('ademe_themes'))
+  }
+
   /**
    * Redirects are optional upstream: only a 404 means "no file" and skips the
    * redirect step. Any other failure (5xx, timeout, broken JSON) propagates, so
@@ -123,7 +132,7 @@ export class UpstreamJsonSource {
   }
 
   describe(): string {
-    const urls = [this.urls.programs, this.urls.projects, this.urls.redirects, this.urls.operators].join(' + ')
+    const urls = [this.urls.programs, this.urls.projects, this.urls.redirects, this.urls.operators, this.urls.ademe_themes].join(' + ')
     return this.fallback ? `${urls} (copie locale en secours : ${this.fallback.directory})` : urls
   }
 

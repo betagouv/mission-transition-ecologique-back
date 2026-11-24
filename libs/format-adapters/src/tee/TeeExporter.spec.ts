@@ -68,6 +68,10 @@ describe('TeeExporter', () => {
       expect(out.eligibilityData?.priorityObjectives).toEqual(['energy', 'building'])
     })
 
+    it('reprend les thématiques ADEME en ademeThemes', () => {
+      expect(out.ademeThemes).toEqual(['08', '19_03'])
+    })
+
     it('reconstruit champs conditionnels depuis les variantes', () => {
       const champ = out['champs conditionnels']?.[0]
       expect(champ?.['toutes ces conditions']).toEqual(['effectif >= 0', 'effectif <= 49'])

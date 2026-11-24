@@ -3,6 +3,7 @@ import { ProgramRedirects, ProjectRedirects } from '@tee-backoffice/format-adapt
 import { getCanonicalProjectRepository } from '@/services/canonical/canonicalProjectRepository'
 import { getCanonicalProgramRepository } from '@/services/canonical/canonicalRepository'
 import { UpstreamRemovalGuard } from '@/services/upstream-sync/UpstreamRemovalGuard'
+import { AdemeThemesSync, type AdemeThemesSyncResult } from './ademe-themes/AdemeThemesSync'
 import { UpstreamMediaImporter } from './media/UpstreamMediaImporter'
 import { ProgramsSync } from './programs/ProgramsSync'
 import { ProjectsSync } from './projects/ProjectsSync'
@@ -22,13 +23,15 @@ export interface UpstreamSyncOptions {
 
 export interface UpstreamSyncReport {
   errors: number
+  /** Absent when the snapshot carries no ADEME referential. */
+  ademeThemes?: Pick<AdemeThemesSyncResult, 'created' | 'updated' | 'unchanged' | 'stale'>
   programs: { created: number; updated: number; unchanged: number; cancelled: string[] }
   projects: { created: number; updated: number; unchanged: number; cancelled: string[] }
 }
 
 /**
  * Aligns the CMS on upstream, the command shared by the seed and the daily job:
- * programs, then projects (redirects included), then the documents upstream no
+ * the ADEME theme referential, then programs, then projects (redirects included), then the documents upstream no
  * longer accounts for, then the CMS ↔ canonical check. The canonical stores are
  * only written by the collection hooks, as for an editor. Every step runs even
  * when a previous one reported errors; the caller fails the job on `errors`.
@@ -46,6 +49,7 @@ export class UpstreamSync {
     const media = snapshot.assets ? new UpstreamMediaImporter(payload, snapshot.assets) : undefined
     const stored = await this.storedCanonicalIds()
 
+    const ademeThemes = snapshot.ademeThemes ? await new AdemeThemesSync(payload, snapshot.ademeThemes).run() : undefined
     const programs = await new ProgramsSync(
       payload,
       snapshot.programs,
@@ -83,12 +87,23 @@ export class UpstreamSync {
 
     return {
       errors:
+        (ademeThemes?.errors ?? 0) +
         programs.errors +
         projects.errors +
         gonePrograms.errors +
         goneProjects.errors +
         rejected.length +
         reconciliationErrors,
+      ...(ademeThemes
+        ? {
+            ademeThemes: {
+              created: ademeThemes.created,
+              updated: ademeThemes.updated,
+              unchanged: ademeThemes.unchanged,
+              stale: ademeThemes.stale,
+            },
+          }
+        : {}),
       programs: {
         created: programs.created,
         updated: programs.updated,

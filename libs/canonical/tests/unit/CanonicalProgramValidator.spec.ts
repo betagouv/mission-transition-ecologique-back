@@ -35,5 +35,16 @@ describe('CanonicalProgramValidator', () => {
     const json = program.toJSON()
     expect(json.autres_donnees?.['ademe_id_dsp']).toBe('DSP-000123')
     expect(json.themes).toEqual(['energie', 'batiment'])
+    expect(json.thematiques_ademe).toEqual(['08', '19_03'])
+  })
+
+  it('rejects a malformed ADEME theme code', () => {
+    const result = validator.validate({ ...(validFull as object), thematiques_ademe: ['8', '19-03'] })
+    expect(result.success).toBe(false)
+  })
+
+  it('rejects an empty ADEME theme list', () => {
+    const result = validator.validate({ ...(validFull as object), thematiques_ademe: [] })
+    expect(result.success).toBe(false)
   })
 })

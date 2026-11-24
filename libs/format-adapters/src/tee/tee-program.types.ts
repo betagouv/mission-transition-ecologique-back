@@ -28,6 +28,8 @@ export interface TeeProgram {
   "conditions d'éligibilité"?: TeeConditionsEligibilite
   eligibilityData?: TeeEligibilityData
   'champs conditionnels'?: TeeChampConditionnel[]
+  /** Codes of the ADEME referential (`ademe_themes.json`). */
+  ademeThemes?: string[]
   /** Dynamic montant/durée keys carried by `montant.type` / `duree.type`. */
   [montantOrDureeKey: string]: unknown
 }

@@ -109,6 +109,7 @@ export class CanonicalToPayloadMapper {
       ...this.mapActivitySector(input.eligibilite),
       otherCriteria: this.mapOtherCriteria(input.eligibilite),
       themes: (input.themes ?? []).map((theme) => CANONICAL_TO_THEME[theme]),
+      ademeThemes: this.ademeThemeIds(input, warnings),
       variants: this.variants.map(input.variantes, warnings),
       temporarilyUnavailable: input.statut_dispositif === 'temporairement_indisponible',
       workflowStatus,
@@ -128,6 +129,17 @@ export class CanonicalToPayloadMapper {
     const id = input.remplace_par ? this.relations.programIdByCanonicalId(input.remplace_par) : undefined
     if (id === undefined) throw new Error('dispositif remplaçant introuvable dans le CMS')
     return id
+  }
+
+  /** A code missing from the referential is reported and left out, never blocking the program. */
+  private ademeThemeIds(input: CanonicalProgramInput, warnings: string[]): number[] {
+    const ids: number[] = []
+    for (const code of input.thematiques_ademe ?? []) {
+      const id = this.relations.ademeThemeIdByCode(code)
+      if (id === undefined) warnings.push(`thématique ADEME inconnue du référentiel : ${code}`)
+      else ids.push(id)
+    }
+    return ids
   }
 
   private operatorIds(operateurs: { nom: string }[] | undefined): number[] {

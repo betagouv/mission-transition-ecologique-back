@@ -17,6 +17,7 @@ export * from './tee/UpstreamFetchError';
 export * from './tee/UpstreamFallbackSettings';
 export * from './tee/UpstreamJsonSource';
 export * from './tee/tee-operator.schema';
+export * from './tee/tee-ademe-theme.schema';
 export * from './tee/UpstreamAsset';
 export * from './tee/UpstreamAssetSource';
 export * from './tee/UpstreamAmountLabels';

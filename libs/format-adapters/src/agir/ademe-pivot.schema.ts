@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import {
+  ademeThemeCodeSchema,
   contactQuestionSchema,
   dureeSchema,
   eligibiliteSchema,
@@ -26,12 +27,14 @@ import {
  * ADEME deltas (see README §Décisions). `.strict()` makes this a WHITELIST: any
  * canonical field added later that is not listed here fails the guard instead of
  * leaking. Field shapes are reused from the canonical so the pivot stays iso,
- * except the closed vocabularies (`source`, `statut`, `themes`) which use the
- * lowercased/snake_case AGIR wire values.
+ * except the closed vocabularies (`source`, `statut`) which use the
+ * lowercased/snake_case AGIR wire values, and `themes`, which carries the ADEME
+ * referential codes (canonical `thematiques_ademe`).
  */
 
 export const ademeSourceSchema = z.enum(['tee', 'ademe', 'schema'])
 export const ademeStatutSchema = z.enum(['en_prod', 'temporairement_indisponible', 'remplace'])
+/** AGIR wire theme vocabulary, still used by the project pivot. */
 export const ademeThemeSchema = z.enum([
   'batiment',
   'mobilite',
@@ -82,9 +85,9 @@ export const ademePivotSchema = z
     url_source: urlSchema.optional(),
     etapes_activation: z.array(etapeActivationSchema).optional(),
 
-    // Eligibility / themes / variants (canonical shapes kept; themes use wire vocab).
+    // Eligibility / themes / variants (canonical shapes kept; themes = ADEME codes).
     eligibilite: eligibiliteSchema.optional(),
-    themes: z.array(ademeThemeSchema).optional(),
+    themes: z.array(ademeThemeCodeSchema).min(1).optional(),
     variantes: z.array(varianteSchema).optional(),
   })
   .strict()

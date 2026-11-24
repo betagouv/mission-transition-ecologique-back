@@ -100,9 +100,16 @@ Centralisé dans `AgirVocabulary` (un seul fichier pour ajuster). Valeurs
   `temporairement_indisponible → temporairement_indisponible`,
   `remplace → remplace`, `archive → en_prod` (l'archivage est porté par
   `date_cloture`, pas par un statut).
-- `themes` (pivot) : vocabulaire wire à 7 valeurs (`AgirThemeMapper`) ; les 3
-  thèmes de la famille environnement (`environnemental`/`ecoconception`/
-  `biodiversite`) sont repliés sur `environnement`.
+- `themes` (pivot des dispositifs) : **codes du référentiel des thématiques
+  ADEME** (`thematiques_ademe` du canonical, par exemple `["19", "19_03"]`),
+  repris tels que l'amont les publie (`ademeThemes` de `programs.json`), sans
+  libellé ni ajout du parent ; absent si le dispositif n'en a pas. Les thèmes
+  TEE ne sont plus exposés à AGIR (décision du 2026-11-23). Le référentiel
+  (code, libellé, parent) est `ademe_themes.json` du dépôt amont.
+- `thematique` (détail R2DA) : mêmes codes ADEME que `themes` du pivot, à la
+  place des thèmes TEE ; absent sans thématique ADEME. Le pivot des projets
+  garde le vocabulaire wire à 7 valeurs (`AgirThemeMapper`, famille
+  environnement repliée sur `environnement`).
 - `contact_question` (pivot) : aucun delta, la forme canonical est reprise telle
   quelle (`conseiller_entreprise`/`email`/`url`).
 - `typeDispositif` (détail) : libellés d'affichage des `types_aides` joints par
@@ -148,7 +155,7 @@ parasites). Garde-fou de sortie `agir-detail.schema.ts` (`.strict()`).
 | `description.descriptionCourte` / `.descriptionLongue` | `description` / `description_longue` |
 | `description.partenaires` | `operateurs.autres[].nom` |
 | `description.montantAide` | `montant.valeur` |
-| `description.thematique` | `themes` (français) |
+| `description.thematique` | `thematiques_ademe` (codes ADEME) |
 | `description.mailContact` | `contact_question.valeur` si `type === 'email'` |
 | `etapeDepot[]` | `etapes_activation[]` → `{ ordreEtape: i+1, libelleEtape: description, lienEtape: 1er lien url }` |
 
@@ -184,8 +191,8 @@ Deltas vs canonical :
    vocabulaire). Pas de type `formulaire` dans le canonical : la valeur
    `"formulaire"` de la source TEE désigne la mise en relation
    Conseillers-Entreprises et devient `conseiller_entreprise`.
-8. `themes` : vocabulaire wire à 7 valeurs (`AgirThemeMapper`, famille
-   environnement repliée sur `environnement`).
+8. `themes` : codes des thématiques ADEME (`thematiques_ademe` du canonical),
+   et non plus les thèmes TEE.
 9. `eligibilite`, `variantes`, `operateurs`, `etapes_activation`, contenu
    éditorial : forme canonical inchangée.
 
@@ -223,7 +230,8 @@ Légende : ✅ exporté fidèlement · ⚠️ exporté mais dégradé/partiel ·
 | `secteur_activite.exclusions` | ❌ | ✅ | perdues en P1 |
 | `secteur_geographique.inclusions` | ✅ `listeRegion` | ✅ | codes COG **bruts** : `PAYS-99100` pour un dispositif national, `REG-`/`OM-`/`DEP-` sinon (noms non utilisés) |
 | `secteur_geographique.exclusions` | ❌ | ✅ | perdues en P1 |
-| `themes` | ✅ `thematique` (FR) | ✅ (FR) | taxonomie non mappée vers une réf. AGIR/ADEME |
+| `themes` | ❌ | ❌ | thèmes TEE, plus transmis à AGIR |
+| `thematiques_ademe` | ✅ `thematique` (codes) | ✅ `themes` (codes) | référentiel ADEME, libellés dans `ademe_themes.json` amont |
 | `variantes` | ❌ | ✅ | **lacune P1** |
 | `statut_dispositif = remplace` | ⚠️ `etatDispositif` (état seul) | ✅ `statut` + `remplace_par` (slug) | cible de redirection portée par le pivot |
 | `autres_donnees.ademe_id_dsp` | ❌ (idDispositif = slug) | ✅ (racine) | `idDispositif`/`idFonctionnel` = `slug` |
@@ -281,9 +289,9 @@ Le pivot est quasi exhaustif. Points ouverts (par choix, pas par oubli) :
 
 - **`id` interne (cuid2) non exposé** (seul le slug). Si ADEME veut une clé
   stable indépendante d'un slug renommable, prévoir de la remonter.
-- **Taxonomies partiellement mappées** : `themes` passe par le vocabulaire wire
-  à 7 valeurs (`AgirThemeMapper`) ; `types_aides` reste livré tel quel, faute de
-  correspondance vers une nomenclature ADEME/AGIR (non fournie à ce stade).
+- **Taxonomies partiellement mappées** : le pivot des dispositifs livre les
+  thématiques ADEME (codes) dans `themes` ; `types_aides` reste livré tel quel,
+  faute de correspondance vers une nomenclature ADEME/AGIR (non fournie à ce stade).
 - **`remplace_par` conservé** : résolu du cuid2 canonical vers le slug du
   remplaçant. Omis (silencieux) si le dispositif cible n'est pas dans le store.
 

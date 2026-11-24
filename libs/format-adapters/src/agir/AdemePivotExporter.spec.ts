@@ -39,9 +39,12 @@ describe('AdemePivotExporter', () => {
       expect(out.duree).toEqual({ type: 'durée de l’accompagnement', valeur: '8 jours de formation' })
     })
 
-    it('garde contact_question typé et themes français', () => {
+    it('garde contact_question typé', () => {
       expect(out.contact_question).toEqual({ type: 'email', valeur: 'contact@ademe.fr' })
-      expect(out.themes).toEqual(['energie', 'batiment'])
+    })
+
+    it('expose les codes des thématiques ADEME dans themes, sans les thèmes TEE', () => {
+      expect(out.themes).toEqual(['08', '19_03'])
     })
 
     it('garde éligibilité, variantes, opérateurs et étapes (forme canonical)', () => {
@@ -87,6 +90,7 @@ describe('AdemePivotExporter', () => {
 
     it('omet ademe_id_dsp absent et les champs optionnels', () => {
       expect(out).not.toHaveProperty('ademe_id_dsp')
+      expect(out).not.toHaveProperty('themes')
       expect(out).not.toHaveProperty('montant')
       expect(out).not.toHaveProperty('eligibilite')
       expect(out.id).toBe('aide-decarbonation-industrie')

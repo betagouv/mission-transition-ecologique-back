@@ -45,7 +45,7 @@ type NumericCompanySize = CompanySizeBucket
  * Transforms a Payload `Program` into a raw `CanonicalProgramInput`, ready to be
  * validated by `CanonicalProgramValidator`. Validation is intentionally NOT done
  * here: this class only restructures and relabels data. Relations (`operator`,
- * `otherOperators`, `geographicAreas`, `replacedBy`) must be populated
+ * `otherOperators`, `geographicAreas`, `ademeThemes`, `replacedBy`) must be populated
  * (`depth >= 1`). Optional relations left unpopulated are omitted rather than
  * guessed; a missing required `operator`, however, is emitted as an empty
  * contact name on purpose, so the resulting canonical fails validation loudly
@@ -61,6 +61,7 @@ export class ProgramCanonicalMapper {
       ...this.mapAide(program),
       eligibilite: this.mapEligibilite(program),
       themes: this.mapThemes(program),
+      thematiques_ademe: this.mapThematiquesAdeme(program),
       variantes: this.mapVariantes(program),
     }
   }
@@ -111,6 +112,7 @@ export class ProgramCanonicalMapper {
     | 'meta'
     | 'eligibilite'
     | 'themes'
+    | 'thematiques_ademe'
     | 'variantes'
     | 'autres_donnees'
   > {
@@ -220,6 +222,13 @@ export class ProgramCanonicalMapper {
       .map((theme) => THEME_TO_CANONICAL[theme])
       .filter(Boolean)
     return themes.length > 0 ? themes : undefined
+  }
+
+  private mapThematiquesAdeme(program: Program): CanonicalProgramInput['thematiques_ademe'] {
+    const codes = (program.ademeThemes ?? [])
+      .map((theme) => (typeof theme === 'object' ? theme.code : undefined))
+      .filter((code): code is string => Boolean(code))
+    return codes.length > 0 ? [...new Set(codes)] : undefined
   }
 
   private mapEligibilite(program: Program): EligibiliteInput | undefined {

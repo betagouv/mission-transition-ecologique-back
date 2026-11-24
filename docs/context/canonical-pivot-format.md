@@ -97,6 +97,8 @@ Catalogue complet des cas particuliers (Corse, DROM, COM, statuts particuliers, 
 
 `themes` : array ≥ 1 d'enum (V0, libellés français) : `batiment`, `mobilite`, `dechets`, `eau`, `energie`, `rh`, `environnemental`, `ecoconception`, `biodiversite`.
 
+`thematiques_ademe` : array ≥ 1 de codes du référentiel des thématiques ADEME (`ademe_themes.json` amont, 10 racines et leurs sous-thèmes) : `19` (racine) ou `19_03` (sous-thème), tels que l'amont les publie (`ademeThemes` de `programs.json`), sans ajout du parent. Absent si le dispositif n'en a pas. Forme contrôlée par `ademeThemeCodeSchema` (`^\d{2}(_\d{2})?$`) ; l'existence du code est vérifiée contre la collection `ademe-themes` du CMS, pas dans le pivot. Les libellés ne sont pas portés. C'est ce champ, et non `themes`, que le pivot AGIR expose sous `themes`.
+
 ### 5. Variantes
 
 `variantes` : array de `{ conditions, modifications, autres_champs? }`.
