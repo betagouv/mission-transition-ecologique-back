@@ -86,7 +86,7 @@ versions: { drafts: true }
 | `aidType` | Champs visibles |
 |---|---|
 | `financement` | `fundingAmount` |
-| `pret` | `loanAmount` |
+| `pret` | `loanAmount`, `loanDuration` |
 | `avantage-fiscal` | `taxBenefitAmount` |
 | `formation` | `formationRemainingCost`, `formationDuration` |
 | `diagnostic-etude` | `studyRemainingCost`, `studyDuration` |
@@ -178,28 +178,3 @@ L'action « Dupliquer » (admin, `POST /api/programs/:id/duplicate`, `payload.du
 Les commentaires de relecture ne suivent pas la copie (collection `review-comments`). La copie n'entre dans le pivot qu'une fois publiée par le workflow, sous son propre identifiant ; la ligne pivot de l'original n'est pas touchée. Un créateur ne peut dupliquer qu'un dispositif qu'il peut lire. Mécanique : `disableDuplicate: true` sur les champs de workflow, hook `duplicateAsDraft` (force le brouillon, donc aucune validation à la copie), hook `assignCopySlug`.
 
 `temporarilyUnavailable` (case à cocher, sidebar, feature 005) : aide publiée mais signalée comme indisponible ; exportée en `statut_dispositif: 'temporairement_indisponible'` tant que le dispositif est publié. Alimentée par `aide temporairement indisponible: "oui"` de l'amont.
-
----
-
-## Mapping export → restore (legacy → new)
-
-Voir `apps/cms/src/scripts/seed/restore/ProgramExportMapper.ts` pour le code.
-
-| Champ ancien export | Champ nouveau | Transformation |
-|---|---|---|
-| `aidType: 'etude'` | `aidType: 'diagnostic-etude'` | Renommage de la valeur |
-| `accompanyingCost` | `studyRemainingCost` | — |
-| `accompanyingDuration` | `studyDuration` | — |
-| `loanDuration` | — | dropped (pas dans la spec) |
-| `longDescription` | `additionalInfo` | — |
-| `illustration`, `contactUrl` (top-level) | — | dropped |
-| `objectives[].description` | `steps[].description` | — |
-| `objectives[].links[].url` | `steps[].links[].url` | — |
-| `objectives[].links[].label` | `steps[].links[].linkLabel` | — |
-| `eligibilityConditions.companySize[].value` | `companySizes` (enum) + `companySizeOther` | Match regex sur les libellés ; non-match → `other` + concat dans `companySizeOther` |
-| `eligibilityConditions.activitySector[].value` | `activitySectors` (enum) + `activitySectorOther` | Idem |
-| `eligibilityConditions.geographicArea[].value` | `geographicAreaFeedback` (concat) | Pas de match auto vers `geographic-areas` |
-| `eligibilityConditions.activityYears[].value` | `otherCriteria[].value` | Fusion |
-| `eligibilityConditions.otherCriteria[].value` | `otherCriteria[].value` | — |
-
-Le mapping est **lossy** sur les enums (les libellés français libres ne matchent pas tous parfaitement). Les programmes dont `url` est manquant restent `_status: 'draft'` après restore (cf. publish pass dans `ProgramsRestore`).

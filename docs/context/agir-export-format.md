@@ -188,7 +188,14 @@ Deltas vs canonical :
    le 2026-10-02 ce sont des dispositifs du CMS (`workflowStatus: 'remplace'`,
    `replacedBy`), écrits par le seed et la sync quotidienne, que le hook pousse
    dans le store (voir `docs/context/schema-grist-export.md` §Pipeline quotidien).
-6. `montant` / `duree` : **objet `{ type, valeur }`** inchangé.
+6. `montant` / `duree` : **objet `{ type, valeur }`** inchangé. `type` est le
+   libellé du champ Payload (« Montant du prêt », « Durée du prêt », « Durée de
+   la formation », « Durée du diagnostic ou de l'étude »), `valeur` le texte
+   saisi ou repris de l'amont. Une durée est transmise pour les formations, les
+   études et, depuis le 2026-11-24, les prêts (`Programs.loanDuration`,
+   alimenté par la clé amont `durée du prêt`) : exemple
+   `pret-action-climat` → `{ "type": "Durée du prêt", "valeur": "modulable de 3,
+   à 5 ou 7 ans dont une période de différé…" }`.
 7. `contact_question` : repris tel quel du canonical (aucune traduction de
    vocabulaire). Pas de type `formulaire` dans le canonical : la valeur
    `"formulaire"` de la source TEE désigne la mise en relation

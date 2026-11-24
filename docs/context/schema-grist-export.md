@@ -61,6 +61,8 @@ export est produit par la TEE) et `statut` passe par le mapper partagé
 - `description` / `eligibilite` : le core n'a pas de structure montant/durée/
   étapes/effectif ; ces infos sont **repliées dans le texte**
   (`DescriptionTextBuilder`, `EligibiliteTextBuilder`), comme l'export legacy.
+  La ligne `<duree.type> : <duree.valeur>` sort pour les formations, les
+  études et, depuis le 2026-11-24, les prêts (« Durée du prêt : … »).
   `description_longue` reste **omise** (dépasse 5000 caractères).
 - `porteurs` : JSON `[{ nom, siren?, roles[] }]`. Rôles par position (contact =
   `instructeur+diffuseur`, autres = `diffuseur`). Cas « CCI ou CMA » éclaté en

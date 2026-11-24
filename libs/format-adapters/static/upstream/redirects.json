@@ -305,6 +305,7 @@
     "739": "aide-investissement-corse",
     "760": "aide-tourisme-guadeloupe",
     "764": "navires-propres",
+    "793": "investissement-outre-mer",
     "826": "diag-adaptation",
     "859": "advenir",
     "863": "cyclologistique",
@@ -411,6 +412,12 @@
     "3674": "accelerateur-transition-s",
     "3675": "prorefei-formation-referents-energie-industrie",
     "3676": "autodiag-eau-salons-de-coiffure",
-    "3677": "competitivite-energetique-des-entreprises-na"
+    "3677": "competitivite-energetique-des-entreprises-na",
+    "3683": "pret-flash-electrique",
+    "3685": "decarb-flash-artisan",
+    "3686": "mon-parcours-economies-energie",
+    "3689": "pret-methanisation-ademe",
+    "3690": "aide-acquisition-vehicules-electriques-destinee-aux-taxis",
+    "3723": "tp-up-pm-up-idf"
   }
 }

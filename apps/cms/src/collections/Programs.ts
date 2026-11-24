@@ -186,6 +186,15 @@ export const Programs: CollectionConfig = {
       },
     },
     {
+      name: 'loanDuration',
+      type: 'text',
+      label: 'Durée du prêt',
+      admin: {
+        condition: (data) => data?.aidType === 'pret',
+        description: 'Exemple : De 3 à 7 ans, dont un différé de remboursement de 1 an.',
+      },
+    },
+    {
       name: 'taxBenefitAmount',
       type: 'text',
       label: "Montant de l'avantage fiscal",

@@ -28,10 +28,12 @@ let actual: Map<string, CanonicalProgramInput>
 let relations: PayloadProgramRelations
 
 // Compares the words only: Lexical re-spells some Markdown (hard breaks, a
-// multi-line blockquote gets a single `>` marker) without changing the content.
+// multi-line blockquote gets a single `>` marker, every bullet becomes `-`)
+// without changing the content.
 // Upstream and the CMS spell a few territories differently (`Wallis et Futuna`).
 const normalizeName = (name: string) => name.trim().toLowerCase().replace(/[\s-]+/g, ' ')
-const normalizeText = (text: string | undefined) => (text ?? '').replace(/[\\>\s]/g, '')
+const normalizeText = (text: string | undefined) =>
+  (text ?? '').replace(/^(\s*)[*+](?=\s)/gm, '$1-').replace(/[\\>\s]/g, '')
 const trim = (text: string | undefined) => text?.trim()
 
 /**
@@ -72,6 +74,8 @@ function project(input: CanonicalProgramInput | undefined, side: 'upstream' | 'c
     date_ouverture: input?.date_ouverture,
     date_cloture: input?.date_cloture,
     types_aides: input?.types_aides,
+    // The label differs on purpose: upstream key on one side, CMS field label on the other.
+    duree: trim(input?.duree?.valeur),
     themes: [...(input?.themes ?? [])].sort(),
     operateurs: {
       contact: input?.operateurs.contact.nom,
@@ -147,6 +151,14 @@ describe('upstream → CMS → canonical round-trip', () => {
     expect(unavailable.length).toBeGreaterThan(0)
     for (const input of unavailable) {
       expect(actual.get(input.slug)?.statut_dispositif).toBe('temporairement_indisponible')
+    }
+  })
+
+  it('keeps the duration of every loan', () => {
+    const loans = expected.filter((input) => input.types_aides.includes('pret') && input.duree)
+    expect(loans.length).toBeGreaterThan(0)
+    for (const input of loans) {
+      expect(actual.get(input.slug)?.duree, input.slug).toEqual({ type: 'Durée du prêt', valeur: trim(input.duree?.valeur) })
     }
   })
 

@@ -88,6 +88,13 @@ describe('ProgramCanonicalMapper', () => {
       expect(data.types_aides).toEqual(['formation'])
       expect(data.duree).toEqual({ type: 'Durée de la formation', valeur: '3 heures' })
     })
+
+    it('maps loanDuration to duree', () => {
+      const data = mapAndValidate(
+        buildProgram({ aidType: 'pret', loanAmount: 'De 10 000 € à 75 000 €', loanDuration: 'De 3 à 7 ans' }),
+      )
+      expect(data.duree).toEqual({ type: 'Durée du prêt', valeur: 'De 3 à 7 ans' })
+    })
   })
 
   describe('contact question', () => {
@@ -404,6 +411,23 @@ describe('ProgramCanonicalMapper', () => {
         }),
       )
       expect(data.variantes?.[0].modifications.duree).toEqual({ type: 'Durée', valeur: '6 mois' })
+    })
+
+    it('maps a duree modification of a loan labelled as a loan duration', () => {
+      const data = mapAndValidate(
+        buildProgram({
+          aidType: 'pret',
+          loanAmount: 'De 10 000 € à 75 000 €',
+          loanDuration: 'De 3 à 7 ans',
+          variants: [
+            {
+              conditions: [{ conditionType: 'companySize', companySizeValue: ['0-9'] }],
+              modifications: [{ field: 'duree', newValue: '5 ans' }],
+            },
+          ],
+        }),
+      )
+      expect(data.variantes?.[0].modifications.duree).toEqual({ type: 'Durée du prêt', valeur: '5 ans' })
     })
 
     it('maps an urlSource modification to url_source', () => {
