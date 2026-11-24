@@ -6,6 +6,7 @@ import type {
   Illustration,
 } from '@tee-backoffice/canonical'
 import { AgirEtatMapper } from './AgirEtatMapper'
+import { AgirSecteurGeographiqueMapper } from './AgirSecteurGeographiqueMapper'
 import { AgirSourceMapper } from './AgirSourceMapper'
 import { AgirTypeDispositifMapper } from './AgirTypeDispositifMapper'
 import { AgirVocabulary } from './AgirVocabulary'
@@ -66,7 +67,8 @@ export class AgirDetailExporter {
     if (cog?.length) {
       out.secteurGeographique = {
         typeSecteur: this.typeSecteur(cog.map(String)),
-        listeRegion: cog.map(String),
+        // AGIR reads an empty list as "France entière"; typeSecteur stays National.
+        listeRegion: AgirSecteurGeographiqueMapper.toAgirInclusions(cog.map(String)),
       }
     }
 

@@ -117,7 +117,9 @@ Centralisé dans `AgirVocabulary` (un seul fichier pour ajuster). Valeurs
 - `typeSecteur` (détail) : déduit du niveau COG (`PAYS → National`,
   `REG → Régional`, `DEP → Départemental`…), `Régional et départemental` pour
   des régions (ou collectivités d'outre-mer) listées avec des départements,
-  `Inconnu` pour tout autre mélange.
+  `Inconnu` pour tout autre mélange. Un dispositif national garde
+  `typeSecteur: "National"` avec une `listeRegion` **vide** (liste vide = France
+  entière pour AGIR, même règle que le pivot).
 - Noms de clés `urlDetail` / `urlPivot` de l'index : à confirmer avec AGIR.
 
 ## 1. `ListeDispositif` (index)
@@ -148,7 +150,7 @@ parasites). Garde-fou de sortie `agir-detail.schema.ts` (`.strict()`).
 | `typeDispositif` | `AgirTypeDispositifMapper(types_aides)` |
 | `elligibilite.texteElligibilite` | concat des `eligibilite.*.texte` (puces `- `) |
 | `elligibilite.secteurActivite.listeSecteurActivite` | `eligibilite.secteur_activite.structure.inclusions` (NAF) |
-| `elligibilite.secteurGeographique.listeRegion` | `eligibilite.secteur_geographique.structure.inclusions` (COG) |
+| `elligibilite.secteurGeographique.listeRegion` | `eligibilite.secteur_geographique.structure.inclusions` (COG), vide pour un dispositif national |
 | `elligibilite.secteurGeographique.typeSecteur` | déduit du niveau COG |
 | `documentation.vignette.urlImage` / `.alt` | `illustration.url` / `.alt` |
 | `description.organisme` | `operateurs.contact.nom` |
@@ -195,6 +197,17 @@ Deltas vs canonical :
    et non plus les thèmes TEE.
 9. `eligibilite`, `variantes`, `operateurs`, `etapes_activation`, contenu
    éditorial : forme canonical inchangée.
+10. Exception au point 9, `eligibilite.secteur_geographique.structure` : un
+    dispositif national (`inclusions: ["PAYS-99100"]` dans le canonical) est
+    transmis avec **`inclusions: []`**. Règle de gestion AGIR (demande du
+    2026-11-24) : **liste `inclusions` vide = France entière**. `structure` garde
+    toujours la forme objet `{ inclusions, exclusions? }`. Seule la liste valant
+    exactement `["PAYS-99100"]` est vidée (`AgirSecteurGeographiqueMapper`) : les
+    `exclusions` (par exemple `["REG-94"]`, France hors Corse) et le `texte` sont
+    gardés, une liste régionale, départementale ou mêlant `PAYS-99100` à d'autres
+    codes reste inchangée. `PAYS-99100` reste la valeur canonique du national
+    (CMS, store, Grist) : la conversion n'a lieu qu'à la sortie AGIR, ici et
+    dans `listeRegion` du détail R2DA.
 
 ## Couverture du canonical par les deux formats
 
@@ -228,7 +241,7 @@ Légende : ✅ exporté fidèlement · ⚠️ exporté mais dégradé/partiel ·
 | `eligibilite.categorie_legale` | ⚠️ texte seul | ✅ | exclusion micro-entrepreneur non structurée en P1 |
 | `secteur_activite.inclusions` | ✅ `listeSecteurActivite` | ✅ | codes NAF **bruts** (pas de libellés) |
 | `secteur_activite.exclusions` | ❌ | ✅ | perdues en P1 |
-| `secteur_geographique.inclusions` | ✅ `listeRegion` | ✅ | codes COG **bruts** : `PAYS-99100` pour un dispositif national, `REG-`/`OM-`/`DEP-` sinon (noms non utilisés) |
+| `secteur_geographique.inclusions` | ✅ `listeRegion` | ✅ | codes COG **bruts** : `PAYS-99100` pour un dispositif national (liste **vide** dans le pivot et dans `listeRegion`, = France entière pour AGIR), `REG-`/`OM-`/`DEP-` sinon (noms non utilisés) |
 | `secteur_geographique.exclusions` | ❌ | ✅ | perdues en P1 |
 | `themes` | ❌ | ❌ | thèmes TEE, plus transmis à AGIR |
 | `thematiques_ademe` | ✅ `thematique` (codes) | ✅ `themes` (codes) | référentiel ADEME, libellés dans `ademe_themes.json` amont |
@@ -268,10 +281,11 @@ Toutes les pertes notables sont en P1 (le pivot ne perd rien d'essentiel).
    côté canonical). → filtrage fin impossible côté AGIR tant que ce n'est pas
    tranché.
 6. **Format des codes** — `listeSecteurActivite` = codes NAF bruts (`C`,
-   `33.20`) ; `listeRegion` = codes COG bruts (`REG-53`, `PAYS-99100`).
+   `33.20`) ; `listeRegion` = codes COG bruts (`REG-53`), vide pour un dispositif national.
    `TerritoryNameResolver` (codes → noms) existe dans `shared/` mais **n'est
    pas utilisé**. Depuis le 29/09/2026, un dispositif national porte
-   `PAYS-99100` (`typeSecteur` = `National`) et les départements cités par
+   `typeSecteur` = `National` (avec `PAYS-99100`, puis une liste vide depuis le
+   2026-11-24) et les départements cités par
    l'amont (`DEP-40`, `DEP-13`…) sont transmis ; des régions listées avec des
    départements donnent `typeSecteur` = `Régional et départemental` (valeur à
    confirmer avec AGIR, comme le reste du vocabulaire). → confirmer si AGIR attend des codes, des libellés, ou des objets

@@ -130,4 +130,34 @@ describe('AdemePivotExporter', () => {
       expect(out).not.toHaveProperty('remplace_par')
     })
   })
+
+  describe('secteur géographique', () => {
+    const withArea = (inclusions: string[]) =>
+      new CanonicalProgramValidator().parse({
+        ...fullProgram.toJSON(),
+        eligibilite: { secteur_geographique: { structure: { inclusions } } },
+      })
+
+    it('exprime un dispositif national par inclusions vide, exclusions gardées', () => {
+      expect(exporter.export(fullProgram).eligibilite?.secteur_geographique?.structure).toEqual({
+        inclusions: [],
+        exclusions: ['REG-94'],
+      })
+      expect(exporter.export(withArea(['PAYS-99100'])).eligibilite?.secteur_geographique).toEqual({
+        structure: { inclusions: [] },
+      })
+    })
+
+    it('laisse inchangé un dispositif régional', () => {
+      expect(exporter.export(withArea(['REG-53'])).eligibilite?.secteur_geographique?.structure?.inclusions).toEqual([
+        'REG-53',
+      ])
+    })
+
+    it('ne vide pas une liste mêlant la France et d’autres codes', () => {
+      expect(
+        exporter.export(withArea(['PAYS-99100', 'REG-53'])).eligibilite?.secteur_geographique?.structure?.inclusions,
+      ).toEqual(['PAYS-99100', 'REG-53'])
+    })
+  })
 })

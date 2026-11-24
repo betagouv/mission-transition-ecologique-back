@@ -1,5 +1,6 @@
 import type { CanonicalProgram } from '@tee-backoffice/canonical'
 import { AgirEtatMapper } from './AgirEtatMapper'
+import { AgirSecteurGeographiqueMapper } from './AgirSecteurGeographiqueMapper'
 import { AgirSourceMapper } from './AgirSourceMapper'
 import type { RemplaceParResolver } from './RemplaceParResolver'
 import { ademePivotSchema } from './ademe-pivot.schema'
@@ -54,6 +55,9 @@ export class AdemePivotExporter {
     // AGIR reads the ADEME referential codes, not the TEE themes.
     if (d.thematiques_ademe !== undefined) out.themes = [...d.thematiques_ademe]
     if (d.variantes !== undefined) out.variantes = d.variantes
+
+    // AGIR reads an empty `inclusions` list as "France entière" (PAYS-99100 stays canonical).
+    if (out.eligibilite) out.eligibilite = AgirSecteurGeographiqueMapper.toAgir(out.eligibilite)
 
     return ademePivotSchema.parse(out)
   }

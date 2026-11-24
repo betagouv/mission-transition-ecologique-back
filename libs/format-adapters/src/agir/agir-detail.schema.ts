@@ -24,7 +24,8 @@ const secteurActiviteSchema = z
 const secteurGeographiqueSchema = z
   .object({
     typeSecteur: z.string().optional(),
-    listeRegion: z.array(z.string()).min(1),
+    // Empty list = France entière (national program, typeSecteur `National`).
+    listeRegion: z.array(z.string()),
   })
   .strict()
 
