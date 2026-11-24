@@ -139,8 +139,9 @@ export class ProgramCanonicalMapper {
     workflowStatus: NonNullable<Program['workflowStatus']>,
   ): CanonicalProgramInput['statut_dispositif'] {
     const statut = WORKFLOW_STATUS_TO_DISPOSITIF[workflowStatus]
-    // Unavailability only qualifies a live aid, not an archived or replaced one.
-    return statut === 'valide' && program.temporarilyUnavailable ? 'temporairement_indisponible' : statut
+    // An archived aid stays flagged as unavailable for AGIR; a replaced one carries its replacement instead.
+    const flaggable = statut === 'valide' || workflowStatus === 'archive'
+    return flaggable && program.temporarilyUnavailable ? 'temporairement_indisponible' : statut
   }
 
   private mapRemplacePar(program: Program): string | undefined {
