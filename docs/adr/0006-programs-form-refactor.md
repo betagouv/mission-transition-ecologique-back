@@ -67,7 +67,7 @@ Chaque valeur active des champs de montant/durée spécifiques :
 
 **Justification :** Le terme `étude` seul est ambigu (audit, diagnostic, étude technique). `diagnostic-etude` correspond à l'intitulé produit. Les champs `accompanyingCost` / `accompanyingDuration` / `loanDuration` de l'ancien schéma sont supprimés au profit de paires explicites par type d'aide.
 
-**Révision du 2026-11-24 :** `loanDuration` (« Durée du prêt ») revient comme champ propre au type `pret`. L'amont porte une durée pour 12 prêts (clé `durée du prêt`) ; sans champ, la sync la perdait et elle n'arrivait plus dans le pivot AGIR.
+**Révision du 2026-11-24 :** `loanDuration` (« Durée du prêt ») revient comme champ propre au type `pret`. L'amont porte une durée pour 12 prêts (clé `durée du prêt`) ; sans champ, la sync la perdait et elle n'arrivait plus dans le pivot AGIR. Migration `20261124_133458_loan_duration` : colonne texte sur `programs` et `_programs_v`. Le champ entre dans l'empreinte `upstreamFingerprint` (écrit à `null` pour les autres types d'aide) : la première sync après déploiement réécrit tous les dispositifs, pas seulement les prêts, et `date_mise_a_jour` change donc une fois pour tous chez AGIR. La thématique ADEME (ADR 0015) provoque la même réécriture complète : déployées ensemble, une seule sync absorbe les deux. L'export Grist gagne une ligne « Durée du prêt : … » dans la colonne `description` des prêts (`DescriptionTextBuilder`).
 
 ---
 
