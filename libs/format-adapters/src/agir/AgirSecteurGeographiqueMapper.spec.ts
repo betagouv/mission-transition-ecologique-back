@@ -36,4 +36,10 @@ describe('AgirSecteurGeographiqueMapper', () => {
     const noArea: Eligibilite = { anciennete: { texte: ['Plus de 2 ans'] } }
     expect(AgirSecteurGeographiqueMapper.toAgir(noArea)).toBe(noArea)
   })
+
+  it('vide une liste d’inclusions nationale pour le détail, garde les autres', () => {
+    expect(AgirSecteurGeographiqueMapper.toAgirInclusions(['PAYS-99100'])).toEqual([])
+    expect(AgirSecteurGeographiqueMapper.toAgirInclusions(['REG-53'])).toEqual(['REG-53'])
+    expect(AgirSecteurGeographiqueMapper.toAgirInclusions(['PAYS-99100', 'REG-53'])).toEqual(['PAYS-99100', 'REG-53'])
+  })
 })

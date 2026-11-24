@@ -37,8 +37,22 @@ describe('AgirDetailExporter', () => {
 
     it('mappe secteurs activité (NAF) et géographique (COG + typeSecteur)', () => {
       expect(out.elligibilite?.secteurActivite?.listeSecteurActivite).toEqual(['C'])
-      expect(out.elligibilite?.secteurGeographique?.listeRegion).toEqual(['PAYS-99100'])
+      expect(out.elligibilite?.secteurGeographique?.listeRegion).toEqual([])
       expect(out.elligibilite?.secteurGeographique?.typeSecteur).toBe('National')
+    })
+
+    it('exprime le national par une listeRegion vide, garde les autres listes', () => {
+      const secteur = (inclusions: string[]) => {
+        const data = fullProgram.toJSON()
+        const program = new CanonicalProgramValidator().parse({
+          ...data,
+          eligibilite: { ...data.eligibilite, secteur_geographique: { structure: { inclusions } } },
+        })
+        return exporter.export(program).elligibilite?.secteurGeographique
+      }
+      expect(secteur(['PAYS-99100'])).toEqual({ typeSecteur: 'National', listeRegion: [] })
+      expect(secteur(['REG-53'])).toEqual({ typeSecteur: 'Régional', listeRegion: ['REG-53'] })
+      expect(secteur(['PAYS-99100', 'REG-53'])?.listeRegion).toEqual(['PAYS-99100', 'REG-53'])
     })
 
     it('qualifie le secteur selon les niveaux des codes COG', () => {
